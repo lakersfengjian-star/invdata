@@ -1,0 +1,247 @@
+cached.to_csv(cache, index=False)
+        return cached
+    if ak is None:
+        raise RuntimeError(AKSHARE_IMPORT_ERROR)
+    df = ak.stock_zh_a_daily(symbol=symbol, start_date=start.replace("-", ""), end_date=end.replace("-", ""), adjust="")
+    if df.empty:
+        raise ValueError("empty daily history")
+    out = df[["date", "amount"]].copy()
+    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    out["amount_100mn"] = pd.to_numeric(out["amount"], errors="coerce") / 1e8
+    out["code"] = code
+    out["name"] = row["name"]
+    out = out[["date", "code", "name", "amount_100mn"]].dropna(subset=["date", "amount_100mn"])
+    out.to_csv(cache, index=False)
+    return out
+
+
+def fetch_sina_stock_daily_worker(row_dict: dict[str, str], start: str, end: str) -> tuple[str, str | None, str | None]:
+    try:
+        df = fetch_sina_stock_daily(row_dict, start, end)
+        if df.empty:
+            return row_dict["symbol"], None, "empty"
+        return row_dict["symbol"], df.to_csv(index=False), None
+    except Exception as exc:
+        return row_dict["symbol"], None, repr(exc)[:180]
+
+
+def build_turnover_concentration(indices: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    start = TURNOVER_START_DATE
+    idx = indices[indices["date"] >= pd.Timestamp(start)].dropna(subset=["上证指数"]).copy()
+    latest = idx["date"].max()
+    if pd.isna(latest):
+        raise RuntimeError("No 2026 index dates available for turnover module.")
+    end = pd.Timestamp(latest).strftime("%Y-%m-%d")
+    stocks = fetch_a_share_stock_list()
+    if stocks.empty:
+        raise RuntimeError("No A-share stock list available.")
+
+    rows = []
+    failures = []
+
+    stock_rows = stocks[["code", "name", "symbol"]].to_dict("records")
+    with ProcessPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(fetch_sina_stock_daily_worker, row, start, end) for row in stock_rows]
+        for n, future in enumerate(as_completed(futures), 1):
+            symbol, csv_text, err = future.result()
+            if csv_text:
+                df = pd.read_csv(StringIO(csv_text), parse_dates=["date"], dtype={"code": str})
+                rows.append(df)
+            else:
+                failures.append((symbol, err or "empty"))
+            if n % 500 == 0:
+                print(f"stock daily fetched: {n}/{len(stocks)}", flush=True)
+
+    for symbol, err in failures[:40]:
+        log_source("Sina A-share daily", "failed", f"{symbol}: {err}")
+    if len(failures) > 40:
+        log_source("Sina A-share daily", "failed", f"{len(failures) - 40} additional failed symbols omitted")
+    if not rows:
+        raise RuntimeError("No stock daily turnover data fetched.")
+
+    detail = pd.concat(rows, ignore_index=True)
+    detail = detail[detail["date"] >= pd.Timestamp(start)].copy()
+    detail = detail.sort_values(["date", "amount_100mn"], ascending=[True, False])
+    detail["rank"] = detail.groupby("date")["amount_100mn"].rank(method="first", ascending=False).astype(int)
+
+    total = detail.groupby("date", as_index=False)["amount_100mn"].sum().rename(columns={"amount_100mn": "market_amount_100mn"})
+    top10 = detail[detail["rank"] <= 10].groupby("date", as_index=False)["amount_100mn"].sum().rename(columns={"amount_100mn": "top10_amount_100mn"})
+    top100 = detail[detail["rank"] <= 100].groupby("date", as_index=False)["amount_100mn"].sum().rename(columns={"amount_100mn": "top100_amount_100mn"})
+    top1000 = detail[detail["rank"] <= 1000].groupby("date", as_index=False)["amount_100mn"].sum().rename(columns={"amount_100mn": "top1000_amount_100mn"})
+    top_names = (
+        detail[detail["rank"] <= 10]
+        .sort_values(["date", "rank"])
+        .groupby("date")
+        .apply(lambda g: "、".join(g["name"].astype(str).tolist()), include_groups=False)
+        .reset_index(name="top10_names")
+    )
+    summary = total.merge(top10, on="date", how="left").merge(top100, on="date", how="left").merge(top1000, on="date", how="left").merge(top_names, on="date", how="left")
+    for n in [10, 100, 1000]:
+        summary[f"top{n}_share_pct"] = summary[f"top{n}_amount_100mn"] / summary["market_amount_100mn"] * 100
+    summary = summary.merge(idx[["date", "上证指数"]], on="date", how="left")
+
+    detail.to_csv(PROCESSED_DIR / "a_share_daily_turnover_rank_detail.csv", index=False)
+    summary.to_csv(PROCESSED_DIR / "a_share_turnover_concentration.csv", index=False)
+    log_source("Sina A-share daily", "ok", f"{len(rows)} symbols ok, {len(failures)} symbols failed")
+    return summary, detail
+
+
+def draw_turnover_concentration_chart(df: pd.DataFrame, out_path: Path) -> dict[str, Any]:
+    setup_fonts()
+    plot_df = df.copy()
+    for col in ["top10_share_pct", "top100_share_pct", "top1000_share_pct", "上证指数"]:
+        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.sort_values("date")
+    x = plot_df["date"]
+
+    fig, ax1 = plt.subplots(figsize=(16, 8), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax1.set_facecolor("#fbfbf8")
+    ax2 = ax1.twinx()
+
+    ax1.plot(x, plot_df["top10_share_pct"], color="#c5513c", linewidth=2.4, label="前10大占比")
+    ax1.plot(x, plot_df["top100_share_pct"], color="#2f7cb8", linewidth=2.1, label="前100大占比")
+    ax2.plot(x, plot_df["上证指数"], color="#7a6f64", linewidth=1.8, alpha=0.75, label="上证指数")
+
+    ax1.set_title("A股成交额前10大公司交易集中度变化（2026年初至今）", loc="left", fontsize=18, fontweight="bold", pad=16)
+    ax1.set_xlabel("日期", fontsize=12)
+    ax1.set_ylabel("占全市场成交额比例（%）", fontsize=12)
+    ax2.set_ylabel("上证指数收盘价（点）", fontsize=12)
+    ax1.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
+    ax1.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax1.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=4, frameon=False, fontsize=10)
+
+    latest = plot_df.dropna(subset=["top10_share_pct"]).iloc[-1]
+    ax1.annotate(
+        f"{latest['top10_share_pct']:.2f}%",
+        xy=(latest["date"], latest["top10_share_pct"]),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=11,
+        color="#c5513c",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#e2c1b9", "alpha": 0.9},
+    )
+    label = (
+        f"{latest['date'].strftime('%Y-%m-%d')}\n"
+        f"前10: {latest['top10_share_pct']:.2f}%\n"
+        f"前100: {latest['top100_share_pct']:.2f}%\n"
+        f"全市场成交额: {latest['market_amount_100mn']:,.0f} 亿元"
+    )
+    ax1.text(
+        0.985,
+        0.965,
+        label,
+        transform=ax1.transAxes,
+        ha="right",
+        va="top",
+        fontsize=10.5,
+        bbox={"boxstyle": "round,pad=0.45", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax1.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {
+        "path": str(out_path.relative_to(ROOT)),
+        "last_date": latest["date"].strftime("%Y-%m-%d"),
+        "last_values": {
+            "top10_share_pct": float(latest["top10_share_pct"]),
+            "top100_share_pct": float(latest["top100_share_pct"]),
+            "market_amount_100mn": float(latest["market_amount_100mn"]),
+        },
+    }
+
+
+def normalize_valuation_df(df: pd.DataFrame, name: str, pe_col: str) -> pd.DataFrame:
+    out = df.copy()
+    if "日期" in out.columns:
+        out = out.rename(columns={"日期": "date"})
+    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    out["pe_ttm"] = pd.to_numeric(out[pe_col], errors="coerce")
+    out["index_name"] = name
+    out = out[["date", "index_name", "pe_ttm"]].dropna(subset=["date", "pe_ttm"])
+    out = out[out["date"] >= pd.Timestamp(VALUATION_START_DATE)].sort_values("date")
+    return out
+
+
+def fetch_local_wind_valuation(index_name: str) -> pd.DataFrame:
+    path = RAW_DIR / "index_pe_ttm_wind.csv"
+    if not path.exists():
+        log_source("Local Wind PE_TTM CSV", "missing", str(path))
+        return pd.DataFrame(columns=["date", "index_name", "pe_ttm"])
+    df = pd.read_csv(path)
+    needed = {"date", "index_name", "pe_ttm"}
+    if not needed.issubset(df.columns):
+        raise ValueError(f"{path} must contain columns: date,index_name,pe_ttm")
+    out = df[df["index_name"].astype(str).eq(index_name)].copy()
+    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    out["pe_ttm"] = pd.to_numeric(out["pe_ttm"], errors="coerce")
+    out = out[["date", "index_name", "pe_ttm"]].dropna(subset=["date", "pe_ttm"])
+    out = out[out["date"] >= pd.Timestamp(VALUATION_START_DATE)].sort_values("date")
+    log_source("Local Wind PE_TTM CSV", "ok", f"{index_name}: {len(out)} rows")
+    return out
+
+
+def fetch_valuation_series(cfg: dict[str, str]) -> pd.DataFrame:
+    cache = PROCESSED_DIR / f"valuation_{cfg['key']}.csv"
+    if cache.exists():
+        cached = pd.read_csv(cache, parse_dates=["date"])
+        if not cached.empty and cached["date"].max() >= pd.Timestamp(datetime.now().date() - timedelta(days=10)):
+            log_source("Index PE_TTM", "cache", f"{cfg['name']}: {len(cached)} rows")
+            return cached
+    frames = []
+    if ak is None:
+        log_source("Index PE_TTM", "failed", AKSHARE_IMPORT_ERROR)
+    else:
+        for attempt in range(3):
+            try:
+                if cfg["source"] == "legulegu_index":
+                    raw = ak.stock_index_pe_lg(symbol=cfg["symbol"])
+                    frames.append(normalize_valuation_df(raw, cfg["name"], "滚动市盈率"))
+                    log_source("Legulegu index PE", "ok", f"{cfg['name']}: {len(frames[-1])} rows")
+                    break
+                if cfg["source"] == "legulegu_market":
+                    raw = ak.stock_market_pe_lg(symbol=cfg["symbol"])
+                    frames.append(normalize_valuation_df(raw, cfg["name"], "平均市盈率"))
+                    log_source("Legulegu market PE", "ok", f"{cfg['name']}: {len(frames[-1])} rows")
+                    break
+            except Exception as exc:
+                log_source("Index PE_TTM", "failed", f"{cfg['name']} attempt {attempt + 1}: {repr(exc)[:160]}")
+                time.sleep(1.2 * (attempt + 1))
+    if cfg["source"] == "local_csv":
+        frames.append(fetch_local_wind_valuation(cfg["name"]))
+    if frames:
+        out = pd.concat(frames, ignore_index=True).drop_duplicates(["date", "index_name"], keep="last").sort_values("date")
+    else:
+        out = pd.DataFrame(columns=["date", "index_name", "pe_ttm"])
+    if out.empty and cache.exists():
+        log_source("Index PE_TTM", "cache-fallback", f"{cfg['name']}: using stale cache")
+        return pd.read_csv(cache, parse_dates=["date"])
+    out.to_csv(cache, index=False)
+    return out
+
+
+def draw_valuation_channel_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> dict[str, Any]:
+    setup_fonts()
+    plot_df = df.copy().sort_values("date")
+    plot_df["pe_ttm"] = pd.to_numeric(plot_df["pe_ttm"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["pe_ttm"])
+    if plot_df.empty:
+        raise ValueError(f"No PE_TTM data for {index_name}")
+    mu = plot_df["pe_ttm"].mean()
+    sigma = plot_df["pe_ttm"].std(ddof=0)
+    levels = [
+        ("均值", mu, "#34495e", 1.8),
+        ("μ + 1σ", mu + sigma, "#2f7cb8", 1.3),
+        ("μ - 1σ", mu - sigma, "#2f7cb8", 1.3),
+        ("μ + 2σ", mu + 2 * sigma, "#c5513c", 1.2),
+        ("μ - 2σ", mu - 2 * sigma, "#c5513c", 1.2
