@@ -1,0 +1,306 @@
+),
+    ]
+    fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax.plot(plot_df["date"], plot_df["pe_ttm"], color="#1f77b4", linewidth=2.2, label="PE_TTM")
+    for label, value, color, width in levels:
+        ax.axhline(value, linestyle="--", color=color, linewidth=width, alpha=0.9, label=f"{label}: {value:.2f}")
+    latest = plot_df.iloc[-1]
+    ax.annotate(
+        f"{latest['pe_ttm']:.2f}x",
+        xy=(latest["date"], latest["pe_ttm"]),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=11,
+        color="#1f77b4",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#bdd4e8", "alpha": 0.9},
+    )
+    ax.set_title(f"{index_name}历史滚动市盈率及标准差通道", loc="left", fontsize=18, fontweight="bold", pad=16)
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("滚动市盈率（倍）", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax.legend(loc="upper left", ncol=3, frameon=False, fontsize=9.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {
+        "path": str(out_path.relative_to(ROOT)),
+        "last_date": latest["date"].strftime("%Y-%m-%d"),
+        "last_values": {
+            "pe_ttm": float(latest["pe_ttm"]),
+            "mean": float(mu),
+            "std": float(sigma),
+            "mean_plus_1std": float(mu + sigma),
+            "mean_minus_1std": float(mu - sigma),
+            "mean_plus_2std": float(mu + 2 * sigma),
+            "mean_minus_2std": float(mu - 2 * sigma),
+        },
+    }
+
+
+def build_valuation_charts() -> tuple[list[dict[str, Any]], list[str]]:
+    chart_infos = []
+    notes = []
+    all_frames = []
+    for i, cfg in enumerate(VALUATION_INDEXES, 1):
+        df = fetch_valuation_series(cfg)
+        if df.empty:
+            notes.append(f"{cfg['name']} PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。")
+            continue
+        all_frames.append(df)
+        out_path = CHART_DIR / f"fig_004{chr(96+i)}_{cfg['key']}_pe_ttm_channel.png"
+        info = draw_valuation_channel_chart(df, cfg["name"], out_path)
+        info["title"] = f"图四：{cfg['name']}历史滚动市盈率及标准差通道"
+        chart_infos.append(info)
+    if all_frames:
+        pd.concat(all_frames, ignore_index=True).to_csv(PROCESSED_DIR / "index_pe_ttm_valuation.csv", index=False)
+    return chart_infos, notes
+
+
+def build_page(metadata: dict[str, Any]) -> None:
+    chart1 = "../output/charts/fig_001_broad_etf_flow.png"
+    chart2 = "../output/charts/fig_002_star50_etf_flow.png"
+    chart3 = "../output/charts/fig_003_a_share_turnover_concentration.png"
+    updated_at = metadata["updated_at"]
+    latest = metadata["latest_common_date"]
+    source_notes = "<br>".join(metadata["notes"])
+    valuation_sections = []
+    for chart in metadata.get("valuation_chart_files", []):
+        rel = "../" + chart["path"]
+        title = chart.get("title", "指数历史滚动市盈率及标准差通道")
+        valuation_sections.append(
+            f"""    <section class="chart-section">
+      <h2>{title}</h2>
+      <img src="{rel}" alt="{title}">
+      <p class="note">统计区间自 {VALUATION_START_DATE} 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
+    </section>"""
+        )
+    valuation_html = "\n\n".join(valuation_sections)
+    if not valuation_html:
+        valuation_html = """    <section class="chart-section">
+      <h2>图四：指数估值通道</h2>
+      <p class="note">当前未取得可绘制的 PE_TTM 序列。Wind 指数可通过 data/raw/index_pe_ttm_wind.csv 接入。</p>
+    </section>"""
+    html = f"""<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>投研数据页：ETF资金流与指数走势</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">ETF Flow Monitor</p>
+        <h1>ETF资金流与指数走势</h1>
+      </div>
+      <div class="meta">
+        <div>更新：{updated_at}</div>
+        <div>区间：2025-01-01 至 {latest}</div>
+      </div>
+    </header>
+
+    <section class="chart-section">
+      <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
+      <img src="{chart1}" alt="沪深300与上证指数走势及大宽基ETF资金流">
+      <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
+      <img src="{chart2}" alt="科创50指数走势及科创50ETF资金流">
+      <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图三：A股成交额前10大公司交易集中度变化</h2>
+      <img src="{chart3}" alt="A股成交额前10大公司交易集中度变化">
+      <p class="note">样本覆盖当前沪深京A股清单；逐股获取2026年以来日成交额，按交易日排序计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
+    </section>
+
+{valuation_html}
+
+    <section class="data-note">
+      <h2>数据说明与风险提示</h2>
+      <p>{source_notes}</p>
+      <p>当日净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。</p>
+    </section>
+  </main>
+</body>
+</html>
+"""
+    css = """body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: #1f2933;
+  background: #f6f5f1;
+}
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 22px 56px;
+}
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+  border-bottom: 1px solid #d8d4ca;
+  padding-bottom: 20px;
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: #607080;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 760;
+}
+h2 {
+  margin: 0 0 14px;
+  font-size: 21px;
+}
+.meta {
+  text-align: right;
+  color: #59636e;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.chart-section {
+  padding: 30px 0 18px;
+  border-bottom: 1px solid #dedbd3;
+}
+.chart-section img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fbfbf8;
+  border: 1px solid #dedbd3;
+}
+.note, .data-note p {
+  color: #4f5c66;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.data-note {
+  padding-top: 30px;
+}
+@media (max-width: 720px) {
+  .page-head {
+    display: block;
+  }
+  .meta {
+    text-align: left;
+    margin-top: 14px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+}
+"""
+    (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
+    (SITE_DIR / "styles.css").write_text(css, encoding="utf-8")
+
+
+def main() -> None:
+    ensure_dirs()
+    ranking = fetch_current_etf_ranking()
+
+    indices = fetch_indices(START_DATE, END_CAP)
+    indices_full = indices.copy()
+    trading_dates = indices.dropna(subset=["沪深300"])["date"].sort_values().tolist()
+    if not trading_dates:
+        raise RuntimeError("No trading dates fetched.")
+
+    # SSE ETF scale is usually T+1. Pick the latest date where the primary SSE
+    # share source works, so both charts share one strict time window.
+    latest_common = None
+    for day in reversed(trading_dates):
+        try:
+            sample = fetch_sse_scale_one_day(day)
+            if not sample.empty:
+                latest_common = pd.Timestamp(day).normalize()
+                break
+        except Exception:
+            continue
+    if latest_common is None:
+        raise RuntimeError("Could not determine latest common ETF flow date.")
+
+    trading_dates = [pd.Timestamp(d).normalize() for d in trading_dates if pd.Timestamp(d).normalize() <= latest_common]
+    indices = indices[indices["date"].isin(trading_dates)].copy()
+
+    etfs_all = ETF_SELECTION + [STAR50_ETF]
+    flow_detail = build_etf_flow(trading_dates, etfs_all, START_DATE, latest_common.strftime("%Y-%m-%d"))
+    broad = aggregate_flows(flow_detail, [e["code"] for e in ETF_SELECTION], "broad_etf_flow.csv")
+    star = aggregate_flows(flow_detail, [STAR50_ETF["code"]], "star50_etf_flow.csv")
+
+    chart1_df = indices[["date", "沪深300", "上证指数"]].merge(broad, on="date", how="left")
+    chart2_df = indices[["date", "科创50"]].merge(star, on="date", how="left")
+
+    chart1_info = draw_combo_chart(
+        chart1_df,
+        [("沪深300", "沪深300", "#1f77b4"), ("上证指数", "上证指数", "#2a9d55")],
+        "daily_net_inflow_100mn",
+        "rolling_7d_net_inflow_100mn",
+        "沪深300与上证指数走势及大宽基ETF资金流",
+        CHART_DIR / "fig_001_broad_etf_flow.png",
+    )
+    chart2_info = draw_combo_chart(
+        chart2_df,
+        [("科创50", "科创50", "#7b4ab8")],
+        "daily_net_inflow_100mn",
+        "rolling_7d_net_inflow_100mn",
+        "科创50指数走势及科创50ETF资金流",
+        CHART_DIR / "fig_002_star50_etf_flow.png",
+    )
+    turnover, turnover_detail = build_turnover_concentration(indices_full)
+    chart3_info = draw_turnover_concentration_chart(
+        turnover,
+        CHART_DIR / "fig_003_a_share_turnover_concentration.png",
+    )
+    valuation_chart_infos, valuation_notes = build_valuation_charts()
+
+    missing_szse = flow_detail[(flow_detail["venue"] == "SZSE") & (flow_detail["net_inflow_100mn"].isna())]["code"].unique()
+    notes = [
+        "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
+        "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
+        "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
+    ]
+    if len(missing_szse):
+        notes.append(
+            "深交所ETF历史份额公开接口当前未返回可按日期查询的数据，且本机未配置可用 Tushare token；"
+            f"{'、'.join(missing_szse)} 的历史申赎口径净流入暂缺，图一合计会按已取得ETF求和并在明细CSV保留缺失标记。"
+        )
+    zero_warning_dates = broad.loc[broad["daily_net_inflow_100mn"].fillna(0).eq(0), "date"].dt.strftime("%Y-%m-%d").tail(3).tolist()
+    if zero_warning_dates:
+        notes.append(f"最近出现合计净流入为0的日期：{', '.join(zero_warning_dates)}；需留意份额数据可能未更新。")
+    notes.append(
+        "成交集中度使用新浪财经A股日行情逐股抓取成交额，并以抓取到的沪深京A股个股成交额合计作为全市场成交额；"
+        "新上市、退市或接口缺失个股可能造成轻微口径差异。"
+    )
+    notes.extend(valuation_notes)
+
+    metadata = {
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "start_date": START_DATE,
+        "latest_common_date": latest_common.strftime("%Y-%m-%d"),
+        "etf_selection": ETF_SELECTION,
+        "star50_etf": STAR50_ETF,
+        "chart_files": [chart1_info, chart2_info, chart3_info],
+        "valuation_chart_files": valuation_chart_infos,
+        "notes": notes,
+        "source_logs": [log.__dict__ for log in SOURCE_LOGS],
+    }
+    
