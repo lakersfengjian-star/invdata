@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""Build the ETF flow dashboard.
+
+Data priority:
+1. Exchange/public source: SSE ETF share endpoint; Tencent public quote kline.
+2. AkShare wrappers for fund NAV and exchange datasets.
+3. Tushare hook, enabled when TUSHARE_TOKEN is configured.
+
+ETF net inflow is calculated as daily ETF share change multiplied by daily NAV,
+then converted to CNY 100mn. For SZSE ETF historical shares, the script keeps a
+Tushare fallback hook because the public SZSE list endpoint only exposes the
+latest snapshot.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import os
+import sys
+import time
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from io import StringIO
+from pathlib import Path
+from typing import Any
+from urllib.parse import urlencode
+
+ROOT = Path(__file__).resolve().parents[1]
+VENDOR = ROOT / ".work" / "vendor"
+if VENDOR.exists():
+    sys.path.insert(0, str(VENDOR))
+
+import numpy as np
+import pandas as pd
+
+try:
+    import akshare as ak
+except Exception as exc:  # pragma: no cover - handled at runtime
+    ak = None
+    AKSHARE_IMPORT_ERROR = repr(exc)
+else:
+    AKSHARE_IMPORT_ERROR = ""
+
+try:
+    import requests
+except Exception as exc:  # pragma: no cover - handled at runtime
+    raise SystemExit("requests is required. Run: python3 -m pip install --target .work/vendor requests") from exc
+
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.dates as mdates
+import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+
+
+START_DATE = "2025-01-01"
+TURNOVER_START_DATE = "2026-01-01"
+VALUATION_START_DATE = "2020-01-01"
+END_CAP = "2050-01-01"
+
+RAW_DIR = ROOT / "data" / "raw"
+PROCESSED_DIR = ROOT / "data" / "processed"
+CHART_DIR = ROOT / "output" / "charts"
+SITE_DIR = ROOT / "site"
+CACHE_DIR = ROOT / ".work" / "cache"
+
+ETF_SELECTION = [
+    {"code": "510300", "name": "沪深300ETF华泰柏瑞", "market": "sh", "index": "沪深300", "venue": "SSE"},
+    {"code": "510310", "name": "沪深300ETF易方达", "market": "sh", "index": "沪深300", "venue": "SSE"},
+    {"code": "510330", "name": "沪深300ETF华夏", "market": "sh", "index": "沪深300", "venue": "SSE"},
+    {"code": "159919", "name": "沪深300ETF嘉实", "market": "sz", "index": "沪深300", "venue": "SZSE"},
+    {"code": "510050", "name": "上证50ETF华夏", "market": "sh", "index": "上证50", "venue": "SSE"},
+]
+
+STAR50_ETF = {"code": "588000", "name": "科创50ETF华夏", "market": "sh", "index": "科创50", "venue": "SSE"}
+
+INDEX_SELECTION = {
+    "沪深300": {"symbol": "sh000300", "label": "沪深300"},
+    "上证指数": {"symbol": "sh000001", "label": "上证指数"},
+    "科创50": {"symbol": "sh000688", "label": "科创50"},
+}
+
+TURNOVER_CACHE_DIR = CACHE_DIR / "sina_a_share_daily_2026"
+
+VALUATION_INDEXES = [
+    {"key": "hs300", "name": "沪深300指数", "source": "legulegu_index", "symbol": "沪深300"},
+    {"key": "sse", "name": "上证指数", "source": "legulegu_market", "symbol": "上证"},
+    {"key": "wind_all_a", "name": "万得全A", "source": "local_csv", "symbol": "万得全A"},
+    {"key": "wind_all_a_ex_fin_petchem", "name": "万得全A（除金融、石油石化）", "source": "local_csv", "symbol": "万得全A（除金融、石油石化）"},
+]
+
+
+@dataclass
+class SourceLog:
+    source: str
+    status: str
+    detail: str
+
+
+SOURCE_LOGS: list[SourceLog] = []
+
+
+def log_source(source: str, status: str, detail: str) -> None:
+    SOURCE_LOGS.append(SourceLog(source, status, detail))
+
+
+def ensure_dirs() -> None:
+    for path in [RAW_DIR, PROCESSED_DIR, CHART_DIR, SITE_DIR, CACHE_DIR, TURNOVER_CACHE_DIR]:
+        path.mkdir(parents=True, exist_ok=True)
+
+
+def setup_fonts() -> None:
+    preferred = [
+        "Microsoft YaHei",
+        "SimHei",
+        "PingFang SC",
+        "Heiti SC",
+        "Noto Sans CJK SC",
+        "Arial Unicode MS",
+    ]
+    available = {f.name for f in fm.fontManager.ttflist}
+    for name in preferred:
+        if name in available:
+            plt.rcParams["font.sans-serif"] = [name]
+            break
+    plt.rcParams["axes.unicode_minus"] = False
+
+
+def request_json(url: str, params: dict[str, Any] | None = None, timeout: int = 25) -> dict[str, Any]:
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://quote.eastmoney.com/",
+    }
+    resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_tencent_kline(symbol: str, start: str, end: str) -> pd.DataFrame:
+    url = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+    params = {"param": f"{symbol},day,{start},{end},900,qfq"}
+    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://gu.qq.com/"}
+    resp = requests.get(url, params=params, headers=headers, timeout=30)
+    resp.raise_for_status()
+    payload = resp.json()
+    node = payload["data"][symbol]
+    rows = node.get("day") or node.get("qfqday") or node.get("hfqday")
+    if not rows:
+        raise ValueError(f"No kline rows for {symbol}")
+    df = pd.DataFrame(rows, columns=["date", "open", "close", "high", "low", "volume"])
+    df["date"] = pd.to_datetime(df["date"])
+    for col in ["open", "close", "high", "low", "volume"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df[["date", "close"]].sort_values("date")
+
+
+def fetch_indices(start: str, end: str) -> pd.DataFrame:
+    frames = []
+    for label, cfg in INDEX_SELECTION.items():
+        df = fetch_tencent_kline(cfg["symbol"], start, end)
+        df = df.rename(columns={"close": label})
+        frames.append(df)
+        log_source("Tencent public kline", "ok", f"{label} close: {len(df)} rows")
+    out = frames[0]
+    for frame in frames[1:]:
+        out = out.merge(frame, on="date", how="outer")
+    out = out.sort_values("date")
+    out.to_csv(PROCESSED_DIR / "index_close.csv", index=False)
+    return out
+
+
+def fetch_current_etf_ranking() -> pd.DataFrame:
+    url = "https://push2.eastmoney.com/api/qt/clist/get"
+    params = {
+        "pn": 1,
+        "pz": 5000,
+        "po": 1,
+        "np": 1,
+        "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+        "fltt": 2,
+        "invt": 2,
+        "fid": "f20",
+        "fs": "b:MK0021,b:MK0022,b:MK0023,b:MK0024",
+        "fields": "f12,f14,f2,f20,f21,f6",
+    }
+    try:
+        data = request_json(url, params=params)
+        df = pd.DataFrame(data["data"]["diff"])
+        df = df.rename(
+            columns={
+                "f12": "code",
+                "f14": "name",
+                "f2": "price",
+                "f20": "market_cap",
+                "f21": "float_cap",
+                "f6": "amount",
+            }
+        )
+        df["market_cap_100mn"] = pd.to_numeric(df["market_cap"], errors="coerce") / 1e8
+        log_source("Eastmoney ETF quote list", "ok", f"ranking snapshot: {len(df)} ETFs")
+        df.to_csv(RAW_DIR / "current_etf_ranking.csv", index=False)
+        return df
+    except Exception as exc:
+        log_source("Eastmoney ETF quote list", "failed", repr(exc))
+        return pd.DataFrame()
+
+
+def fetch_nav(code: str, start: str, end: str) -> pd.DataFrame:
+    if ak is None:
+        log_source("AkShare fund_etf_fund_info_em", "failed", AKSHARE_IMPORT_ERROR)
+        return pd.DataFrame(columns=["date", "nav"])
+    cache = CACHE_DIR / f"nav_{code}_{start}_{end}.csv"
+    if cache.exists():
+        df = pd.read_csv(cache, parse_dates=["date"])
+        log_source("AkShare fund_etf_fund_info_em", "cache", f"{code}: {len(df)} rows")
+        return df
+    try:
+        df = ak.fund_etf_fund_info_em(fund=code, start_date=start, end_date=end)
+        df = df.rename(columns={"净值日期": "date", "单位净值": "nav"})
+        df = df[["date", "nav"]].copy()
+        df["date"] = pd.to_datetime(df["date"])
+        df["nav"] = pd.to_numeric(df["nav"], errors="coerce")
+        df = df.dropna(subset=["date"]).sort_values("date")
+        df.to_csv(cache, index=False)
+        log_source("AkShare fund_etf_fund_info_em", "ok", f"{code}: {len(df)} NAV rows")
+        return df
+    except Exception as exc:
+        log_source("AkShare fund_etf_fund_info_em", "failed", f"{code}: {repr(exc)}")
+        return pd.DataFrame(columns=["date", "nav"])
+
+
+def fetch_etf_close_prices(etfs: list[dict[str, str]], start: str, end: str) -> pd.DataFrame:
+    frames = []
+    for etf in etfs:
+        symbol = f"{etf['market']}{etf['code']}"
+        try:
+            df = fetch_tencent_kline(symbol, start, end)
+            df = df.rename(columns={"close": "close_price"})
+            df["code"] = etf["code"]
+            frames.append(df[["date", "code", "close_price"]])
+            log_source("Tencent public kline", "ok", f"{etf['code']} ETF close: {len(df)} rows")
+        except Exception as exc:
+            log_source("Tencent public kline", "failed", f"{etf['code']} ETF close: {repr(exc)}")
+    if not frames:
+        return pd.DataFrame(columns=["date", "code", "close_price"])
+    out = pd.concat(frames, ignore_index=True)
+    out["date"] = pd.to_datetime(out["date"]).dt.normalize()
+    return out
+
+
+def fetch_sse_scale_one_day(day: pd.Timestamp) -> pd.DataFrame:
+    day_str = day.strftime("%Y%m%d")
+    cache = CACHE_DIR / f"sse_scale_{day_str}.csv"
+    if cache.exists():
+        return pd.read_csv(cache, dtype={"基金代码": str}, parse_dates=["统计日期"])
+    data_str = day.strftime("%Y-%m-%d")
+    url = "https://query.sse.com.cn/commonQuery.do"
+    params = {
+        "isPagination": "true",
+        "pageHelp.pageSize": "10000",
+        "pageHelp.pageNo": "1",
+        "pageHelp.beginPage": "1",
+        "pageHelp.cacheSize": "1",
+        "pageHelp.endPage": "1",
+        "sqlId": "COMMON_SSE_ZQPZ_ETFZL_XXPL_ETFGM_SEARCH_L",
+        "STAT_DATE": data_str,
+    }
+    headers = {
+        "Referer": "https://www.sse.com.cn/",
+        "User-Agent": "Mozilla/5.0",
+    }
+    resp = requests.get(url, params=params, headers=headers, timeout=12)
+    resp.raise_for_status()
+    payload = resp.json()
+    rows = payload.get("result") or []
+    if not rows:
+        raise ValueError("empty SSE scale result")
+    df = pd.DataFrame(rows)
+    df = df.rename(
+        columns={
+            "NUM": "序号",
+            "SEC_CODE": "基金代码",
+            "SEC_NAME": "基金简称",
+            "ETF_TYPE": "ETF类型",
+            "STAT_DATE": "统计日期",
+            "TOT_VOL": "基金份额",
+        }
+    )
+    df = df[["序号", "基金代码", "基金简称", "ETF类型", "统计日期", "基金份额"]]
+    df["序号"] = pd.to_numeric(df["序号"], errors="coerce")
+    df["统计日期"] = pd.to_datetime(df["统计日期"], errors="coerce")
+    df["基金份额"] = pd.to_numeric(df["基金份额"], errors="coerce") * 10000
+    df.to_csv(cache, index=False)
+    return df
+
+
+def fetch_sse_shares(dates: list[pd.Timestamp], codes: list[str]) -> pd.DataFrame:
+    rows = []
+    failures = []
+
+    def load(day: pd.Timestamp) -> tuple[pd.Timestamp, pd.DataFrame | None, str | None]:
+        try:
+            df = fetch_sse_scale_one_day(day)
+            sub = df[df["基金代码"].astype(str).isin(codes)][["统计日期", "基金代码", "基金份额"]].copy()
+            return day, sub, None
+        except Exception as exc:
+            return day, None, repr(exc)[:140]
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(load, day) for day in dates]
+        for future in as_completed(futures):
+            day, sub, err = future.result()
+            if err:
+                failures.append((day, err))
+            elif sub is not None and not sub.empty:
+                rows.append(sub)
+
+    for day, err in failures[:30]:
+        log_source("SSE ETF scale", "failed", f"{day.date()}: {err}")
+    if len(failures) > 30:
+        log_source("SSE ETF scale", "failed", f"{len(failures) - 30} additional failed dates omitted")
+    if not rows:
+ 
