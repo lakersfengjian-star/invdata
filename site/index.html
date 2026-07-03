@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>投研数据页：ETF资金流与指数走势</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header class="page-head">
+      <div>
+        <p class="eyebrow">ETF Flow Monitor</p>
+        <h1>ETF资金流与指数走势</h1>
+      </div>
+      <div class="meta">
+        <div>更新：2026-07-03 21:41:58</div>
+        <div>区间：2025-01-01 至 2026-07-02</div>
+      </div>
+    </header>
+
+    <section class="chart-section">
+      <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
+      <img src="../output/charts/fig_001_broad_etf_flow.png" alt="沪深300与上证指数走势及大宽基ETF资金流">
+      <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
+      <img src="../output/charts/fig_002_star50_etf_flow.png" alt="科创50指数走势及科创50ETF资金流">
+      <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图三：A股成交额前10大公司交易集中度变化</h2>
+      <img src="../output/charts/fig_003_a_share_turnover_concentration.png" alt="A股成交额前10大公司交易集中度变化">
+      <p class="note">样本覆盖当前沪深京A股清单；逐股获取2026年以来日成交额，按交易日排序计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图四：沪深300指数历史滚动市盈率及标准差通道</h2>
+      <img src="../output/charts/fig_004a_hs300_pe_ttm_channel.png" alt="图四：沪深300指数历史滚动市盈率及标准差通道">
+      <p class="note">统计区间自 2020-01-01 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
+    </section>
+
+    <section class="chart-section">
+      <h2>图四：上证指数历史滚动市盈率及标准差通道</h2>
+      <img src="../output/charts/fig_004b_sse_pe_ttm_channel.png" alt="图四：上证指数历史滚动市盈率及标准差通道">
+      <p class="note">统计区间自 2020-01-01 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
+    </section>
+
+    <section class="data-note">
+      <h2>数据说明与风险提示</h2>
+      <p>指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。<br>ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。<br>净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。<br>深交所ETF历史份额公开接口当前未返回可按日期查询的数据，且本机未配置可用 Tushare token；159919 的历史申赎口径净流入暂缺，图一合计会按已取得ETF求和并在明细CSV保留缺失标记。<br>最近出现合计净流入为0的日期：2025-01-02；需留意份额数据可能未更新。<br>成交集中度使用新浪财经A股日行情逐股抓取成交额，并以抓取到的沪深京A股个股成交额合计作为全市场成交额；新上市、退市或接口缺失个股可能造成轻微口径差异。<br>万得全A PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。<br>万得全A（除金融、石油石化） PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。</p>
+      <p>当日净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。</p>
+    </section>
+  </main>
+</body>
+</html>
