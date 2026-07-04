@@ -1,4 +1,4 @@
- (PROCESSED_DIR / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+(PROCESSED_DIR / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     build_page(metadata)
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": metadata["chart_files"]}, ensure_ascii=False, indent=2))
 
