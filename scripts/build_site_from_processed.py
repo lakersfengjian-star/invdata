@@ -30,10 +30,19 @@ VALUATION_START_DATE = "2020-01-01"
 
 
 def setup_fonts() -> None:
-    preferred = ["Microsoft YaHei", "SimHei", "PingFang SC", "Noto Sans CJK SC", "Arial Unicode MS"]
+    preferred = [
+        "Noto Sans CJK SC",
+        "Noto Sans CJK JP",
+        "Microsoft YaHei",
+        "SimHei",
+        "PingFang SC",
+        "Heiti SC",
+        "Arial Unicode MS",
+    ]
     available = {f.name for f in fm.fontManager.ttflist}
     for name in preferred:
         if name in available:
+            plt.rcParams["font.family"] = "sans-serif"
             plt.rcParams["font.sans-serif"] = [name]
             break
     plt.rcParams["axes.unicode_minus"] = False
