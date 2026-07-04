@@ -1,0 +1,7 @@
+{
+  "source": "CSI official index performance API",
+  "start_date": "2024-01-01",
+  "latest_date": "2026-07-03",
+  "denominator": "中证全指成交金额，作为 Wind 全A 成交额公开代理口径",
+  "notes": []
+}

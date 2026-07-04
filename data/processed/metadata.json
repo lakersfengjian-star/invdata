@@ -1,0 +1,256 @@
+{
+  "updated_at": "2026-07-04 07:55:44",
+  "start_date": "2025-01-01",
+  "latest_common_date": "2026-07-03",
+  "etf_selection": [
+    {
+      "code": "510300",
+      "name": "沪深300ETF华泰柏瑞",
+      "market": "sh",
+      "index": "沪深300",
+      "venue": "SSE"
+    },
+    {
+      "code": "510310",
+      "name": "沪深300ETF易方达",
+      "market": "sh",
+      "index": "沪深300",
+      "venue": "SSE"
+    },
+    {
+      "code": "510330",
+      "name": "沪深300ETF华夏",
+      "market": "sh",
+      "index": "沪深300",
+      "venue": "SSE"
+    },
+    {
+      "code": "159919",
+      "name": "沪深300ETF嘉实",
+      "market": "sz",
+      "index": "沪深300",
+      "venue": "SZSE"
+    },
+    {
+      "code": "510050",
+      "name": "上证50ETF华夏",
+      "market": "sh",
+      "index": "上证50",
+      "venue": "SSE"
+    }
+  ],
+  "star50_etf": {
+    "code": "588000",
+    "name": "科创50ETF华夏",
+    "market": "sh",
+    "index": "科创50",
+    "venue": "SSE"
+  },
+  "chart_files": [
+    {
+      "path": "output/charts/fig_001_broad_etf_flow.png",
+      "last_date": "2026-07-03",
+      "last_values": {
+        "沪深300": 4842.17,
+        "上证指数": 4043.64,
+        "daily_net_inflow_100mn": -153.741996,
+        "rolling_7d_net_inflow_100mn": -771.301917
+      }
+    },
+    {
+      "path": "output/charts/fig_002_star50_etf_flow.png",
+      "last_date": "2026-07-03",
+      "last_values": {
+        "科创50": 1975.6,
+        "daily_net_inflow_100mn": 1.2611999999999999,
+        "rolling_7d_net_inflow_100mn": -1.4851799999999933
+      }
+    },
+    {
+      "path": "output/charts/fig_003_a_share_turnover_concentration.png",
+      "last_date": "2026-07-03",
+      "last_values": {
+        "top10_share_pct": 8.040662695783226,
+        "top100_share_pct": 31.509494264006864,
+        "market_amount_100mn": 32046.8709981
+      }
+    }
+  ],
+  "valuation_chart_files": [
+    {
+      "path": "output/charts/fig_004a_hs300_pe_ttm_channel.png",
+      "last_date": "2026-07-03",
+      "last_values": {
+        "pe_ttm": 13.6,
+        "mean": 12.29963786531131,
+        "std": 1.411447996563572,
+        "mean_plus_1std": 13.711085861874881,
+        "mean_minus_1std": 10.888189868747737,
+        "mean_plus_2std": 15.122533858438453,
+        "mean_minus_2std": 9.476741872184165
+      },
+      "title": "图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）"
+    },
+    {
+      "path": "output/charts/fig_004b_sse_pe_ttm_channel.png",
+      "last_date": "2026-07-03",
+      "last_values": {
+        "pe_ttm": 16.59,
+        "mean": 14.635250000000003,
+        "std": 1.8387923856433601,
+        "mean_plus_1std": 16.47404238564336,
+        "mean_minus_1std": 12.796457614356642,
+        "mean_plus_2std": 18.312834771286724,
+        "mean_minus_2std": 10.957665228713282
+      },
+      "title": "图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-03）"
+    }
+  ],
+  "notes": [
+    "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
+    "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
+    "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
+    "深交所ETF历史份额公开接口当前未返回可按日期查询的数据，且本机未配置可用 Tushare token；159919 的历史申赎口径净流入暂缺，图一合计会按已取得ETF求和并在明细CSV保留缺失标记。",
+    "最近出现合计净流入为0的日期：2025-01-02；需留意份额数据可能未更新。",
+    "成交集中度使用新浪财经A股日行情逐股抓取成交额，并以抓取到的沪深京A股个股成交额合计作为全市场成交额；新上市、退市或接口缺失个股可能造成轻微口径差异。",
+    "万得全A PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。",
+    "万得全A（除金融、石油石化） PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。"
+  ],
+  "source_logs": [
+    {
+      "source": "Eastmoney ETF quote list",
+      "status": "failed",
+      "detail": "ProxyError(MaxRetryError(\"HTTPSConnectionPool(host='push2.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/clist/get?pn=1&pz=5000&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f20&fs=b%3AMK0021%2Cb%3AMK0022%2Cb%3AMK0023%2Cb%3AMK0024&fields=f12%2Cf14%2Cf2%2Cf20%2Cf21%2Cf6 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remote end closed connection without response')))\"))"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "沪深300 close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "上证指数 close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "科创50 close: 362 rows"
+    },
+    {
+      "source": "SSE ETF scale",
+      "status": "ok",
+      "detail": "362 trading days, 0 failed days"
+    },
+    {
+      "source": "Tushare fund_share",
+      "status": "skipped",
+      "detail": "159919: TUSHARE_TOKEN not configured"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "510300: 243 NAV rows"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "510310: 243 NAV rows"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "510330: 243 NAV rows"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "159919: 243 NAV rows"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "510050: 243 NAV rows"
+    },
+    {
+      "source": "AkShare fund_etf_fund_info_em",
+      "status": "ok",
+      "detail": "588000: 243 NAV rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "510300 ETF close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "510310 ETF close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "510330 ETF close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "159919 ETF close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "510050 ETF close: 362 rows"
+    },
+    {
+      "source": "Tencent public kline",
+      "status": "ok",
+      "detail": "588000 ETF close: 362 rows"
+    },
+    {
+      "source": "AkShare stock_info_a_code_name",
+      "status": "ok",
+      "detail": "A-share stock list: 5523 names"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "ok",
+      "detail": "5522 symbols ok, 1 symbols failed"
+    },
+    {
+      "source": "Index PE_TTM",
+      "status": "cache",
+      "detail": "沪深300指数: 1574 rows"
+    },
+    {
+      "source": "Index PE_TTM",
+      "status": "cache",
+      "detail": "上证指数: 80 rows"
+    },
+    {
+      "source": "Local Wind PE_TTM CSV",
+      "status": "missing",
+      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
+    },
+    {
+      "source": "Index PE_TTM",
+      "status": "cache-fallback",
+      "detail": "万得全A: using stale cache"
+    },
+    {
+      "source": "Local Wind PE_TTM CSV",
+      "status": "missing",
+      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
+    },
+    {
+      "source": "Index PE_TTM",
+      "status": "cache-fallback",
+      "detail": "万得全A（除金融、石油石化）: using stale cache"
+    }
+  ]
+}

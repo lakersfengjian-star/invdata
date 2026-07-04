@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.work/vendor/
+.work/cache/
+.work/
+outputs/
+*.xlsx
+__pycache__/
+*.pyc
+.pytest_cache/

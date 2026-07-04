@@ -165,6 +165,44 @@ def draw_turnover_chart(df: pd.DataFrame, out_path: Path) -> dict:
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
 
 
+def draw_index_amount_share_chart(df: pd.DataFrame, out_path: Path) -> dict:
+    setup_fonts()
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    latest = plot_df.dropna(subset=["hs300_share_pct", "csi500_share_pct", "csi1000_share_pct"], how="all").iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax = plt.subplots(figsize=(16, 7.6), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    series = [
+        ("hs300_share_pct", "沪深300", "#1f77b4"),
+        ("csi500_share_pct", "中证500", "#2a9d55"),
+        ("csi1000_share_pct", "中证1000", "#c5513c"),
+        ("csi2000_share_pct", "中证2000", "#7b4ab8"),
+    ]
+    for col, label, color in series:
+        if col in plot_df and plot_df[col].notna().any():
+            ax.plot(plot_df["date"], plot_df[col], label=label, color=color, linewidth=2.1)
+            value = latest.get(col)
+            if pd.notna(value):
+                ax.annotate(f"{latest_date}  {value:.1f}%", xy=(latest["date"], value), xytext=(10, 0), textcoords="offset points", va="center", fontsize=9.5, color=color)
+    ax.set_title(f"主要宽基指数成交额占全A成交额比例（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("占全A成交额比例（%）", fontsize=12)
+    ax.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=18))
+    ax.legend(loc="upper left", ncol=4, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
 def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> dict:
     setup_fonts()
     plot_df = df[df["index_name"].eq(index_name)].copy().sort_values("date")
@@ -201,63 +239,262 @@ def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> d
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "title": f"图四：{index_name}历史滚动市盈率及标准差通道（截至{latest_date}）"}
 
 
-def build_page(metadata: dict, chart3: dict, valuation_charts: list[dict]) -> None:
+def build_page(metadata: dict, chart3: dict, valuation_charts: list[dict], amount_share_chart: dict | None = None) -> None:
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
     for chart_file in CHART_DIR.glob("*.png"):
         shutil.copy2(chart_file, assets_dir / chart_file.name)
     latest = metadata["latest_common_date"]
     updated_at = metadata["updated_at"]
+    asset_version = latest.replace("-", "")
     notes = "<br>".join(metadata.get("notes", []))
     valuation_html = "\n\n".join(
-        f'''    <section class="chart-section">
+        f'''      <section class="chart-section">
       <h2>{chart["title"]}</h2>
-      <img src="assets/charts/{Path(chart["path"]).name}" alt="{chart["title"]}">
+      <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
       <p class="note">统计区间自 {VALUATION_START_DATE} 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
     </section>'''
         for chart in valuation_charts
     )
+    amount_share_html = ""
+    if amount_share_chart:
+        amount_share_html = f'''      <section class="chart-section">
+        <h2>图五：主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）</h2>
+        <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
+        <p class="note">数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。</p>
+      </section>'''
     html = f'''<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>投研数据页：ETF资金流与指数走势</title>
+  <title>投研数据页</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <header class="page-head">
-      <div><p class="eyebrow">ETF Flow Monitor</p><h1>ETF资金流与指数走势</h1></div>
+      <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
       <div class="meta"><div>更新：{updated_at}</div><div>区间：2025-01-01 至 {latest}</div></div>
     </header>
-    <section class="chart-section">
-      <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
-      <img src="assets/charts/fig_001_broad_etf_flow.png" alt="沪深300与上证指数走势及大宽基ETF资金流">
-      <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+
+    <nav class="category-tabs" aria-label="投研数据分类">
+      <button class="category-tab active" type="button" data-target="market" aria-selected="true">行情</button>
+      <button class="category-tab" type="button" data-target="macro" aria-selected="false">宏观</button>
+      <button class="category-tab" type="button" data-target="valuation" aria-selected="false">估值</button>
+      <button class="category-tab" type="button" data-target="earnings" aria-selected="false">盈利</button>
+      <button class="category-tab" type="button" data-target="liquidity" aria-selected="false">流动性</button>
+      <button class="category-tab" type="button" data-target="sentiment" aria-selected="false">情绪</button>
+    </nav>
+
+    <section class="category-panel active" id="panel-market" data-category="market">
+      <div class="category-head"><h2>行情</h2></div>
+      <section class="chart-section">
+        <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
+        <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
+        <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+      </section>
+      <section class="chart-section">
+        <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
+        <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
+        <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+      </section>
+{amount_share_html}
     </section>
-    <section class="chart-section">
-      <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
-      <img src="assets/charts/fig_002_star50_etf_flow.png" alt="科创50指数走势及科创50ETF资金流">
-      <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+
+    <section class="category-panel" id="panel-macro" data-category="macro" hidden>
+      <div class="category-head"><h2>宏观</h2></div>
+      <p class="empty-note">暂无图表。</p>
     </section>
-    <section class="chart-section">
-      <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）</h2>
-      <img src="assets/charts/fig_003_a_share_turnover_concentration.png" alt="A股成交额前10大公司交易集中度变化">
-      <p class="note">样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
-    </section>
+
+    <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
+      <div class="category-head"><h2>估值</h2></div>
 {valuation_html}
+    </section>
+
+    <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
+      <div class="category-head"><h2>盈利</h2></div>
+      <p class="empty-note">暂无图表。</p>
+    </section>
+
+    <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
+      <div class="category-head"><h2>流动性</h2></div>
+      <section class="chart-section">
+        <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）</h2>
+        <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
+        <p class="note">样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
+      </section>
+    </section>
+
+    <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
+      <div class="category-head"><h2>情绪</h2></div>
+      <p class="empty-note">暂无图表。</p>
+    </section>
+
     <section class="data-note">
       <h2>数据说明与风险提示</h2>
       <p>{notes}</p>
       <p>当日净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。</p>
     </section>
   </main>
+  <script src="app.js"></script>
 </body>
 </html>
 '''
+    css = '''body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: #1f2933;
+  background: #f6f5f1;
+}
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 22px 56px;
+}
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: end;
+  border-bottom: 1px solid #d8d4ca;
+  padding-bottom: 20px;
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: #607080;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 760;
+}
+h2 {
+  margin: 0 0 14px;
+  font-size: 21px;
+}
+.meta {
+  text-align: right;
+  color: #59636e;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.category-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1px;
+  margin: 22px 0 10px;
+  background: #d8d4ca;
+  border: 1px solid #d8d4ca;
+}
+.category-tab {
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  background: #f8f7f3;
+  color: #53606b;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.category-tab:hover,
+.category-tab:focus-visible {
+  background: #ffffff;
+  color: #1f2933;
+  outline: none;
+}
+.category-tab.active {
+  background: #203040;
+  color: #ffffff;
+  font-weight: 700;
+}
+.category-panel {
+  padding-top: 20px;
+}
+.category-head {
+  padding: 8px 0 12px;
+  border-bottom: 1px solid #dedbd3;
+}
+.category-head h2 {
+  font-size: 26px;
+}
+.chart-section {
+  padding: 30px 0 18px;
+  border-bottom: 1px solid #dedbd3;
+}
+.chart-section img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fbfbf8;
+  border: 1px solid #dedbd3;
+}
+.note, .data-note p, .empty-note {
+  color: #4f5c66;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.empty-note {
+  margin: 22px 0 36px;
+}
+.data-note {
+  padding-top: 30px;
+}
+@media (max-width: 720px) {
+  main {
+    padding: 28px 16px 44px;
+  }
+  .page-head {
+    display: block;
+  }
+  .meta {
+    text-align: left;
+    margin-top: 14px;
+  }
+  h1 {
+    font-size: 28px;
+  }
+  .category-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .category-tab {
+    min-height: 42px;
+    font-size: 14px;
+  }
+}
+'''
+    js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
+const panels = Array.from(document.querySelectorAll(".category-panel"));
+
+function activateCategory(target) {
+  tabs.forEach((tab) => {
+    const active = tab.dataset.target === target;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+  });
+  panels.forEach((panel) => {
+    const active = panel.dataset.category === target;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  });
+}
+
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => activateCategory(tab.dataset.target));
+});
+'''
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
+    (SITE_DIR / "styles.css").write_text(css, encoding="utf-8")
+    (SITE_DIR / "app.js").write_text(js, encoding="utf-8")
 
 
 def main() -> None:
@@ -272,12 +509,17 @@ def main() -> None:
     draw_combo_chart(indices[["date", "沪深300", "上证指数"]].merge(broad, on="date", how="left"), [("沪深300", "沪深300", "#1f77b4"), ("上证指数", "上证指数", "#2a9d55")], "沪深300与上证指数走势及大宽基ETF资金流", CHART_DIR / "fig_001_broad_etf_flow.png")
     draw_combo_chart(indices[["date", "科创50"]].merge(star, on="date", how="left"), [("科创50", "科创50", "#7b4ab8")], "科创50指数走势及科创50ETF资金流", CHART_DIR / "fig_002_star50_etf_flow.png")
     chart3 = draw_turnover_chart(turnover, CHART_DIR / "fig_003_a_share_turnover_concentration.png")
+    amount_share_chart = None
+    amount_share_path = PROCESSED_DIR / "index_amount_share.csv"
+    if amount_share_path.exists():
+        amount_share = pd.read_csv(amount_share_path, parse_dates=["date"])
+        amount_share_chart = draw_index_amount_share_chart(amount_share, CHART_DIR / "fig_005_index_amount_share.png")
     valuation_charts = [
         draw_valuation_chart(valuation, "沪深300指数", CHART_DIR / "fig_004a_hs300_pe_ttm_channel.png"),
         draw_valuation_chart(valuation, "上证指数", CHART_DIR / "fig_004b_sse_pe_ttm_channel.png"),
     ]
-    build_page(metadata, chart3, valuation_charts)
-    print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": 5}, ensure_ascii=False))
+    build_page(metadata, chart3, valuation_charts, amount_share_chart)
+    print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": 6 if amount_share_chart else 5}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

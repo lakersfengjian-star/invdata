@@ -3,50 +3,81 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>投研数据页：ETF资金流与指数走势</title>
+  <title>投研数据页</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <header class="page-head">
-      <div>
-        <p class="eyebrow">ETF Flow Monitor</p>
-        <h1>ETF资金流与指数走势</h1>
-      </div>
-      <div class="meta">
-        <div>更新：2026-07-03 21:41:58</div>
-        <div>区间：2025-01-01 至 2026-07-02</div>
-      </div>
+      <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
+      <div class="meta"><div>更新：2026-07-04 07:55:44</div><div>区间：2025-01-01 至 2026-07-03</div></div>
     </header>
 
-    <section class="chart-section">
-      <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
-      <img src="../output/charts/fig_001_broad_etf_flow.png" alt="沪深300与上证指数走势及大宽基ETF资金流">
-      <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    <nav class="category-tabs" aria-label="投研数据分类">
+      <button class="category-tab active" type="button" data-target="market" aria-selected="true">行情</button>
+      <button class="category-tab" type="button" data-target="macro" aria-selected="false">宏观</button>
+      <button class="category-tab" type="button" data-target="valuation" aria-selected="false">估值</button>
+      <button class="category-tab" type="button" data-target="earnings" aria-selected="false">盈利</button>
+      <button class="category-tab" type="button" data-target="liquidity" aria-selected="false">流动性</button>
+      <button class="category-tab" type="button" data-target="sentiment" aria-selected="false">情绪</button>
+    </nav>
+
+    <section class="category-panel active" id="panel-market" data-category="market">
+      <div class="category-head"><h2>行情</h2></div>
+      <section class="chart-section">
+        <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
+        <img src="assets/charts/fig_001_broad_etf_flow.png?v=20260703" alt="沪深300与上证指数走势及大宽基ETF资金流">
+        <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+      </section>
+      <section class="chart-section">
+        <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
+        <img src="assets/charts/fig_002_star50_etf_flow.png?v=20260703" alt="科创50指数走势及科创50ETF资金流">
+        <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+      </section>
+      <section class="chart-section">
+        <h2>图五：主要宽基指数成交额占全A成交额比例（截至2026-07-03）</h2>
+        <img src="assets/charts/fig_005_index_amount_share.png?v=20260703" alt="主要宽基指数成交额占全A成交额比例">
+        <p class="note">数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。</p>
+      </section>
     </section>
 
-    <section class="chart-section">
-      <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
-      <img src="../output/charts/fig_002_star50_etf_flow.png" alt="科创50指数走势及科创50ETF资金流">
-      <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+    <section class="category-panel" id="panel-macro" data-category="macro" hidden>
+      <div class="category-head"><h2>宏观</h2></div>
+      <p class="empty-note">暂无图表。</p>
     </section>
 
-    <section class="chart-section">
-      <h2>图三：A股成交额前10大公司交易集中度变化</h2>
-      <img src="../output/charts/fig_003_a_share_turnover_concentration.png" alt="A股成交额前10大公司交易集中度变化">
-      <p class="note">样本覆盖当前沪深京A股清单；逐股获取2026年以来日成交额，按交易日排序计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
-    </section>
-
-    <section class="chart-section">
-      <h2>图四：沪深300指数历史滚动市盈率及标准差通道</h2>
-      <img src="../output/charts/fig_004a_hs300_pe_ttm_channel.png" alt="图四：沪深300指数历史滚动市盈率及标准差通道">
+    <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
+      <div class="category-head"><h2>估值</h2></div>
+      <section class="chart-section">
+      <h2>图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）</h2>
+      <img src="assets/charts/fig_004a_hs300_pe_ttm_channel.png?v=20260703" alt="图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）">
       <p class="note">统计区间自 2020-01-01 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
     </section>
 
-    <section class="chart-section">
-      <h2>图四：上证指数历史滚动市盈率及标准差通道</h2>
-      <img src="../output/charts/fig_004b_sse_pe_ttm_channel.png" alt="图四：上证指数历史滚动市盈率及标准差通道">
+      <section class="chart-section">
+      <h2>图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-03）</h2>
+      <img src="assets/charts/fig_004b_sse_pe_ttm_channel.png?v=20260703" alt="图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-03）">
       <p class="note">统计区间自 2020-01-01 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
+    </section>
+    </section>
+
+    <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
+      <div class="category-head"><h2>盈利</h2></div>
+      <p class="empty-note">暂无图表。</p>
+    </section>
+
+    <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
+      <div class="category-head"><h2>流动性</h2></div>
+      <section class="chart-section">
+        <h2>图三：A股成交额前10大公司交易集中度变化（截至2026-07-03）</h2>
+        <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v=20260703" alt="A股成交额前10大公司交易集中度变化">
+        <p class="note">样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
+      </section>
+    </section>
+
+    <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
+      <div class="category-head"><h2>情绪</h2></div>
+      <p class="empty-note">暂无图表。</p>
     </section>
 
     <section class="data-note">
@@ -55,5 +86,6 @@
       <p>当日净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。</p>
     </section>
   </main>
+  <script src="app.js"></script>
 </body>
 </html>
