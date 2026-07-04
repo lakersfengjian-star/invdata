@@ -1,0 +1,15 @@
+cvH994b0n16xePPy3b9ubRS+/NC26qvf3hzaJSaqZj6VrtTU6l4HeuXyzLPfze1bml5pqXSh5/9+NS58Nr/3r4ynJNV35QGvnOte/f/vD/Tm/+y+2PPy0NUqIOf/tu6WZHH1194PjZt8rK5h3hzsUfVD8+/6NSvcU3Z01Zqnf7o7fnv59eea+SbzaC3L75y+r7pVtUX6u/sDDVx9dLXaaX3lk4ZlvctbL+0mnK3//bxWfuXLxY/ufwyivzBp/bbF7gXLE7F98sv3v88UfTT24smuiDG9Nbz3b1vP3h5bI9ytoeGHzrwdWHH/7GoGy/w1ffnHtA4yKlAY/fent66VLpKNPr7w3Kthos6r709uC/l1OiMwtnYcWXEe3OP/287JnHP32xFP/ojfcPf/P78u+y95SR7YusvDM5HB3srw9Xt0ePkPxsDpgH7AfLwXBntDt8alD65+BvD8rAOtjeGk86I2Y5fZgcjOdf2Cwz+eFG5+ON4aT85fzjb+2Pnnzqwf390f5931h78tvDyf7ip/Pnz5/6y4cf/tZDXx2VY/ds0ehbo9H2fY+OxpNz9+6VuuiVYS3Myvpo597Tg73R/uScteb+s4OysMF+WdrWcDwYPrk+HG4MNwZPbE0eHRzsb58dnFnb2zrzt2XSUMl+5pHh5D/t7Z5T9+z93blqmL5nb1T+sLtX/nUwOXdhQ22kjY0LZYIdUyiK9c20rsOm3wxl6qyjumdzezI5p+/Z2n28+mdza+Pcpi7u2Ryfu/AX5oFvfL2cUKm/0F9tftD4g8EfbPnl4fbG+NymqkCbylZ/z/6ri9nfVUGbfnDfV9cOxqVCF54agAHv/c7u2oXtKhQN1udGq/67VwFK43x7uFM21te2xovPhhv33Tv/3WC4uzFY3x5VJa431p5Zq8ytSjOO90a74+G9999/f9Uq5d88LUNfeXg4mwYN9g4ubG+tDx4rJ2ZD6iejx6iPNBnlXMhyEuL1YH/0xPjfWQ7MUf7MotTT588pxkMPPTjrv+P1te3PVX9VXzm/3Sin2oONtafGpwfFYN7TZz/erTUWY+fmwe7GfHJKZRk/trW3l4kj82H37ODh7zz0lw98uwyUf/X1B785KPO+yqPLOcHBfvXlu5KqzpxmUs2WQKr/bO1ujlaHO5/HWPPF7LMDbc3gmw/89WdpqD+JLOpLJIv5kshS+8+XxC6F+7K00Wxh+HPJ8kXFunn3mcWrP2/QnfedL4kg5ssgyGKy86WwSNllvgyCzPrLHyFI3YPHk9H6Y/Oeu7ZabdSszrdkPrtID3xl3JY4S9bPDpzTZlAVeNcZw9bu2qAuabY6/3kz/vGjPqaiKGPtf33or775tWGl2yJ//eZoMFtnq9LWjdkHs6R+vFXlo+fq/6zOlqb37xttbo6Hk3PF6aqtzqnT66Ptg53d8ufJ8MnJ6trmZLh/7uH9g+H9pwfj4ePD/a3JU+fuHVY13Xv/F691ziec1oPxUzsXRtvjweix0wPV/FTb6q6k+S/VptpiFkjlWF9bf3TYn0rPs9hqYTjYz+KeX4AMmEafHcTis1T/30Zlxjqbztaz4XKiS+XY2RqPt5bWfFGSM98ZD/fHZ/5ma213c7j7yJmvjdYPdsooMD5z+PyPj958efr8/z587h/OzKgV+2tPnJntataLyk+UP62sjx//wg33lc217e0La+u5iUi9YnB2cFBpWPbtMpEfLOz+H5b8HJbMr73k7DxbSzm/+/Spp/8/vdK6N+cuAgA=
+""".strip()
+
+
+def main() -> None:
+    payload = json.loads(gzip.decompress(base64.b64decode(SNAPSHOT_B64)).decode("utf-8"))
+    for rel_path, text in payload.items():
+        path = Path(rel_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    print(f"restored {len(payload)} processed snapshot files")
+
+
+if __name__ == "__main__":
+    main()
