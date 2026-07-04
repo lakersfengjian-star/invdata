@@ -31,6 +31,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+      - name: Restore processed snapshot
+        run: python data/processed_snapshot.py
       - name: Build dashboard
         run: python scripts/build_site_from_processed.py
       - name: Configure Pages
