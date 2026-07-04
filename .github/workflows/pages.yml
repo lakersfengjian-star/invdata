@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
       - name: Build dashboard
-        run: python scripts/update_etf_dashboard.py
+        run: python scripts/build_site_from_processed.py
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
