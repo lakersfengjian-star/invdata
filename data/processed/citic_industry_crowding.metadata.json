@@ -1,0 +1,12 @@
+{
+  "source": "none",
+  "status": "missing_data",
+  "latest_date": "",
+  "notes": [
+    "Wind API 暂不可用，已尝试公开源和本地CSV：TimeoutError: Wind API timed out after 75s",
+    "AkShare 可用接口检查：stock_zh_index_hist_csindex、stock_zh_index_value_csindex、stock_industry_pe_ratio_cninfo。这些接口不同时覆盖中信一级行业、PE_TTM、PB_LF、成交额三项十年/五年历史口径，未混入口径。",
+    "中证/公开指数接口通常可取得成交金额或PE，但未找到可稳定获取中信一级行业PB_LF历史序列的公开接口。",
+    "本地CSV不可用：/Users/jianfeng/Documents/投研助手/data/raw/citic_industry_crowding_weekly.csv does not exist"
+  ],
+  "required_csv": "data/raw/citic_industry_crowding_weekly.csv"
+}

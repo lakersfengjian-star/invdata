@@ -1,0 +1,11 @@
+{
+  "source": "Eastmoney HSGT history API via AkShare stock_hsgt_hist_em(symbol='南向资金')",
+  "status": "ok",
+  "start_date": "2026-01-05",
+  "latest_date": "2026-07-03",
+  "unit": "亿元",
+  "notes": [
+    "每日南向资金净流入采用东方财富沪深港通历史数据中的“当日成交净买额”字段。",
+    "若最新交易日数值长时间为0或缺失，可能代表接口尚未更新，而非真实无交易净买入。"
+  ]
+}
