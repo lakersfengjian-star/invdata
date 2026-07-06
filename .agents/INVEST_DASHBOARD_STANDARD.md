@@ -67,9 +67,9 @@
 
 ## 数据源优先级
 
-1. 交易所及公开接口：上交所 ETF 历史规模、公开行情 K 线、交易所或行情站点公开数据。
+1. 交易所及公开接口：上交所 ETF 历史规模、深交所基金规模日频数据、公开行情 K 线、交易所或行情站点公开数据。
 2. AkShare：ETF 单位净值、A股代码表、公开估值封装接口等。
-3. Tushare/Wind/本地 CSV：当公开源缺失时使用。深交所 ETF 历史份额和万得全A PE_TTM 可走此层。
+3. Tushare/Wind/本地 CSV：当公开源缺失时使用。万得全A PE_TTM 可走此层。
 
 ## 标准更新流程
 
@@ -215,6 +215,7 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://laker
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例。数据来自中证指数官网指数行情接口，分母与图五一致。
 - `fig_008_market_turnover.png`：全市场成交额变化。起始日期为 2024-09-24，当前复用中证全指成交金额作为沪深京全市场成交额公开代理口径。
 - `fig_009_southbound_flow.png`：南向资金每日净流入。起始日期为 2026-01-01，数据来自东方财富沪深港通历史数据，口径为“当日成交净买额”，单位亿元。
+- `fig_010_macro_overview.png`：宏观经济数据概览。横向分面展示最近六个有效数据点，共享 Y 轴，0 值不绘制。
 - 行情表格：最新交易日连续涨停天数前十、当日涨停成交额前十。数据来自东方财富涨停股池，主营业务来自巨潮公司概况。
 
 ## 页面分类区域
@@ -222,7 +223,7 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://laker
 网页必须按六个固定区域组织，并通过顶部分类按钮切换展示：
 
 - 行情：指数走势、市场价格、ETF资金流、全市场成交额、主题成交额、涨停观察、行业拥挤度等行情联动图。当前包含图一、图二、图八、涨停观察表、图五、图七、图六。
-- 宏观：利率、通胀、信用、经济增长、政策等宏观指标。当前为空位。
+- 宏观：利率、通胀、信用、经济增长、政策等宏观指标。当前包含图十。
 - 估值：PE、PB、ERP、标准差通道、估值分位等指标。当前包含图四系列。
 - 盈利：ROE、利润增速、收入增速、盈利预测、财报汇总等指标。当前为空位。
 - 流动性：成交额、成交集中度、资金流、融资融券、市场流动性指标。当前包含图三、图九。
@@ -336,6 +337,26 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 - 每日净流入采用“当日成交净买额”字段，单位为亿元。
 - 生成 `data/processed/southbound_flow.csv`、`data/processed/southbound_flow.metadata.json` 和 `fig_009_southbound_flow.png`。
 - 若最新值长时间为 0 或缺失，页面保留“接口可能未更新”的风险提示。
+
+## 宏观经济数据概览
+
+更新脚本：
+
+```bash
+/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_overview.py
+```
+
+数据源与口径：
+
+- 自动源优先使用东方财富宏观接口和国家统计局接口。
+- 服务业生产指数取国家统计局“服务业生产指数（当月同比）”。
+- 固投/房地产用国家统计局“房地产开发投资完成额”累计值倒算当月同比。
+- 固投/基建用国家统计局“固定资产投资完成额：基础设施建设”累计值倒算当月同比。
+- 固投/制造业用国家统计局“固定资产投资完成额：制造业”累计值倒算当月同比。
+- 社融取人民银行“社会融资规模存量同比”。
+- 企业中长期贷款取人民银行“存款类金融机构企（事）业单位贷款：中长期贷款”存量并计算同比。
+- 若国家统计局或人民银行在线接口不可用，分别读取 `data/raw/macro_overview_extra.csv` 和 `data/raw/pbc_macro_credit.csv`。
+- 生成 `data/processed/macro_overview.csv`、`data/processed/macro_overview.metadata.json` 和 `fig_010_macro_overview.png`。
 
 ## 后续增量优化 TODO
 

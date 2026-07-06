@@ -1,0 +1,94 @@
+{
+  "source": "AkShare Eastmoney macro interfaces; NBS macro interface; optional PBOC/local fallback files",
+  "status": "partial",
+  "latest_date": "2026-05-01",
+  "latest_by_indicator": {
+    "cpi": "2026-05-01",
+    "export": "2026-05-01",
+    "fai": "2026-05-01",
+    "gdp": "2026-03-01",
+    "import": "2026-05-01",
+    "industrial": "2026-05-01",
+    "m1": "2026-05-01",
+    "ppi": "2026-05-01",
+    "retail": "2026-05-01"
+  },
+  "unit": "%",
+  "notes": [
+    "服务业：国家统计局自动获取失败；服务业 > 服务业生产指数 > 服务业生产指数_当月同比增长: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 服务业 > 服务业生产指数 > 服务业生产指数同比增长: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 第三产业 > 服务业生产指数 > 服务业生产指数同比增长: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "固投/房地产：国家统计局自动获取失败；房地产 > 房地产开发投资完成额 > 房地产开发投资完成额_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 固定资产投资 > 房地产开发投资完成额 > 房地产开发投资完成额_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 房地产开发投资 > 房地产开发投资完成额 > 房地产开发投资完成额_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "固投/基建：国家统计局自动获取失败；固定资产投资 > 固定资产投资完成额 > 基础设施建设投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 固定资产投资（不含农户） > 固定资产投资完成额 > 基础设施建设投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 固定资产投资 > 按行业分固定资产投资 > 基础设施建设投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "固投/制造业：国家统计局自动获取失败；固定资产投资 > 固定资产投资完成额 > 制造业投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 固定资产投资（不含农户） > 固定资产投资完成额 > 制造业投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 固定资产投资 > 按行业分固定资产投资 > 制造业投资_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "社融：未提供人民银行原始数据文件 data/raw/pbc_macro_credit.csv。",
+    "企业中长期贷款：未提供人民银行原始数据文件 data/raw/pbc_macro_credit.csv。",
+    "未提供本地补充文件：data/raw/macro_overview_extra.csv。",
+    "服务业：暂无可用自动数据，图中保留面板占位。",
+    "固投/房地产：暂无可用自动数据，图中保留面板占位。",
+    "固投/基建：暂无可用自动数据，图中保留面板占位。",
+    "固投/制造业：暂无可用自动数据，图中保留面板占位。",
+    "社融：暂无可用自动数据，图中保留面板占位。",
+    "企业中长期贷款：暂无可用自动数据，图中保留面板占位。"
+  ],
+  "indicator_order": [
+    {
+      "indicator_key": "industrial",
+      "indicator": "工增"
+    },
+    {
+      "indicator_key": "service",
+      "indicator": "服务业"
+    },
+    {
+      "indicator_key": "retail",
+      "indicator": "社零"
+    },
+    {
+      "indicator_key": "fai",
+      "indicator": "固投"
+    },
+    {
+      "indicator_key": "fai_real_estate",
+      "indicator": "固投/房地产"
+    },
+    {
+      "indicator_key": "fai_infra",
+      "indicator": "固投/基建"
+    },
+    {
+      "indicator_key": "fai_manufacturing",
+      "indicator": "固投/制造业"
+    },
+    {
+      "indicator_key": "export",
+      "indicator": "出口"
+    },
+    {
+      "indicator_key": "import",
+      "indicator": "进口"
+    },
+    {
+      "indicator_key": "cpi",
+      "indicator": "CPI"
+    },
+    {
+      "indicator_key": "ppi",
+      "indicator": "PPI"
+    },
+    {
+      "indicator_key": "social_financing",
+      "indicator": "社融"
+    },
+    {
+      "indicator_key": "enterprise_long_loan",
+      "indicator": "企业中长期贷款"
+    },
+    {
+      "indicator_key": "m1",
+      "indicator": "M1"
+    },
+    {
+      "indicator_key": "gdp",
+      "indicator": "GDP"
+    }
+  ]
+}

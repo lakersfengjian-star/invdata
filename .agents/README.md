@@ -12,6 +12,8 @@
 
 行情板块新增指标继续按独立脚本维护：涨停观察表使用 `scripts/update_limit_up_tables.py`，TMT/红利低波成交额占比使用 `scripts/update_theme_amount_share.py`，全市场成交额变化使用 `scripts/update_market_turnover.py`。流动性板块南向资金每日净流入使用 `scripts/update_southbound_flow.py`。不要通过对话搬运逐股大表；只保留前十汇总表、主题成交额时间序列和南向资金汇总序列。
 
+宏观板块图十使用 `scripts/update_macro_overview.py`。服务业和固投分项优先从国家统计局获取；社融和企业中长期贷款使用人民银行数据。缺口数据可用 `data/raw/macro_overview_extra.csv`、`data/raw/pbc_macro_credit.csv` 本地补充。
+
 默认职责边界：
 
 - agent：本地 Python 增量抓数、生成图表、重建 `site/`、最小核验、更新文档。

@@ -108,9 +108,8 @@
   ],
   "notes": [
     "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
-    "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
+    "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；深交所ETF份额来自深交所基金规模日频接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
     "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
-    "深交所ETF历史份额公开接口当前未返回可按日期查询的数据，且本机未配置可用 Tushare token；159919 的历史申赎口径净流入暂缺，图一合计会按已取得ETF求和并在明细CSV保留缺失标记。",
     "最近出现合计净流入为0的日期：2025-01-02；需留意份额数据可能未更新。",
     "成交集中度使用新浪财经A股日行情逐股抓取成交额，并以抓取到的沪深京A股个股成交额合计作为全市场成交额；新上市、退市或接口缺失个股可能造成轻微口径差异。",
     "万得全A PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。",
@@ -141,11 +140,6 @@
       "source": "SSE ETF scale",
       "status": "ok",
       "detail": "362 trading days, 0 failed days"
-    },
-    {
-      "source": "Tushare fund_share",
-      "status": "skipped",
-      "detail": "159919: TUSHARE_TOKEN not configured"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
@@ -251,6 +245,11 @@
       "source": "Index PE_TTM",
       "status": "cache-fallback",
       "detail": "万得全A（除金融、石油石化）: using stale cache"
+    },
+    {
+      "source": "SZSE ETF scale",
+      "status": "ok",
+      "detail": "159919: 362 trading days; 361 net inflow rows; first day excluded by no previous share."
     }
   ]
 }

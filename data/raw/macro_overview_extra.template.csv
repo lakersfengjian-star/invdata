@@ -1,0 +1,5 @@
+indicator_key,indicator,date,value,source
+service,服务业,2026-05-01,4.4,NBS manual
+fai_real_estate,固投/房地产,2026-05-01,-10.8,NBS manual calculated from cumulative amount
+fai_infra,固投/基建,2026-05-01,8.9,NBS manual calculated from cumulative amount
+fai_manufacturing,固投/制造业,2026-05-01,-4.2,NBS manual calculated from cumulative amount

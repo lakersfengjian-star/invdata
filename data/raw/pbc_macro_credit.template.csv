@@ -1,0 +1,3 @@
+indicator_key,indicator,date,value,stock,source
+social_financing,社融,2026-05-01,8.7,,PBOC social financing stock YoY
+enterprise_long_loan,企业中长期贷款,2026-05-01,,123456.78,PBOC deposit-taking financial institutions enterprise medium-long term loan stock

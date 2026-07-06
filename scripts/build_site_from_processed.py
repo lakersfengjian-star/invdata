@@ -21,6 +21,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates as mdates
 import matplotlib.font_manager as fm
+import math
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
@@ -333,6 +334,66 @@ def draw_southbound_flow_chart(df: pd.DataFrame, out_path: Path) -> dict:
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
 
 
+def draw_macro_overview_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> dict:
+    setup_fonts()
+    order = metadata.get("indicator_order") or []
+    if not order:
+        order = [{"indicator_key": key, "indicator": key} for key in df["indicator_key"].dropna().unique()]
+    plot_df = df.copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"], errors="coerce")
+    plot_df["value"] = pd.to_numeric(plot_df["value"], errors="coerce")
+    plot_df.loc[plot_df["value"].eq(0), "value"] = pd.NA
+    values = plot_df["value"].dropna()
+    if values.empty:
+        y_min, y_max = -5, 5
+    else:
+        y_min = math.floor(min(values.min(), -1) / 5) * 5
+        y_max = math.ceil(max(values.max(), 1) / 5) * 5
+        if y_min == y_max:
+            y_min -= 5
+            y_max += 5
+    latest_date = str(metadata.get("latest_date") or plot_df["date"].max().strftime("%Y-%m-%d"))
+    n = len(order)
+    fig, axes = plt.subplots(1, n, figsize=(max(18, n * 1.45), 5.2), dpi=180, sharey=True)
+    if n == 1:
+        axes = [axes]
+    fig.patch.set_facecolor("#fbfbf8")
+    palette = ["#2f7cb8", "#2a9d55", "#d4a51c", "#d58b3a", "#9d5c9f", "#8b6f47", "#c5513c", "#6a737d"]
+    for idx, item in enumerate(order):
+        key = item["indicator_key"]
+        label = item.get("indicator", key)
+        ax = axes[idx]
+        ax.set_facecolor("#fbfbf8")
+        sub = plot_df[plot_df["indicator_key"].eq(key)].dropna(subset=["date", "value"]).sort_values("date").tail(6)
+        color = palette[idx % len(palette)]
+        if sub.empty:
+            ax.text(0.5, 0.5, "暂无数据", transform=ax.transAxes, ha="center", va="center", fontsize=8.5, color="#7a6f64")
+            ax.set_xticks([])
+        else:
+            x = range(len(sub))
+            ax.plot(x, sub["value"], color=color, linewidth=1.8, marker="o", markersize=3.4)
+            ax.set_xticks(list(x), [d.strftime("%Y-%m") for d in sub["date"]], rotation=90, fontsize=7)
+            for x_pos, value in zip(x, sub["value"]):
+                if pd.notna(value):
+                    ax.annotate(f"{value:.1f}", xy=(x_pos, value), xytext=(0, 5), textcoords="offset points", ha="center", va="bottom", fontsize=6.8, color="#34404a")
+        ax.set_title(str(label), fontsize=10, fontweight="bold", pad=8)
+        ax.set_ylim(y_min, y_max)
+        ax.axhline(0, color="#9aa3ad", linewidth=0.8, alpha=0.8)
+        ax.grid(axis="y", color="#d8d8d8", linewidth=0.7, alpha=0.62)
+        ax.grid(axis="x", color="#eeeeee", linewidth=0.45, alpha=0.45)
+        ax.spines[["top", "right"]].set_visible(False)
+        if idx == 0:
+            ax.set_ylabel("同比增速（%）", fontsize=11)
+        else:
+            ax.spines["left"].set_visible(False)
+            ax.tick_params(axis="y", left=False, labelleft=False)
+    fig.suptitle(f"宏观经济数据概览（截至{latest_date}）", x=0.01, y=1.02, ha="left", fontsize=18, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "status": metadata.get("status", "ok")}
+
+
 def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, out_path: Path) -> dict | None:
     setup_fonts()
     if df is None or df.empty:
@@ -486,10 +547,15 @@ def format_table_value(field: str, value: object) -> str:
 
 
 def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str) -> str:
+    note_html = chart_note_block(
+        "涨停股池来自东方财富公开接口；主营业务来自巨潮公司概况。公开涨停池未披露逐股原因，原因字段先按所属行业、连板数和涨停统计归纳。",
+        "涨停原因不是交易所官方逐股披露结论，仅用于快速观察；若个股信息为空或异常，通常代表公开接口尚未更新或公司概况抓取失败。",
+    )
     if df is None or df.empty:
         return f'''      <section class="chart-section">
         <h2>{title}（截至{latest_date or "待接入"}）</h2>
         <p class="empty-note">暂无可展示数据。</p>
+        {note_html}
       </section>'''
     columns = ["代码", "名称", "连续涨停天数", "流通市值", "现价", "成交额", "主营业务", "涨停原因"]
     headers = {
@@ -504,8 +570,15 @@ def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str)
     return f'''      <section class="chart-section">
         <h2>{title}（截至{latest_date}）</h2>
         <div class="table-wrap"><table class="data-table"><thead><tr>{thead}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>
-        <p class="note">涨停股池来自东方财富公开接口；主营业务来自巨潮公司概况。公开涨停池未披露逐股原因，原因字段先按所属行业、连板数和涨停统计归纳。</p>
+        {note_html}
       </section>'''
+
+
+def chart_note_block(data_note: str, risk_note: str) -> str:
+    return f'''<div class="chart-notes">
+          <p><strong>数据说明：</strong>{data_note}</p>
+          <p><strong>风险提示：</strong>{risk_note}</p>
+        </div>'''
 
 
 def build_page(
@@ -517,6 +590,8 @@ def build_page(
     theme_amount_chart: dict | None = None,
     market_turnover_chart: dict | None = None,
     southbound_chart: dict | None = None,
+    macro_chart: dict | None = None,
+    macro_meta: dict | None = None,
     limit_up_longest: pd.DataFrame | None = None,
     limit_up_amount_top: pd.DataFrame | None = None,
     limit_up_meta: dict | None = None,
@@ -528,12 +603,16 @@ def build_page(
     latest = metadata["latest_common_date"]
     updated_at = metadata["updated_at"]
     asset_version = latest.replace("-", "")
-    notes = "<br>".join(metadata.get("notes", []))
+    broad_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
+    star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     valuation_html = "\n\n".join(
         f'''      <section class="chart-section">
       <h2>{chart["title"]}</h2>
       <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
-      <p class="note">统计区间自 {VALUATION_START_DATE} 起；水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。</p>
+      {chart_note_block(
+          f"统计区间自 {VALUATION_START_DATE} 起；PE_TTM 序列按交易日历史数据绘制，水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。",
+          "估值分位和标准差通道仅反映历史相对位置，不代表合理估值中枢；若指数成分或口径调整，历史可比性会受影响。",
+      )}
     </section>'''
         for chart in valuation_charts
     )
@@ -542,28 +621,55 @@ def build_page(
         amount_share_html = f'''      <section class="chart-section">
         <h2>图五：主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
-        <p class="note">数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。</p>
+        {chart_note_block(
+            "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
+            "成交额占比受指数样本、停复牌、分母代理口径影响；若中证官网或代理分母未更新，最新日期可能滞后。",
+        )}
       </section>'''
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
         <h2>图七：TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
-        <p class="note">分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。</p>
+        {chart_note_block(
+            "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
+            "主题指数成交额不能等同于板块全部股票成交额；红利低波使用右轴展示，读取时应关注左右轴刻度差异。",
+        )}
       </section>'''
     market_turnover_html = ""
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
         <h2>图八：全市场成交额变化（截至{market_turnover_chart["last_date"]}）</h2>
         <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={market_turnover_chart["last_date"].replace("-", "")}" alt="全市场成交额变化">
-        <p class="note">区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。</p>
+        {chart_note_block(
+            "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
+            "代理口径可能低估或高估沪深京全市场真实成交额，尤其在北交所或非成分股成交活跃时偏差会扩大。",
+        )}
       </section>'''
     southbound_html = ""
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
         <h2>图九：南向资金每日净流入（截至{southbound_chart["last_date"]}）</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
-        <p class="note">区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。若最新值长时间为 0 或缺失，可能代表接口尚未更新。</p>
+        {chart_note_block(
+            "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
+            "若最新值长时间为 0、缺失或日期滞后，通常代表公开接口尚未更新；不同数据源对南向资金口径可能存在细微差异。",
+        )}
+      </section>'''
+    macro_html = '<p class="empty-note">暂无图表。</p>'
+    if macro_chart:
+        macro_notes = ""
+        if macro_meta and macro_meta.get("status") == "partial":
+            missing = [note for note in macro_meta.get("notes", []) if "暂无可用自动数据" in note]
+            if missing:
+                macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
+        macro_html = f'''      <section class="chart-section">
+        <h2>图十：宏观经济数据概览（截至{macro_chart["last_date"]}）</h2>
+        <img src="assets/charts/{Path(macro_chart["path"]).name}?v={macro_chart["last_date"].replace("-", "")}" alt="宏观经济数据概览">
+        {chart_note_block(
+            f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
+            "宏观数据存在发布滞后、修订和接口失效风险；当前部分国家统计局、人民银行细分指标若未自动接入，会在图中保留占位。",
+        )}
       </section>'''
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
     limit_up_html = render_limit_up_table("涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
@@ -578,7 +684,10 @@ def build_page(
         industry_crowding_html = f'''      <section class="chart-section">
         <h2>图六：中信一级行业估值与成交拥挤度（截至{crowding_date}）</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
-        <p class="note">按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}</p>
+        {chart_note_block(
+            f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
+            "拥挤度是估值与交易热度的历史分位观察，不代表买卖建议；若 Wind API 不可用或本地 CSV 未补齐，结果会显示待接入或滞后。",
+        )}
       </section>'''
     html = f'''<!doctype html>
 <html lang="zh-CN">
@@ -609,12 +718,18 @@ def build_page(
       <section class="chart-section">
         <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
-        <p class="note">样本：510300、510310、510330、159919、510050。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+        {chart_note_block(
+            "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
+            broad_etf_risk,
+        )}
       </section>
       <section class="chart-section">
         <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
-        <p class="note">样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。</p>
+        {chart_note_block(
+            "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
+            star_etf_risk,
+        )}
       </section>
 {market_turnover_html}
 {limit_up_html}
@@ -625,7 +740,7 @@ def build_page(
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
       <div class="category-head"><h2>宏观</h2></div>
-      <p class="empty-note">暂无图表。</p>
+{macro_html}
     </section>
 
     <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
@@ -643,7 +758,10 @@ def build_page(
       <section class="chart-section">
         <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
-        <p class="note">样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。</p>
+        {chart_note_block(
+            "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
+            "个股成交额排名依赖公开行情接口完整性；停牌、新股、北交所覆盖和接口延迟都可能影响集中度读数。",
+        )}
       </section>
 {southbound_html}
     </section>
@@ -651,12 +769,6 @@ def build_page(
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
       <div class="category-head"><h2>情绪</h2></div>
       <p class="empty-note">暂无图表。</p>
-    </section>
-
-    <section class="data-note">
-      <h2>数据说明与风险提示</h2>
-      <p>{notes}</p>
-      <p>当日净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。</p>
     </section>
   </main>
   <script src="app.js"></script>
@@ -787,16 +899,28 @@ h2 {
   min-width: 210px;
   line-height: 1.55;
 }
-.note, .data-note p, .empty-note {
+.note, .empty-note, .chart-notes {
   color: #4f5c66;
   font-size: 14px;
   line-height: 1.75;
 }
+.chart-notes {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid #b8aa8f;
+  background: #f0eee7;
+}
+.chart-notes p {
+  margin: 0;
+}
+.chart-notes p + p {
+  margin-top: 4px;
+}
+.chart-notes strong {
+  color: #203040;
+}
 .empty-note {
   margin: 22px 0 36px;
-}
-.data-note {
-  padding-top: 30px;
 }
 @media (max-width: 720px) {
   main {
@@ -879,6 +1003,15 @@ def main() -> None:
     if southbound_path.exists():
         southbound = pd.read_csv(southbound_path, parse_dates=["date"])
         southbound_chart = draw_southbound_flow_chart(southbound, CHART_DIR / "fig_009_southbound_flow.png")
+    macro_chart = None
+    macro_meta = {}
+    macro_path = PROCESSED_DIR / "macro_overview.csv"
+    macro_meta_path = PROCESSED_DIR / "macro_overview.metadata.json"
+    if macro_meta_path.exists():
+        macro_meta = json.loads(macro_meta_path.read_text(encoding="utf-8"))
+    if macro_path.exists():
+        macro = pd.read_csv(macro_path, parse_dates=["date"])
+        macro_chart = draw_macro_overview_chart(macro, macro_meta, CHART_DIR / "fig_010_macro_overview.png")
     industry_crowding_chart = None
     industry_crowding_path = PROCESSED_DIR / "citic_industry_crowding.csv"
     industry_crowding_meta_path = PROCESSED_DIR / "citic_industry_crowding.metadata.json"
@@ -915,11 +1048,13 @@ def main() -> None:
         theme_amount_chart,
         market_turnover_chart,
         southbound_chart,
+        macro_chart,
+        macro_meta,
         limit_up_longest,
         limit_up_amount_top,
         limit_up_meta,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart))
+    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 

@@ -122,16 +122,28 @@ h2 {
   min-width: 210px;
   line-height: 1.55;
 }
-.note, .data-note p, .empty-note {
+.note, .empty-note, .chart-notes {
   color: #4f5c66;
   font-size: 14px;
   line-height: 1.75;
 }
+.chart-notes {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid #b8aa8f;
+  background: #f0eee7;
+}
+.chart-notes p {
+  margin: 0;
+}
+.chart-notes p + p {
+  margin-top: 4px;
+}
+.chart-notes strong {
+  color: #203040;
+}
 .empty-note {
   margin: 22px 0 36px;
-}
-.data-note {
-  padding-top: 30px;
 }
 @media (max-width: 720px) {
   main {

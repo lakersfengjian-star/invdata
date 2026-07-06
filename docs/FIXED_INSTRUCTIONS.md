@@ -14,6 +14,7 @@
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_theme_amount_share.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_market_turnover.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_southbound_flow.py
+/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_overview.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_limit_up_tables.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_industry_crowding.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_site_from_processed.py
@@ -40,6 +41,7 @@
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例
 - `fig_008_market_turnover.png`：全市场成交额变化，区间自2024-09-24起
 - `fig_009_southbound_flow.png`：南向资金每日净流入，区间自2026-01-01起
+- `fig_010_macro_overview.png`：宏观经济数据概览，展示各指标最近六个有效数据点
 - 行情表格：`limit_up_longest.csv`、`limit_up_amount_top.csv`，展示最新交易日连续涨停天数前十和当日涨停成交额前十。
 
 ## 数据源优先级
@@ -104,6 +106,18 @@ TMT/红利低波成交额占比：
 - 口径：使用“当日成交净买额”作为每日净流入，单位为亿元。
 - 输出：`data/processed/southbound_flow.csv`、`data/processed/southbound_flow.metadata.json`、`fig_009_southbound_flow.png`。
 - 风险提示：若最新值长时间为 0 或缺失，可能代表接口尚未更新。
+
+宏观经济数据概览：
+
+- 图表标题：宏观经济数据概览。
+- 样式：横向分面小折线图，共享 Y 轴，各指标独立 X 轴。
+- 展示：每个指标最近六个有效数据点；0 值按缺失处理，不绘制数据点。
+- 自动数据源：东方财富宏观接口、国家统计局接口、人民银行原始表。
+- 国家统计局口径：服务业生产指数取当月同比；固投/房地产、固投/基建、固投/制造业分别取对应累计值并倒算当月同比。
+- 人民银行口径：社融取社会融资规模存量同比；企业中长期贷款取“存款类金融机构企（事）业单位贷款：中长期贷款”存量，并计算同比。
+- 人民银行原始表路径：`data/raw/pbc_macro_credit.csv`，模板见 `data/raw/pbc_macro_credit.template.csv`。
+- 国家统计局手工补充路径：`data/raw/macro_overview_extra.csv`，模板见 `data/raw/macro_overview_extra.template.csv`。
+- 输出：`data/processed/macro_overview.csv`、`data/processed/macro_overview.metadata.json`、`fig_010_macro_overview.png`。
 
 ## 发布
 

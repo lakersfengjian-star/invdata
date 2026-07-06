@@ -2,14 +2,14 @@
 """Build the ETF flow dashboard.
 
 Data priority:
-1. Exchange/public source: SSE ETF share endpoint; Tencent public quote kline.
+1. Exchange/public source: SSE/SZSE ETF share endpoint; Tencent public quote kline.
 2. AkShare wrappers for fund NAV and exchange datasets.
 3. Tushare hook, enabled when TUSHARE_TOKEN is configured.
 
 ETF net inflow is calculated as daily ETF share change multiplied by daily NAV,
-then converted to CNY 100mn. For SZSE ETF historical shares, the script keeps a
-Tushare fallback hook because the public SZSE list endpoint only exposes the
-latest snapshot.
+then converted to CNY 100mn. SZSE ETF historical shares are fetched from the
+SZSE daily fund scale endpoint; Tushare remains a fallback only if the exchange
+source is unavailable.
 """
 
 from __future__ import annotations
@@ -353,6 +353,68 @@ def fetch_sse_shares(dates: list[pd.Timestamp], codes: list[str]) -> pd.DataFram
     return out
 
 
+def fetch_szse_shares_chunk(start: pd.Timestamp, end: pd.Timestamp, codes: list[str]) -> pd.DataFrame:
+    cache = CACHE_DIR / f"szse_scale_{start.strftime('%Y%m%d')}_{end.strftime('%Y%m%d')}.csv"
+    if cache.exists():
+        df = pd.read_csv(cache, dtype={"基金代码": str}, parse_dates=["日期"])
+    else:
+        if ak is None:
+            raise RuntimeError(AKSHARE_IMPORT_ERROR)
+        df = ak.fund_scale_daily_szse(
+            start_date=start.strftime("%Y%m%d"),
+            end_date=end.strftime("%Y%m%d"),
+            symbol="ETF",
+        )
+        df.to_csv(cache, index=False)
+    if df.empty:
+        return pd.DataFrame(columns=["date", "code", "shares"])
+    sub = df[df["基金代码"].astype(str).str.zfill(6).isin(codes)][["日期", "基金代码", "基金份额"]].copy()
+    sub = sub.rename(columns={"日期": "date", "基金代码": "code", "基金份额": "shares"})
+    sub["date"] = pd.to_datetime(sub["date"], errors="coerce").dt.normalize()
+    sub["code"] = sub["code"].astype(str).str.zfill(6)
+    sub["shares"] = pd.to_numeric(sub["shares"], errors="coerce")
+    return sub.dropna(subset=["date", "code", "shares"])
+
+
+def fetch_szse_shares(dates: list[pd.Timestamp], codes: list[str]) -> pd.DataFrame:
+    if not dates or not codes:
+        return pd.DataFrame(columns=["date", "code", "shares"])
+    wanted_dates = pd.to_datetime(pd.Series(dates)).dt.normalize()
+    start = wanted_dates.min()
+    end = wanted_dates.max()
+    rows = []
+    failures = []
+    chunk_start = start
+    while chunk_start <= end:
+        chunk_end = min(chunk_start + pd.DateOffset(months=2, days=25), end)
+        try:
+            rows.append(fetch_szse_shares_chunk(pd.Timestamp(chunk_start), pd.Timestamp(chunk_end), codes))
+        except Exception as exc:
+            failures.append(f"{pd.Timestamp(chunk_start).date()} to {pd.Timestamp(chunk_end).date()}: {repr(exc)[:160]}")
+        chunk_start = pd.Timestamp(chunk_end) + pd.Timedelta(days=1)
+
+    for err in failures[:12]:
+        log_source("SZSE ETF scale", "failed", err)
+    if len(failures) > 12:
+        log_source("SZSE ETF scale", "failed", f"{len(failures) - 12} additional failed chunks omitted")
+    if not rows:
+        return pd.DataFrame(columns=["date", "code", "shares"])
+    out = pd.concat(rows, ignore_index=True).drop_duplicates(["date", "code"], keep="last")
+    out = out[out["date"].isin(set(wanted_dates))]
+    missing_dates = sorted(set(wanted_dates) - set(out["date"]))
+    day_rows = []
+    for missing_date in missing_dates:
+        try:
+            day_rows.append(fetch_szse_shares_chunk(pd.Timestamp(missing_date), pd.Timestamp(missing_date), codes))
+        except Exception as exc:
+            failures.append(f"{pd.Timestamp(missing_date).date()}: {repr(exc)[:160]}")
+    if day_rows:
+        out = pd.concat([out, *day_rows], ignore_index=True).drop_duplicates(["date", "code"], keep="last")
+        out = out[out["date"].isin(set(wanted_dates))]
+    log_source("SZSE ETF scale", "ok", f"{out['date'].nunique()} trading days, {len(failures)} failed chunks")
+    return out[["date", "code", "shares"]]
+
+
 def fetch_tushare_fund_share(code: str, dates: list[pd.Timestamp]) -> pd.DataFrame:
     token = os.environ.get("TUSHARE_TOKEN", "").strip()
     if not token:
@@ -390,8 +452,19 @@ def build_etf_flow(dates: list[pd.Timestamp], etfs: list[dict[str, str]], start:
     share_frames = []
     if sse_codes:
         share_frames.append(fetch_sse_shares(dates, sse_codes))
+    szse_codes = [e["code"] for e in etfs if e["venue"] == "SZSE"]
+    if szse_codes:
+        szse_shares = fetch_szse_shares(dates, szse_codes)
+        if not szse_shares.empty:
+            share_frames.append(szse_shares)
     for etf in etfs:
-        if etf["venue"] == "SZSE":
+        if etf["venue"] == "SZSE" and (
+            not share_frames
+            or not any(
+                not frame.empty and frame["code"].astype(str).str.zfill(6).eq(etf["code"]).any()
+                for frame in share_frames
+            )
+        ):
             share_frames.append(fetch_tushare_fund_share(etf["code"], dates))
     shares = pd.concat(share_frames, ignore_index=True) if share_frames else pd.DataFrame()
     if shares.empty:
@@ -1273,16 +1346,21 @@ def main() -> None:
     )
     valuation_chart_infos, valuation_notes = build_valuation_charts()
 
-    missing_szse = flow_detail[(flow_detail["venue"] == "SZSE") & (flow_detail["net_inflow_100mn"].isna())]["code"].unique()
+    szse_missing_mask = (
+        flow_detail["venue"].eq("SZSE")
+        & flow_detail["net_inflow_100mn"].isna()
+        & ~(flow_detail["shares"].notna() & flow_detail["shares_prev"].isna())
+    )
+    missing_szse = flow_detail[szse_missing_mask]["code"].unique()
     notes = [
         "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
-        "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
+        "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；深交所ETF份额来自深交所基金规模日频接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
         "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
     ]
     if len(missing_szse):
         notes.append(
-            "深交所ETF历史份额公开接口当前未返回可按日期查询的数据，且本机未配置可用 Tushare token；"
-            f"{'、'.join(missing_szse)} 的历史申赎口径净流入暂缺，图一合计会按已取得ETF求和并在明细CSV保留缺失标记。"
+            "深交所ETF份额优先使用深交所基金规模日频接口；当前仍有部分日期未取得完整份额、估值或前值，"
+            f"{'、'.join(missing_szse)} 的净流入会在明细CSV保留缺失标记。"
         )
     zero_warning_dates = broad.loc[broad["daily_net_inflow_100mn"].fillna(0).eq(0), "date"].dt.strftime("%Y-%m-%d").tail(3).tolist()
     if zero_warning_dates:
