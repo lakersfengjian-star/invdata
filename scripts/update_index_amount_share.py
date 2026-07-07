@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +19,7 @@ import requests
 
 PROCESSED_DIR = ROOT / "data" / "processed"
 START_DATE = "20240101"
-END_DATE = "20260704"
+END_DATE = date.today().strftime("%Y%m%d")
 
 INDEX_SOURCES = {
     "hs300": {"name": "沪深300", "symbol": "000300"},
