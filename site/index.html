@@ -10,7 +10,12 @@
   <main>
     <header class="page-head">
       <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
-      <div class="meta"><div>更新：2026-07-07 09:17:22</div><div>区间：2025-01-01 至 2026-07-06</div></div>
+      <div class="meta">
+        <div>更新：2026-07-07 09:17:22</div>
+        <div>区间：2025-01-01 至 2026-07-06</div>
+        <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
+        <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
+      </div>
     </header>
 
     <nav class="category-tabs" aria-label="投研数据分类">

@@ -141,6 +141,12 @@ git log --oneline -3
 
 推送后，Vercel 会自动部署 `site/` 静态站点。
 
+网页右上角“刷新数据”按钮会调用 Vercel 函数 `/api/refresh`，再触发 GitHub Actions 的 `auto-update-dashboard.yml`。首次使用前需要在 Vercel 项目环境变量中配置：
+
+- `GITHUB_PAT`：GitHub fine-grained token，至少允许仓库 `lakersfengjian-star/invdata` 的 Actions workflow dispatch 权限。
+
+按钮只负责提交后台刷新任务；数据更新、自动提交和 Vercel 重新部署通常需要几分钟。
+
 ## 自动更新
 
 GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 每个工作日北京时间 17:30 自动运行，也可以在 GitHub Actions 页面手动触发。

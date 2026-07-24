@@ -39,6 +39,34 @@ h2 {
   font-size: 14px;
   line-height: 1.8;
 }
+.refresh-button {
+  appearance: none;
+  border: 1px solid #203040;
+  border-radius: 6px;
+  margin-top: 8px;
+  min-height: 34px;
+  padding: 0 14px;
+  background: #203040;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.refresh-button:hover,
+.refresh-button:focus-visible {
+  background: #30465a;
+  outline: none;
+}
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+.refresh-status {
+  min-height: 20px;
+  margin-top: 4px;
+  color: #6c5b2f;
+  font-size: 12px;
+}
 .category-tabs {
   position: sticky;
   top: 0;

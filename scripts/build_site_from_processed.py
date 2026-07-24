@@ -703,7 +703,12 @@ def build_page(
   <main>
     <header class="page-head">
       <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
-      <div class="meta"><div>更新：{updated_at}</div><div>区间：2025-01-01 至 {latest}</div></div>
+      <div class="meta">
+        <div>更新：{updated_at}</div>
+        <div>区间：2025-01-01 至 {latest}</div>
+        <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
+        <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
+      </div>
     </header>
 
     <nav class="category-tabs" aria-label="投研数据分类">
@@ -817,6 +822,34 @@ h2 {
   color: #59636e;
   font-size: 14px;
   line-height: 1.8;
+}
+.refresh-button {
+  appearance: none;
+  border: 1px solid #203040;
+  border-radius: 6px;
+  margin-top: 8px;
+  min-height: 34px;
+  padding: 0 14px;
+  background: #203040;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.refresh-button:hover,
+.refresh-button:focus-visible {
+  background: #30465a;
+  outline: none;
+}
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+.refresh-status {
+  min-height: 20px;
+  margin-top: 4px;
+  color: #6c5b2f;
+  font-size: 12px;
 }
 .category-tabs {
   position: sticky;
@@ -949,6 +982,8 @@ h2 {
 '''
     js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
 const panels = Array.from(document.querySelectorAll(".category-panel"));
+const refreshButton = document.querySelector("#refresh-data");
+const refreshStatus = document.querySelector("#refresh-status");
 
 function activateCategory(target) {
   tabs.forEach((tab) => {
@@ -966,6 +1001,25 @@ function activateCategory(target) {
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => activateCategory(tab.dataset.target));
 });
+
+if (refreshButton && refreshStatus) {
+  refreshButton.addEventListener("click", async () => {
+    refreshButton.disabled = true;
+    refreshStatus.textContent = "正在提交刷新任务...";
+    try {
+      const response = await fetch("/api/refresh", { method: "POST" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || "刷新任务提交失败");
+      }
+      refreshStatus.textContent = "刷新任务已提交，数据更新和部署通常需要几分钟。";
+    } catch (error) {
+      refreshStatus.textContent = error.message || "刷新任务提交失败";
+    } finally {
+      refreshButton.disabled = false;
+    }
+  });
+}
 '''
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")

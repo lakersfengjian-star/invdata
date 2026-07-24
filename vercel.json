@@ -8,8 +8,16 @@
       "destination": "/site/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/site/$1"
+      "source": "/assets/(.*)",
+      "destination": "/site/assets/$1"
+    },
+    {
+      "source": "/styles.css",
+      "destination": "/site/styles.css"
+    },
+    {
+      "source": "/app.js",
+      "destination": "/site/app.js"
     }
   ]
 }
