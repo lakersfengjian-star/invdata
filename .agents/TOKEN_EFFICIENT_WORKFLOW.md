@@ -20,7 +20,7 @@
 1. 禁止通过聊天或 GitHub 连接器逐段上传大体量 base64、CSV、PNG 或完整历史数据，除非没有任何可用替代方案。
 2. 优先使用本地文件系统、`apply_patch` 小范围修改、Python 本地生成和 VS Code 原生 Git 推送。
 3. 时间序列必须本地持久化，后续只补充最新交易日和缺口日期。
-4. GitHub Pages 默认使用离线构建：读取 `data/processed` 汇总表，生成 `site/`，不在 Actions 中在线抓全量行情。
+4. Vercel 默认只部署静态站点：读取已提交的 `site/`，不在 Vercel 构建阶段在线抓全量行情。
 5. 大文件只在本地缓存；远端只保留必要的小型汇总数据、构建脚本和静态站点。
 6. 修改代码时先定位最小文件和最小函数，不读取或重写无关大文件。
 7. 发布前后核验使用固定命令和清单，不重复做开放式探索。
@@ -159,9 +159,10 @@ git push origin HEAD:main
 固定检查：
 
 ```bash
-curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' https://lakersfengjian-star.github.io/invdata/
+VERCEL_SITE_URL="https://<your-vercel-domain>"
+curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' "$VERCEL_SITE_URL/"
 rg -n "assets/charts|截至|区间" /tmp/invdata-page.html
-curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://lakersfengjian-star.github.io/invdata/assets/charts/fig_001_broad_etf_flow.png
+curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE_URL/assets/charts/fig_001_broad_etf_flow.png"
 ```
 
 期望：
@@ -183,7 +184,7 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://laker
 ### 可提交远端
 
 - `scripts/*.py`
-- `.github/workflows/pages.yml`
+- `.github/workflows/auto-update-dashboard.yml`
 - `.agents/*.md`
 - `data/processed` 中必要小型汇总表
 - `site/` 静态发布结果
@@ -210,4 +211,4 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://laker
 
 ## 后续执行口径
 
-后续任何 agent 在本项目内执行数据更新、网页修复、GitHub Pages 发布时，应默认采用本文流程。若因权限、网络或凭证问题无法推送，应停止在“本地成果已准备好”的状态，给出 VS Code 推送步骤；只有用户明确要求继续且接受额外 token 成本时，才进入认证排障。
+后续任何 agent 在本项目内执行数据更新、网页修复、Vercel 发布时，应默认采用本文流程。若因权限、网络或凭证问题无法推送，应停止在“本地成果已准备好”的状态，给出 VS Code 推送步骤；只有用户明确要求继续且接受额外 token 成本时，才进入认证排障。

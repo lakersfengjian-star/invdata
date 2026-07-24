@@ -1,6 +1,6 @@
 # 投研数据页固定指令
 
-目标：维护一个可分享的静态投研页面。所有图表先由本地 Python 脚本增量抓数并生成 PNG/CSV，再由 VS Code Source Control 负责提交、认证和推送到 GitHub Pages。
+目标：维护一个可分享的静态投研页面。所有图表先由本地 Python 脚本增量抓数并生成 PNG/CSV，再推送到 GitHub，由 Vercel 自动部署静态站点。
 
 ## 一句话触发
 
@@ -124,10 +124,10 @@ TMT/红利低波成交额占比：
 
 ## 发布
 
-GitHub Pages 使用 `.github/workflows/pages.yml`。发布边界如下：
+发布入口统一使用 Vercel。GitHub 只作为代码和静态文件仓库，不再部署 GitHub Pages。
 
 - agent 负责本地 Python 抓数、重建 `site/`、最小核验和准备提交说明。
-- VS Code 负责 GitHub 认证、Commit、Push、Sync 和 Actions 查看。
+- VS Code 或 agent 负责 GitHub 认证、Commit、Push、Sync 和 Actions 查看。
 - 不再通过对话或 GitHub 连接器上传大型 CSV、PNG、base64 快照。
 - 如果推送失败，优先在 VS Code 中处理 GitHub 登录，不在 agent 会话里长时间排障。
 - Vercel 只部署静态文件；根目录 `vercel.json` 将首页重写到 `site/index.html`，`.vercelignore` 排除 Python 脚本、数据中间件和 Excel 文件，避免 Vercel 误识别为 Python 项目。
@@ -139,7 +139,7 @@ git status -sb
 git log --oneline -3
 ```
 
-VS Code 推送后，Actions 会把 `site/` 作为静态站点发布。
+推送后，Vercel 会自动部署 `site/` 静态站点。
 
 ## 自动更新
 
@@ -151,7 +151,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 每个工作
 2. 依次运行各数据更新脚本；单个公开接口失败时不中断整站构建，保留本地缓存数据。
 3. 运行 `scripts/build_site_from_processed.py` 重建 `site/` 与图表。
 4. 若 `data/processed`、`data/raw`、`output/charts` 或 `site` 有变化，自动提交并推送到 GitHub。
-5. GitHub Pages 和 Vercel 都由这次推送触发重新部署。
+5. Vercel 由这次推送触发重新部署。
 
 注意：
 

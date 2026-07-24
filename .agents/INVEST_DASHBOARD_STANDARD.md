@@ -1,23 +1,23 @@
 # 投研数据页标准流程
 
-用途：后续 agent 维护本项目时优先读取本文，按固定流程更新数据、生成图表、发布 GitHub Pages，减少重复解释和 token 消耗。
+用途：后续 agent 维护本项目时优先读取本文，按固定流程更新数据、生成图表、推送 GitHub 并由 Vercel 自动部署，减少重复解释和 token 消耗。
 
 ## 项目定位
 
 - 工作目录：`/Users/jianfeng/Documents/投研助手`
 - 本地预览：`site/index.html`
 - GitHub 仓库：`lakersfengjian-star/invdata`
-- GitHub Pages：`https://lakersfengjian-star.github.io/invdata/`
+- Vercel：由 GitHub 仓库 `main` 分支推送自动触发部署。
 - 图表文件统一放在：`output/charts/`
-- Pages 发布目录统一放在：`site/`
-- Pages 图片目录统一放在：`site/assets/charts/`
+- 静态站点目录统一放在：`site/`
+- 站点图片目录统一放在：`site/assets/charts/`
 
 ## 核心原则
 
 1. 时间序列优先本地存储，不要每次全量重新抓取。
 2. 后续更新只补充“本地已有最大日期之后”的最新交易日数据。
 3. 本地完整刷新成功后，再生成静态网页和 PNG。
-4. GitHub Pages 发布尽量使用本地已生成/已落盘的汇总数据，避免在 Actions 中在线抓全市场行情。
+4. Vercel 只发布静态文件；自动数据更新由 GitHub Actions 提交新快照后触发 Vercel 重新部署。
 5. 所有图表标题和网页标题必须展示最新数据日期，尤其是图三和图四。
 6. 当净流入为 0 或关键字段缺失时，在页面注释中保留“数据可能未更新”的风险提示。
 7. 严格执行 `TOKEN_EFFICIENT_WORKFLOW.md`：禁止通过对话或连接器搬运大型 base64、历史 CSV 或完整快照，优先本地增量、离线构建和正常 git 推送。
@@ -37,7 +37,7 @@
 
 - 管理 GitHub 登录和凭证。
 - 管理分支、提交、推送和同步。
-- 查看 GitHub Actions 和 Pages 发布结果。
+- 查看 GitHub Actions 和 Vercel 部署结果。
 - 处理需要浏览器授权的 GitHub 操作。
 
 ### 用户确认
@@ -149,18 +149,12 @@ find site/assets/charts -maxdepth 1 -type f -print | sort
 - 图四每张标题包含 `截至YYYY-MM-DD`
 - `site/assets/charts/` 至少有 5 张 PNG
 
-### 6. GitHub Pages 发布与 VS Code 推送
+### 6. Vercel 发布与 GitHub 推送
 
-`.github/workflows/pages.yml` 应发布 `site` 目录，而不是整个仓库：
+Vercel 只部署静态站点。根目录保留：
 
-```yaml
-- name: Build dashboard
-  run: python scripts/build_site_from_processed.py
-- name: Upload artifact
-  uses: actions/upload-pages-artifact@v3
-  with:
-    path: site
-```
+- `vercel.json`：把 `/` 重写到 `site/index.html`。
+- `.vercelignore`：排除 Python 脚本、数据中间文件、Excel 和本地缓存，避免 Vercel 误识别为 Python 项目。
 
 这样线上页面根目录就是 `site/index.html` 内容，图片路径可直接使用 `assets/charts/...`。
 
@@ -170,7 +164,7 @@ find site/assets/charts -maxdepth 1 -type f -print | sort
 2. agent 输出本地核验结果和待提交文件范围。
 3. 用户在 VS Code 中检查 Source Control。
 4. 用户点击 Commit/Push，VS Code 处理 GitHub 登录和 HTTPS 凭证。
-5. agent 只在用户推送后做轻量线上核验。
+5. Vercel 自动部署；agent 只在用户推送后做轻量线上核验。
 
 不推荐 agent 继续处理：
 
@@ -193,9 +187,10 @@ git push origin HEAD:main
 发布后检查：
 
 ```bash
-curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' https://lakersfengjian-star.github.io/invdata/
+VERCEL_SITE_URL="https://<your-vercel-domain>"
+curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' "$VERCEL_SITE_URL/"
 rg -n "assets/charts|截至|区间" /tmp/invdata-page.html
-curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' https://lakersfengjian-star.github.io/invdata/assets/charts/fig_001_broad_etf_flow.png
+curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE_URL/assets/charts/fig_001_broad_etf_flow.png"
 ```
 
 期望：
@@ -365,6 +360,6 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 
 - 将 `scripts/update_etf_dashboard.py` 的全量抓取改为按本地最大日期增量补数。
 - 为每个数据模块写入 `last_success_date`，避免接口失败时覆盖已有有效数据。
-- 将 GitHub Pages 发布固定为离线构建，线上只依赖 `data/processed` 汇总文件。
+- Vercel 发布固定为静态部署，线上只依赖 `site/` 和已生成图片。
 - 大体量逐股明细不上传 GitHub；只上传汇总后的时间序列。
 - 将 Git/GitHub 发布流程从 agent 常规任务中剥离，改为 VS Code Source Control 手动确认和推送。

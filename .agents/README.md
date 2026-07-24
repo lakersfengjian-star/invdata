@@ -3,10 +3,10 @@
 本目录用于保存后续 agent 维护投研数据页时需要优先读取的标准流程和问题核查文档。
 
 - `INVEST_DASHBOARD_STANDARD.md`：标准更新、增量存储、Python 本地抓数、离线建站和 VS Code 发布边界。
-- `ISSUE_CHECKLIST.md`：GitHub Pages、图片显示、数据日期、Actions 构建等问题核查清单。
+- `ISSUE_CHECKLIST.md`：历史 GitHub Pages、图片显示、数据日期、Actions 构建等问题核查清单。
 - `TOKEN_EFFICIENT_WORKFLOW.md`：token 节省、低成本发布、禁止大文件对话搬运、禁止常规认证排障的强制规范。
 
-后续接手任务时，先读以上三份文档，再执行数据更新或发布。若任务涉及 GitHub Pages、数据快照、图表生成或线上核验，必须同时遵守 token 节省规范。
+后续接手任务时，先读以上三份文档，再执行数据更新或发布。若任务涉及 Vercel、数据快照、图表生成或线上核验，必须同时遵守 token 节省规范。
 
 全项目数据源顺序固定为：数据库覆盖范围内的数据先用 `/gjdata` 技能从 `financedata` 取数；数据库不可用或口径/日期不满足时，再依次使用交易所、国家统计局、人民银行等官方数据源，AkShare，最后才使用 Wind API、Tushare 或本地 CSV fallback。`/gjdata` 不包含宏观数据、分钟级/高频或实时行情；宏观指标直接从统计局、人民银行等官方源开始。时间序列必须优先本地落盘，后续只补最新缺口。
 
