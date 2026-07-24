@@ -1,0 +1,9 @@
+requirements.txt
+scripts/
+data/
+output/
+outputs/
+.work/
+.agents/
+docs/
+*.xlsx

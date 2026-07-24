@@ -130,6 +130,7 @@ GitHub Pages 使用 `.github/workflows/pages.yml`。发布边界如下：
 - VS Code 负责 GitHub 认证、Commit、Push、Sync 和 Actions 查看。
 - 不再通过对话或 GitHub 连接器上传大型 CSV、PNG、base64 快照。
 - 如果推送失败，优先在 VS Code 中处理 GitHub 登录，不在 agent 会话里长时间排障。
+- Vercel 只部署静态文件；根目录 `vercel.json` 将首页重写到 `site/index.html`，`.vercelignore` 排除 Python 脚本、数据中间件和 Excel 文件，避免 Vercel 误识别为 Python 项目。
 
 VS Code 推送前固定检查：
 
@@ -139,3 +140,20 @@ git log --oneline -3
 ```
 
 VS Code 推送后，Actions 会把 `site/` 作为静态站点发布。
+
+## 自动更新
+
+GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 每个工作日北京时间 17:30 自动运行，也可以在 GitHub Actions 页面手动触发。
+
+自动更新流程：
+
+1. 安装 Python 依赖和中文字体。
+2. 依次运行各数据更新脚本；单个公开接口失败时不中断整站构建，保留本地缓存数据。
+3. 运行 `scripts/build_site_from_processed.py` 重建 `site/` 与图表。
+4. 若 `data/processed`、`data/raw`、`output/charts` 或 `site` 有变化，自动提交并推送到 GitHub。
+5. GitHub Pages 和 Vercel 都由这次推送触发重新部署。
+
+注意：
+
+- Wind MCP/本机 WindPy 依赖本地能力，不在 GitHub Actions 中运行；Wind 数据应先落入 `data/raw/*.csv`，再由自动任务复用。
+- 若连续多日数据不更新，优先检查 GitHub Actions 日志中的具体接口失败信息。

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,7 @@ PROCESSED_DIR = ROOT / "data" / "processed"
 OUT_CSV = PROCESSED_DIR / "theme_amount_share.csv"
 METADATA_JSON = PROCESSED_DIR / "theme_amount_share.metadata.json"
 START_DATE = "20240101"
-END_DATE = "20260704"
+END_DATE = date.today().strftime("%Y%m%d")
 
 INDEX_SOURCES = {
     "tmt": {"name": "中证TMT", "symbol": "000998"},
