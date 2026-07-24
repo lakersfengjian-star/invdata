@@ -501,6 +501,8 @@ def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, 
 def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> dict:
     setup_fonts()
     plot_df = df[df["index_name"].eq(index_name)].copy().sort_values("date")
+    if plot_df.empty:
+        return {}
     plot_df["date"] = pd.to_datetime(plot_df["date"])
     mu = plot_df["pe_ttm"].mean()
     sigma = plot_df["pe_ttm"].std(ddof=0)
@@ -1023,9 +1025,19 @@ def main() -> None:
         industry_crowding_chart = draw_citic_industry_crowding_chart(industry_crowding, industry_crowding_meta, CHART_DIR / "fig_006_citic_industry_crowding.png")
     elif industry_crowding_meta_path.exists():
         industry_crowding_chart = draw_citic_industry_crowding_chart(None, industry_crowding_meta, CHART_DIR / "fig_006_citic_industry_crowding.png")
+    valuation_chart_specs = [
+        ("沪深300指数", "fig_004a_hs300_pe_ttm_channel.png"),
+        ("上证指数", "fig_004b_sse_pe_ttm_channel.png"),
+        ("万得全A", "fig_004c_wind_all_a_pe_ttm_channel.png"),
+        ("万得全A（除金融、石油石化）", "fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png"),
+    ]
     valuation_charts = [
-        draw_valuation_chart(valuation, "沪深300指数", CHART_DIR / "fig_004a_hs300_pe_ttm_channel.png"),
-        draw_valuation_chart(valuation, "上证指数", CHART_DIR / "fig_004b_sse_pe_ttm_channel.png"),
+        chart
+        for chart in (
+            draw_valuation_chart(valuation, index_name, CHART_DIR / filename)
+            for index_name, filename in valuation_chart_specs
+        )
+        if chart
     ]
     limit_up_longest = None
     limit_up_amount_top = None

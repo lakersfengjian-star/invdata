@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-07-04 07:55:44",
+  "updated_at": "2026-07-07 09:17:22",
   "start_date": "2025-01-01",
-  "latest_common_date": "2026-07-03",
+  "latest_common_date": "2026-07-06",
   "etf_selection": [
     {
       "code": "510300",
@@ -49,30 +49,30 @@
   "chart_files": [
     {
       "path": "output/charts/fig_001_broad_etf_flow.png",
-      "last_date": "2026-07-03",
+      "last_date": "2026-07-06",
       "last_values": {
-        "沪深300": 4842.17,
-        "上证指数": 4043.64,
-        "daily_net_inflow_100mn": -153.741996,
-        "rolling_7d_net_inflow_100mn": -771.301917
+        "沪深300": 4842.0,
+        "上证指数": 4041.24,
+        "daily_net_inflow_100mn": -23.504085,
+        "rolling_7d_net_inflow_100mn": -605.9752560000001
       }
     },
     {
       "path": "output/charts/fig_002_star50_etf_flow.png",
-      "last_date": "2026-07-03",
+      "last_date": "2026-07-06",
       "last_values": {
-        "科创50": 1975.6,
-        "daily_net_inflow_100mn": 1.2611999999999999,
-        "rolling_7d_net_inflow_100mn": -1.4851799999999933
+        "科创50": 1996.1,
+        "daily_net_inflow_100mn": -0.88872,
+        "rolling_7d_net_inflow_100mn": 1.1544600000000067
       }
     },
     {
       "path": "output/charts/fig_003_a_share_turnover_concentration.png",
-      "last_date": "2026-07-03",
+      "last_date": "2026-07-06",
       "last_values": {
-        "top10_share_pct": 8.040662695783226,
-        "top100_share_pct": 31.509494264006864,
-        "market_amount_100mn": 32046.8709981
+        "top10_share_pct": 7.745182079370096,
+        "top100_share_pct": 30.77194948658842,
+        "market_amount_100mn": 30999.17554069
       }
     }
   ],
@@ -119,87 +119,92 @@
     {
       "source": "Eastmoney ETF quote list",
       "status": "failed",
-      "detail": "ProxyError(MaxRetryError(\"HTTPSConnectionPool(host='push2.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/clist/get?pn=1&pz=5000&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f20&fs=b%3AMK0021%2Cb%3AMK0022%2Cb%3AMK0023%2Cb%3AMK0024&fields=f12%2Cf14%2Cf2%2Cf20%2Cf21%2Cf6 (Caused by ProxyError('Unable to connect to proxy', RemoteDisconnected('Remote end closed connection without response')))\"))"
+      "detail": "ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "沪深300 close: 362 rows"
+      "detail": "沪深300 close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "上证指数 close: 362 rows"
+      "detail": "上证指数 close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "科创50 close: 362 rows"
+      "detail": "科创50 close: 363 rows"
     },
     {
       "source": "SSE ETF scale",
       "status": "ok",
-      "detail": "362 trading days, 0 failed days"
+      "detail": "363 trading days, 0 failed days"
+    },
+    {
+      "source": "SZSE ETF scale",
+      "status": "ok",
+      "detail": "363 trading days, 0 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "510300: 243 NAV rows"
+      "status": "cache",
+      "detail": "510300: 243 rows"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "510310: 243 NAV rows"
+      "status": "cache",
+      "detail": "510310: 243 rows"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "510330: 243 NAV rows"
+      "status": "cache",
+      "detail": "510330: 243 rows"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "159919: 243 NAV rows"
+      "status": "cache",
+      "detail": "159919: 243 rows"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "510050: 243 NAV rows"
+      "status": "cache",
+      "detail": "510050: 243 rows"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "ok",
-      "detail": "588000: 243 NAV rows"
+      "status": "cache",
+      "detail": "588000: 243 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510300 ETF close: 362 rows"
+      "detail": "510300 ETF close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510310 ETF close: 362 rows"
+      "detail": "510310 ETF close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510330 ETF close: 362 rows"
+      "detail": "510330 ETF close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "159919 ETF close: 362 rows"
+      "detail": "159919 ETF close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510050 ETF close: 362 rows"
+      "detail": "510050 ETF close: 363 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "588000 ETF close: 362 rows"
+      "detail": "588000 ETF close: 363 rows"
     },
     {
       "source": "AkShare stock_info_a_code_name",
@@ -209,12 +214,87 @@
     {
       "source": "Sina A-share daily",
       "status": "failed",
+      "detail": "sh601901: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh601988: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh603501: ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh605599: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688146: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688181: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688265: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688575: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
       "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
     },
     {
       "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688502: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688696: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688750: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "bj920056: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "bj920090: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "bj920300: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "bj920974: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
       "status": "ok",
-      "detail": "5522 symbols ok, 1 symbols failed"
+      "detail": "5507 symbols ok, 16 symbols failed"
     },
     {
       "source": "Index PE_TTM",
@@ -245,11 +325,6 @@
       "source": "Index PE_TTM",
       "status": "cache-fallback",
       "detail": "万得全A（除金融、石油石化）: using stale cache"
-    },
-    {
-      "source": "SZSE ETF scale",
-      "status": "ok",
-      "detail": "159919: 362 trading days; 361 net inflow rows; first day excluded by no previous share."
     }
   ]
 }
