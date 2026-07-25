@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import multiprocessing as mp
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -251,24 +251,33 @@ def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     source = ""
     notes: list[str] = []
-    try:
-        history, source = fetch_from_wind()
-    except Exception as exc:
-        notes.append(f"Wind API 暂不可用，已尝试公开源和本地CSV：{type(exc).__name__}: {exc}")
-        notes.extend(probe_public_fallbacks())
+    cli_csv_fresh = RAW_CSV.exists() and datetime.fromtimestamp(
+        RAW_CSV.stat().st_mtime
+    ).date() == date.today()
+    if cli_csv_fresh:
+        # Fresh CSV produced by fetch_citic_crowding_wind_cli.py (Wind AIFin Market).
+        history, source = read_local_csv()
+        source = "Wind AIFin Market CLI"
+        notes.append("数据源：Wind AIFin Market CLI（wind-mcp-skill），周频估值+成交额，无需本地Wind终端。")
+    else:
         try:
-            history, source = read_local_csv()
-        except Exception as local_exc:
-            metadata = {
-                "source": "none",
-                "status": "missing_data",
-                "latest_date": "",
-                "notes": notes + [f"本地CSV不可用：{local_exc}"],
-                "required_csv": str(RAW_CSV.relative_to(ROOT)),
-            }
-            METADATA_JSON.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
-            print(json.dumps(metadata, ensure_ascii=False))
-            return
+            history, source = fetch_from_wind()
+        except Exception as exc:
+            notes.append(f"Wind API 暂不可用，已尝试公开源和本地CSV：{type(exc).__name__}: {exc}")
+            notes.extend(probe_public_fallbacks())
+            try:
+                history, source = read_local_csv()
+            except Exception as local_exc:
+                metadata = {
+                    "source": "none",
+                    "status": "missing_data",
+                    "latest_date": "",
+                    "notes": notes + [f"本地CSV不可用：{local_exc}"],
+                    "required_csv": str(RAW_CSV.relative_to(ROOT)),
+                }
+                METADATA_JSON.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+                print(json.dumps(metadata, ensure_ascii=False))
+                return
 
     summary = build_summary(history)
     summary["date"] = pd.to_datetime(summary["date"]).dt.strftime("%Y-%m-%d")
