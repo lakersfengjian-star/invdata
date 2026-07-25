@@ -1,131 +1,220 @@
+/* 投研数据页 — 视觉系统(参考 MSTR/BTC 监控面板语言) */
+:root {
+  --bg: #eef1f6;
+  --card: #ffffff;
+  --ink: #17222f;
+  --muted: #67748a;
+  --faint: #98a2b3;
+  --line: #e3e7ee;
+  --accent: #e07b39;
+  --accent-soft: #fdf1e7;
+  --navy: #1d2f45;
+  --green: #1e9e6a;
+  --green-soft: #e5f6ee;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(23, 34, 47, .05), 0 8px 24px -12px rgba(23, 34, 47, .12);
+}
+
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
-  color: #1f2933;
-  background: #f6f5f1;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
+
 main {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 36px 22px 56px;
+  padding: 44px 24px 72px;
 }
+
+/* ---------- 页头 ---------- */
 .page-head {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 24px;
-  align-items: end;
-  border-bottom: 1px solid #d8d4ca;
-  padding-bottom: 20px;
+  padding-bottom: 26px;
 }
 .eyebrow {
-  margin: 0 0 8px;
-  color: #607080;
-  font-size: 13px;
-  letter-spacing: .08em;
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .18em;
   text-transform: uppercase;
 }
 h1 {
   margin: 0;
-  font-size: 34px;
-  font-weight: 760;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: .01em;
 }
-h2 {
-  margin: 0 0 14px;
-  font-size: 21px;
-}
+h2 { margin: 0; font-size: 19px; font-weight: 700; }
+
 .meta {
-  text-align: right;
-  color: #59636e;
-  font-size: 14px;
-  line-height: 1.8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+.meta .meta-line { display: flex; align-items: center; gap: 7px; }
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(30, 158, 106, .18);
 }
 .refresh-button {
   appearance: none;
-  border: 1px solid #203040;
-  border-radius: 6px;
-  margin-top: 8px;
-  min-height: 34px;
-  padding: 0 14px;
-  background: #203040;
-  color: #ffffff;
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
   font: inherit;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
 .refresh-button:hover,
 .refresh-button:focus-visible {
-  background: #30465a;
+  border-color: var(--accent);
+  color: var(--accent);
   outline: none;
+  transform: translateY(-1px);
 }
-.refresh-button:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
+.refresh-button:disabled { cursor: wait; opacity: .6; transform: none; }
 .refresh-status {
-  min-height: 20px;
-  margin-top: 4px;
-  color: #6c5b2f;
+  min-height: 18px;
+  color: var(--accent);
   font-size: 12px;
 }
+
+/* ---------- 分类切换(分段控件) ---------- */
 .category-tabs {
   position: sticky;
-  top: 0;
+  top: 14px;
   z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 1px;
-  margin: 22px 0 10px;
-  background: #d8d4ca;
-  border: 1px solid #d8d4ca;
+  display: flex;
+  gap: 4px;
+  margin: 6px 0 26px;
+  padding: 5px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  background: #e2e7ef;
+  border: 1px solid var(--line);
+  border-radius: 999px;
 }
 .category-tab {
   appearance: none;
   border: 0;
-  border-radius: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  background: #f8f7f3;
-  color: #53606b;
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 0 20px;
+  background: transparent;
+  color: var(--muted);
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
 .category-tab:hover,
 .category-tab:focus-visible {
-  background: #ffffff;
-  color: #1f2933;
+  color: var(--ink);
   outline: none;
 }
 .category-tab.active {
-  background: #203040;
-  color: #ffffff;
-  font-weight: 700;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(23, 34, 47, .16);
 }
-.category-panel {
-  padding-top: 20px;
-}
+
+/* ---------- 分区标题(编号) ---------- */
+.category-panel { padding-top: 4px; }
 .category-head {
-  padding: 8px 0 12px;
-  border-bottom: 1px solid #dedbd3;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 2px 18px;
+}
+.category-head .sec-num {
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
 }
 .category-head h2 {
-  font-size: 26px;
+  font-size: 24px;
+  font-weight: 800;
 }
+
+/* ---------- 图表卡片 ---------- */
 .chart-section {
-  padding: 30px 0 18px;
-  border-bottom: 1px solid #dedbd3;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 24px 16px;
+  margin-bottom: 22px;
+}
+.chart-section > h2 {
+  padding-bottom: 16px;
+  font-size: 17.5px;
 }
 .chart-section img {
   display: block;
   width: 100%;
   height: auto;
-  background: #fbfbf8;
-  border: 1px solid #dedbd3;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
 }
+
+/* ---------- 数据说明(脚注式) ---------- */
+.note, .empty-note, .chart-notes {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.chart-notes {
+  margin-top: 14px;
+  padding: 10px 2px 4px;
+  border-top: 1px dashed var(--line);
+}
+.chart-notes p { margin: 0; }
+.chart-notes p + p { margin-top: 3px; }
+.chart-notes strong { color: var(--ink); font-weight: 600; }
+.empty-note {
+  margin: 8px 0 36px;
+  padding: 26px;
+  text-align: center;
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+/* ---------- 表格 ---------- */
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #dedbd3;
-  background: #fbfbf8;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
 }
 .data-table {
   width: 100%;
@@ -135,63 +224,45 @@ h2 {
 }
 .data-table th,
 .data-table td {
-  padding: 10px 11px;
-  border-bottom: 1px solid #e5e1d8;
+  padding: 11px 12px;
+  border-bottom: 1px solid #eef1f5;
   text-align: left;
   vertical-align: top;
 }
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover { background: #f7f9fc; }
 .data-table th {
-  background: #ede9df;
-  color: #203040;
+  background: #f4f6fa;
+  color: var(--navy);
   font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.data-table td:nth-child(1) { color: var(--muted); font-variant-numeric: tabular-nums; }
+.data-table td:nth-child(2) { font-weight: 600; white-space: nowrap; }
+.data-table td:nth-child(3),
+.data-table td:nth-child(4),
+.data-table td:nth-child(5),
+.data-table td:nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .data-table td:nth-child(7),
 .data-table td:nth-child(8) {
   min-width: 210px;
-  line-height: 1.55;
+  line-height: 1.6;
+  color: var(--muted);
 }
-.note, .empty-note, .chart-notes {
-  color: #4f5c66;
-  font-size: 14px;
-  line-height: 1.75;
-}
-.chart-notes {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-left: 3px solid #b8aa8f;
-  background: #f0eee7;
-}
-.chart-notes p {
-  margin: 0;
-}
-.chart-notes p + p {
-  margin-top: 4px;
-}
-.chart-notes strong {
-  color: #203040;
-}
-.empty-note {
-  margin: 22px 0 36px;
-}
+
+/* ---------- 响应式 ---------- */
 @media (max-width: 720px) {
-  main {
-    padding: 28px 16px 44px;
-  }
-  .page-head {
-    display: block;
-  }
-  .meta {
-    text-align: left;
-    margin-top: 14px;
-  }
-  h1 {
-    font-size: 28px;
-  }
-  .category-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .category-tab {
-    min-height: 42px;
-    font-size: 14px;
-  }
+  main { padding: 30px 16px 52px; }
+  .page-head { display: block; }
+  .meta { align-items: flex-start; margin-top: 16px; white-space: normal; }
+  h1 { font-size: 28px; }
+  .category-tabs { width: 100%; top: 8px; }
+  .category-tab { padding: 0 14px; font-size: 13.5px; }
+  .chart-section { padding: 16px 14px 12px; }
+  .category-head h2 { font-size: 20px; }
 }

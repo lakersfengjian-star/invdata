@@ -11,8 +11,8 @@
     <header class="page-head">
       <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
       <div class="meta">
-        <div>更新：2026-07-07 09:17:22</div>
-        <div>区间：2025-01-01 至 2026-07-06</div>
+        <div class="meta-line"><span class="live-dot" aria-hidden="true"></span>更新：2026-07-07 09:17:22</div>
+        <div class="meta-line">区间：2025-01-01 至 2026-07-06</div>
         <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
         <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
       </div>
@@ -28,7 +28,7 @@
     </nav>
 
     <section class="category-panel active" id="panel-market" data-category="market">
-      <div class="category-head"><h2>行情</h2></div>
+      <div class="category-head"><span class="sec-num">01</span><h2>行情</h2></div>
       <section class="chart-section">
         <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v=20260706" alt="沪深300与上证指数走势及大宽基ETF资金流">
@@ -96,7 +96,7 @@
     </section>
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
-      <div class="category-head"><h2>宏观</h2></div>
+      <div class="category-head"><span class="sec-num">02</span><h2>宏观</h2></div>
       <section class="chart-section">
         <h2>图十：宏观经济数据概览（截至2026-06-01）</h2>
         <img src="assets/charts/fig_010_macro_overview.png?v=20260601" alt="宏观经济数据概览">
@@ -108,7 +108,7 @@
     </section>
 
     <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
-      <div class="category-head"><h2>估值</h2></div>
+      <div class="category-head"><span class="sec-num">03</span><h2>估值</h2></div>
       <section class="chart-section">
       <h2>图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）</h2>
       <img src="assets/charts/fig_004a_hs300_pe_ttm_channel.png?v=20260706" alt="图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）">
@@ -129,12 +129,12 @@
     </section>
 
     <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
-      <div class="category-head"><h2>盈利</h2></div>
+      <div class="category-head"><span class="sec-num">04</span><h2>盈利</h2></div>
       <p class="empty-note">暂无图表。</p>
     </section>
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
-      <div class="category-head"><h2>流动性</h2></div>
+      <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
       <section class="chart-section">
         <h2>图三：A股成交额前10大公司交易集中度变化（截至2026-07-06）</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v=20260706" alt="A股成交额前10大公司交易集中度变化">
@@ -154,7 +154,7 @@
     </section>
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
-      <div class="category-head"><h2>情绪</h2></div>
+      <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
       <p class="empty-note">暂无图表。</p>
     </section>
   </main>
