@@ -88,7 +88,6 @@ def draw_combo_chart(df: pd.DataFrame, line_cols: list[tuple[str, str, str]], ti
     ax2.plot(x, plot_df["rolling_7d_net_inflow_100mn"], color="#b8664f", linewidth=1.6, alpha=0.9)
     for col, label, color in line_cols:
         ax1.plot(x, plot_df[col], label=label, color=color, linewidth=2.2)
-    ax1.set_title(title, loc="left", fontsize=19, fontweight="bold", pad=16)
     ax1.set_ylabel("收盘价（点）", fontsize=12)
     ax2.set_ylabel("净流入额（亿元）", fontsize=12)
     ax2.yaxis.set_major_formatter(FuncFormatter(y_100mn))
@@ -138,7 +137,6 @@ def draw_turnover_chart(df: pd.DataFrame, out_path: Path) -> dict:
     ax1.plot(x, plot_df["top10_share_pct"], color="#c5513c", linewidth=2.4, label="前10大占比")
     ax1.plot(x, plot_df["top100_share_pct"], color="#2f7cb8", linewidth=2.1, label="前100大占比")
     ax2.plot(x, plot_df["上证指数"], color="#7a6f64", linewidth=1.8, alpha=0.75, label="上证指数")
-    ax1.set_title(f"A股成交额前10大公司交易集中度变化（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax1.set_xlabel("日期", fontsize=12)
     ax1.set_ylabel("占全市场成交额比例（%）", fontsize=12)
     ax2.set_ylabel("上证指数收盘价（点）", fontsize=12)
@@ -190,7 +188,6 @@ def draw_index_amount_share_chart(df: pd.DataFrame, out_path: Path) -> dict:
             value = latest.get(col)
             if pd.notna(value):
                 ax.annotate(f"{latest_date}  {value:.1f}%", xy=(latest["date"], value), xytext=(10, 0), textcoords="offset points", va="center", fontsize=9.5, color=color)
-    ax.set_title(f"主要宽基指数成交额占全A成交额比例（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("占全A成交额比例（%）", fontsize=12)
     ax.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
@@ -227,7 +224,6 @@ def draw_theme_amount_share_chart(df: pd.DataFrame, out_path: Path) -> dict:
         value = latest.get("dividend_low_vol_share_pct")
         if pd.notna(value):
             ax2.annotate(f"{latest_date}  {value:.1f}%", xy=(latest["date"], value), xytext=(10, 0), textcoords="offset points", va="center", fontsize=10, color="#c5513c")
-    ax.set_title(f"TMT与红利低波成交额占全A成交额比例（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("中证TMT占比（%）", fontsize=12)
     ax2.set_ylabel("红利低波占比（%）", fontsize=12)
@@ -270,7 +266,6 @@ def draw_market_turnover_chart(df: pd.DataFrame, out_path: Path) -> dict:
         fontsize=10,
         color="#1f77b4",
     )
-    ax.set_title(f"全市场成交额变化（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("成交额（亿元）", fontsize=12)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f"{x/10000:.1f}万亿" if abs(x) >= 10000 else f"{x:,.0f}"))
@@ -318,7 +313,6 @@ def draw_southbound_flow_chart(df: pd.DataFrame, out_path: Path) -> dict:
         color="#203040",
         bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
     )
-    ax.set_title(f"南向资金每日净流入（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("净流入额（亿元）", fontsize=12)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f"{x:,.0f}"))
@@ -387,7 +381,6 @@ def draw_macro_overview_chart(df: pd.DataFrame, metadata: dict, out_path: Path) 
         else:
             ax.spines["left"].set_visible(False)
             ax.tick_params(axis="y", left=False, labelleft=False)
-    fig.suptitle(f"宏观经济数据概览（截至{latest_date}）", x=0.01, y=1.02, ha="left", fontsize=18, fontweight="bold")
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
@@ -483,8 +476,7 @@ def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, 
     ax.set_xlim(-0.45, len(metrics) - 0.05)
     ax.set_ylim(-0.8, len(plot_df) - 0.2)
     ax.grid(axis="y", color="#e2dfd7", linewidth=0.7, alpha=0.75)
-    ax.set_title(f"中信一级行业估值与成交拥挤度（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
-    ax.text(0, 1.01, "括号内为较上周变化，单位：百分点；颜色越红代表分位越高。", transform=ax.transAxes, fontsize=10.5, color="#59636e")
+    ax.text(0, 1.015, "括号内为较上周变化，单位：百分点；颜色越红代表分位越高。", transform=ax.transAxes, fontsize=10.5, color="#59636e")
     cbar = fig.colorbar(sc, ax=ax, fraction=0.025, pad=0.02)
     cbar.set_label("历史分位数（%）")
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
@@ -521,7 +513,6 @@ def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> d
     ]:
         ax.axhline(value, linestyle="--", color=color, linewidth=width, alpha=0.9, label=f"{label}: {value:.2f}")
     ax.annotate(f"{latest['pe_ttm']:.2f}x", xy=(latest["date"], latest["pe_ttm"]), xytext=(12, 0), textcoords="offset points", va="center", fontsize=11, color="#1f77b4")
-    ax.set_title(f"{index_name}历史滚动市盈率及标准差通道（截至{latest_date}）", loc="left", fontsize=18, fontweight="bold", pad=16)
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("滚动市盈率（倍）", fontsize=12)
     ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
@@ -555,7 +546,7 @@ def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str)
     )
     if df is None or df.empty:
         return f'''      <section class="chart-section">
-        <h2>{title}（截至{latest_date or "待接入"}）</h2>
+        <h2>{title}（截至{latest_date or "待接入"}）{freq_badge("日频")}</h2>
         <p class="empty-note">暂无可展示数据。</p>
         {note_html}
       </section>'''
@@ -570,10 +561,14 @@ def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str)
         cells = "".join(f"<td>{format_table_value(col, row.get(col))}</td>" for col in columns)
         rows.append(f"<tr>{cells}</tr>")
     return f'''      <section class="chart-section">
-        <h2>{title}（截至{latest_date}）</h2>
+        <h2>{title}（截至{latest_date}）{freq_badge("日频")}</h2>
         <div class="table-wrap"><table class="data-table"><thead><tr>{thead}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>
         {note_html}
       </section>'''
+
+
+def freq_badge(freq: str) -> str:
+    return f'<span class="freq-badge">{freq}</span>'
 
 
 def chart_note_block(data_note: str, risk_note: str) -> str:
@@ -609,7 +604,7 @@ def build_page(
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     valuation_html = "\n\n".join(
         f'''      <section class="chart-section">
-      <h2>{chart["title"]}</h2>
+      <h2>{chart["title"]}{freq_badge("日频")}</h2>
       <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
       {chart_note_block(
           f"统计区间自 {VALUATION_START_DATE} 起；PE_TTM 序列按交易日历史数据绘制，水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。",
@@ -621,7 +616,7 @@ def build_page(
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2>图五：主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）</h2>
+        <h2>图五：主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -631,7 +626,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2>图七：TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）</h2>
+        <h2>图七：TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -641,7 +636,7 @@ def build_page(
     market_turnover_html = ""
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
-        <h2>图八：全市场成交额变化（截至{market_turnover_chart["last_date"]}）</h2>
+        <h2>图八：全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={market_turnover_chart["last_date"].replace("-", "")}" alt="全市场成交额变化">
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
@@ -651,7 +646,7 @@ def build_page(
     southbound_html = ""
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2>图九：南向资金每日净流入（截至{southbound_chart["last_date"]}）</h2>
+        <h2>图九：南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -666,7 +661,7 @@ def build_page(
             if missing:
                 macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
         macro_html = f'''      <section class="chart-section">
-        <h2>图十：宏观经济数据概览（截至{macro_chart["last_date"]}）</h2>
+        <h2>图十：宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(macro_chart["path"]).name}?v={macro_chart["last_date"].replace("-", "")}" alt="宏观经济数据概览">
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
@@ -684,7 +679,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2>图六：中信一级行业估值与成交拥挤度（截至{crowding_date}）</h2>
+        <h2>图六：中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -704,8 +699,8 @@ def build_page(
     <header class="page-head">
       <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
       <div class="meta">
-        <div>更新：{updated_at}</div>
-        <div>区间：2025-01-01 至 {latest}</div>
+        <div class="meta-line"><span class="live-dot" aria-hidden="true"></span>更新：{updated_at}</div>
+        <div class="meta-line">区间：2025-01-01 至 {latest}</div>
         <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
         <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
       </div>
@@ -721,9 +716,9 @@ def build_page(
     </nav>
 
     <section class="category-panel active" id="panel-market" data-category="market">
-      <div class="category-head"><h2>行情</h2></div>
+      <div class="category-head"><span class="sec-num">01</span><h2>行情</h2></div>
       <section class="chart-section">
-        <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流</h2>
+        <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -731,7 +726,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2>图二：科创50指数 vs. 科创50ETF资金流</h2>
+        <h2>图二：科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -746,24 +741,24 @@ def build_page(
     </section>
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
-      <div class="category-head"><h2>宏观</h2></div>
+      <div class="category-head"><span class="sec-num">02</span><h2>宏观</h2></div>
 {macro_html}
     </section>
 
     <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
-      <div class="category-head"><h2>估值</h2></div>
+      <div class="category-head"><span class="sec-num">03</span><h2>估值</h2></div>
 {valuation_html}
     </section>
 
     <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
-      <div class="category-head"><h2>盈利</h2></div>
+      <div class="category-head"><span class="sec-num">04</span><h2>盈利</h2></div>
       <p class="empty-note">暂无图表。</p>
     </section>
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
-      <div class="category-head"><h2>流动性</h2></div>
+      <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
       <section class="chart-section">
-        <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）</h2>
+        <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
@@ -774,7 +769,7 @@ def build_page(
     </section>
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
-      <div class="category-head"><h2>情绪</h2></div>
+      <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
       <p class="empty-note">暂无图表。</p>
     </section>
   </main>
@@ -782,134 +777,223 @@ def build_page(
 </body>
 </html>
 '''
-    css = '''body {
+    css = '''/* 投研数据页 — 视觉系统(参考 MSTR/BTC 监控面板语言) */
+:root {
+  --bg: #eef1f6;
+  --card: #ffffff;
+  --ink: #17222f;
+  --muted: #67748a;
+  --faint: #98a2b3;
+  --line: #e3e7ee;
+  --accent: #e07b39;
+  --accent-soft: #fdf1e7;
+  --navy: #1d2f45;
+  --green: #1e9e6a;
+  --green-soft: #e5f6ee;
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(23, 34, 47, .05), 0 8px 24px -12px rgba(23, 34, 47, .12);
+}
+
+* { box-sizing: border-box; }
+
+body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
-  color: #1f2933;
-  background: #f6f5f1;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
+
 main {
-  max-width: 1180px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 36px 22px 56px;
+  padding: 44px 24px 72px;
 }
+
+/* ---------- 页头 ---------- */
 .page-head {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 24px;
-  align-items: end;
-  border-bottom: 1px solid #d8d4ca;
-  padding-bottom: 20px;
+  padding-bottom: 26px;
 }
 .eyebrow {
-  margin: 0 0 8px;
-  color: #607080;
-  font-size: 13px;
-  letter-spacing: .08em;
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .18em;
   text-transform: uppercase;
 }
 h1 {
   margin: 0;
-  font-size: 34px;
-  font-weight: 760;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: .01em;
 }
-h2 {
-  margin: 0 0 14px;
-  font-size: 21px;
-}
+h2 { margin: 0; font-size: 19px; font-weight: 700; }
+
 .meta {
-  text-align: right;
-  color: #59636e;
-  font-size: 14px;
-  line-height: 1.8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+.meta .meta-line { display: flex; align-items: center; gap: 7px; }
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(30, 158, 106, .18);
 }
 .refresh-button {
   appearance: none;
-  border: 1px solid #203040;
-  border-radius: 6px;
-  margin-top: 8px;
-  min-height: 34px;
-  padding: 0 14px;
-  background: #203040;
-  color: #ffffff;
+  margin-top: 10px;
+  min-height: 38px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
   font: inherit;
   font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
 .refresh-button:hover,
 .refresh-button:focus-visible {
-  background: #30465a;
+  border-color: var(--accent);
+  color: var(--accent);
   outline: none;
+  transform: translateY(-1px);
 }
-.refresh-button:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
+.refresh-button:disabled { cursor: wait; opacity: .6; transform: none; }
 .refresh-status {
-  min-height: 20px;
-  margin-top: 4px;
-  color: #6c5b2f;
+  min-height: 18px;
+  color: var(--accent);
   font-size: 12px;
 }
+
+/* ---------- 分类切换(分段控件) ---------- */
 .category-tabs {
   position: sticky;
-  top: 0;
+  top: 14px;
   z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 1px;
-  margin: 22px 0 10px;
-  background: #d8d4ca;
-  border: 1px solid #d8d4ca;
+  display: flex;
+  gap: 4px;
+  margin: 6px 0 26px;
+  padding: 5px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  background: #e2e7ef;
+  border: 1px solid var(--line);
+  border-radius: 999px;
 }
 .category-tab {
   appearance: none;
   border: 0;
-  border-radius: 0;
-  min-height: 44px;
-  padding: 0 12px;
-  background: #f8f7f3;
-  color: #53606b;
+  border-radius: 999px;
+  min-height: 36px;
+  padding: 0 20px;
+  background: transparent;
+  color: var(--muted);
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
 .category-tab:hover,
 .category-tab:focus-visible {
-  background: #ffffff;
-  color: #1f2933;
+  color: var(--ink);
   outline: none;
 }
 .category-tab.active {
-  background: #203040;
-  color: #ffffff;
-  font-weight: 700;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(23, 34, 47, .16);
 }
-.category-panel {
-  padding-top: 20px;
-}
+
+/* ---------- 分区标题(编号) ---------- */
+.category-panel { padding-top: 4px; }
 .category-head {
-  padding: 8px 0 12px;
-  border-bottom: 1px solid #dedbd3;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 2px 18px;
+}
+.category-head .sec-num {
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .08em;
 }
 .category-head h2 {
-  font-size: 26px;
+  font-size: 24px;
+  font-weight: 800;
 }
+
+/* ---------- 图表卡片 ---------- */
 .chart-section {
-  padding: 30px 0 18px;
-  border-bottom: 1px solid #dedbd3;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px 24px 16px;
+  margin-bottom: 22px;
+}
+.chart-section > h2 {
+  padding-bottom: 16px;
+  font-size: 17.5px;
 }
 .chart-section img {
   display: block;
   width: 100%;
   height: auto;
-  background: #fbfbf8;
-  border: 1px solid #dedbd3;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfcfe;
 }
+
+/* ---------- 数据说明(脚注式) ---------- */
+.note, .empty-note, .chart-notes {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.chart-notes {
+  margin-top: 14px;
+  padding: 10px 2px 4px;
+  border-top: 1px dashed var(--line);
+}
+.chart-notes p { margin: 0; }
+.chart-notes p + p { margin-top: 3px; }
+.chart-notes strong { color: var(--ink); font-weight: 600; }
+.empty-note {
+  margin: 8px 0 36px;
+  padding: 26px;
+  text-align: center;
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+/* ---------- 表格 ---------- */
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #dedbd3;
-  background: #fbfbf8;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
 }
 .data-table {
   width: 100%;
@@ -919,65 +1003,61 @@ h2 {
 }
 .data-table th,
 .data-table td {
-  padding: 10px 11px;
-  border-bottom: 1px solid #e5e1d8;
+  padding: 11px 12px;
+  border-bottom: 1px solid #eef1f5;
   text-align: left;
   vertical-align: top;
 }
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr:hover { background: #f7f9fc; }
 .data-table th {
-  background: #ede9df;
-  color: #203040;
+  background: #f4f6fa;
+  color: var(--navy);
   font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.data-table td:nth-child(1) { color: var(--muted); font-variant-numeric: tabular-nums; }
+.data-table td:nth-child(2) { font-weight: 600; white-space: nowrap; }
+.data-table td:nth-child(3),
+.data-table td:nth-child(4),
+.data-table td:nth-child(5),
+.data-table td:nth-child(6) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .data-table td:nth-child(7),
 .data-table td:nth-child(8) {
   min-width: 210px;
-  line-height: 1.55;
+  line-height: 1.6;
+  color: var(--muted);
 }
-.note, .empty-note, .chart-notes {
-  color: #4f5c66;
-  font-size: 14px;
-  line-height: 1.75;
-}
-.chart-notes {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border-left: 3px solid #b8aa8f;
-  background: #f0eee7;
-}
-.chart-notes p {
-  margin: 0;
-}
-.chart-notes p + p {
-  margin-top: 4px;
-}
-.chart-notes strong {
-  color: #203040;
-}
-.empty-note {
-  margin: 22px 0 36px;
-}
+
+/* ---------- 响应式 ---------- */
 @media (max-width: 720px) {
-  main {
-    padding: 28px 16px 44px;
-  }
-  .page-head {
-    display: block;
-  }
-  .meta {
-    text-align: left;
-    margin-top: 14px;
-  }
-  h1 {
-    font-size: 28px;
-  }
-  .category-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .category-tab {
-    min-height: 42px;
-    font-size: 14px;
-  }
+  main { padding: 30px 16px 52px; }
+  .page-head { display: block; }
+  .meta { align-items: flex-start; margin-top: 16px; white-space: normal; }
+  h1 { font-size: 28px; }
+  .category-tabs { width: 100%; top: 8px; }
+  .category-tab { padding: 0 14px; font-size: 13.5px; }
+  .chart-section { padding: 16px 14px 12px; }
+  .category-head h2 { font-size: 20px; }
+}
+
+/* ---------- 更新频率徽章 ---------- */
+.freq-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 11px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  vertical-align: 3px;
 }
 '''
     js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
