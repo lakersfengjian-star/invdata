@@ -42,6 +42,8 @@
 - `fig_008_market_turnover.png`：全市场成交额变化，区间自2024-09-24起
 - `fig_009_southbound_flow.png`：南向资金每日净流入，区间自2026-01-01起
 - `fig_010_macro_overview.png`：宏观经济数据概览，展示各指标最近六个有效数据点
+- `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）
+- `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图（周频）。构建时衍生图：由 `data/raw/citic_industry_crowding_weekly.csv` 最新周 PB_LF/PE_TTM 推导 ROE（ROE≈PB/PE 恒等式，同一价格口径下成立，零新增取数），叠加 `data/processed/citic_industry_crowding.csv` 的 PB 十年分位上色；随拥挤度周度数据自动更新，无需注册新取数脚本。
 - 行情表格：`limit_up_longest.csv`、`limit_up_amount_top.csv`，展示最新交易日连续涨停天数前十和当日涨停成交额前十。
 
 ## 数据源优先级
