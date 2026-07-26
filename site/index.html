@@ -25,6 +25,7 @@
       <button class="category-tab" type="button" data-target="earnings" aria-selected="false">盈利</button>
       <button class="category-tab" type="button" data-target="liquidity" aria-selected="false">流动性</button>
       <button class="category-tab" type="button" data-target="sentiment" aria-selected="false">情绪</button>
+      <button class="category-tab" type="button" data-target="library" aria-selected="false">资料</button>
     </nav>
 
     <section class="category-panel active" id="panel-market" data-category="market">
@@ -170,6 +171,26 @@
         <div class="chart-notes">
           <p><strong>数据说明：</strong>按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。</p>
           <p><strong>风险提示：</strong>拥挤度是估值与交易热度的历史分位观察，不代表买卖建议；若 Wind API 不可用或本地 CSV 未补齐，结果会显示待接入或滞后。</p>
+        </div>
+      </section>
+    </section>
+
+    <section class="category-panel" id="panel-library" data-category="library" hidden>
+      <div class="category-head"><span class="sec-num">07</span><h2>资料</h2></div>
+      <section class="chart-section">
+        <h2><span class="chart-num">016</span>研究资料库（个人研究文章与投资资料）</h2>
+        <div class="doc-list">
+      <a class="doc-card" href="assets/docs/cxmt-ipo-summary.pdf" target="_blank" rel="noopener">
+        <div class="doc-card-main">
+          <span class="doc-type">PDF</span>
+          <h3>长鑫科技招股说明书</h3>
+          <p>长鑫科技（CXMT）科创板 IPO 招股说明书精华摘要：发行概况、中国第一/全球第四的市场地位、2023–2025 及 2026Q1 核心财务、股东结构与核心风险提示，一页速览。</p>
+        </div>
+        <div class="doc-card-meta"><span>2026-07-26</span><span class="doc-open">查看 →</span></div>
+      </a>
+        </div>
+        <div class="chart-notes">
+          <p><strong>资料说明：</strong>本板块收录个人研究文章与投资资料，点击卡片可在新标签页打开对应文件；后续新增资料会按时间倒序追加。</p>
         </div>
       </section>
     </section>

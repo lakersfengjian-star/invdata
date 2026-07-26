@@ -795,6 +795,48 @@ def chart_note_block(data_note: str, risk_note: str) -> str:
         </div>'''
 
 
+def render_library() -> str:
+    """Render the 资料 (research library) panel content from site/assets/docs/library.json."""
+    manifest_path = SITE_DIR / "assets" / "docs" / "library.json"
+    entries: list = []
+    if manifest_path.exists():
+        try:
+            entries = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            entries = []
+    if not entries:
+        return '      <p class="empty-note">暂无资料。</p>'
+    entries = sorted(entries, key=lambda x: str(x.get("date", "")), reverse=True)
+    cards = []
+    for item in entries:
+        title = escape(str(item.get("title", "未命名资料")))
+        file_url = escape(str(item.get("file", "")), quote=True)
+        date = escape(str(item.get("date", "")))
+        doc_type = escape(str(item.get("type", "PDF")))
+        desc = escape(str(item.get("desc", "")))
+        if not file_url:
+            continue
+        cards.append(f'''      <a class="doc-card" href="{file_url}" target="_blank" rel="noopener">
+        <div class="doc-card-main">
+          <span class="doc-type">{doc_type}</span>
+          <h3>{title}</h3>
+          <p>{desc}</p>
+        </div>
+        <div class="doc-card-meta"><span>{date}</span><span class="doc-open">查看 →</span></div>
+      </a>''')
+    if not cards:
+        return '      <p class="empty-note">暂无资料。</p>'
+    return f'''      <section class="chart-section">
+        <h2><span class="chart-num">016</span>研究资料库（个人研究文章与投资资料）</h2>
+        <div class="doc-list">
+{chr(10).join(cards)}
+        </div>
+        <div class="chart-notes">
+          <p><strong>资料说明：</strong>本板块收录个人研究文章与投资资料，点击卡片可在新标签页打开对应文件；后续新增资料会按时间倒序追加。</p>
+        </div>
+      </section>'''
+
+
 def build_page(
     metadata: dict,
     chart3: dict,
@@ -864,6 +906,7 @@ def build_page(
         )}
       </section>'''
     southbound_html = ""
+    library_html = render_library()
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">008</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
@@ -945,6 +988,7 @@ def build_page(
       <button class="category-tab" type="button" data-target="earnings" aria-selected="false">盈利</button>
       <button class="category-tab" type="button" data-target="liquidity" aria-selected="false">流动性</button>
       <button class="category-tab" type="button" data-target="sentiment" aria-selected="false">情绪</button>
+      <button class="category-tab" type="button" data-target="library" aria-selected="false">资料</button>
     </nav>
 
     <section class="category-panel active" id="panel-market" data-category="market">
@@ -1004,6 +1048,11 @@ def build_page(
 {amount_share_html}
 {theme_amount_html}
 {industry_crowding_html}
+    </section>
+
+    <section class="category-panel" id="panel-library" data-category="library" hidden>
+      <div class="category-head"><span class="sec-num">07</span><h2>资料</h2></div>
+{library_html}
     </section>
   </main>
   <script src="app.js"></script>
@@ -1326,6 +1375,56 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 @media (max-width: 900px) {
   .monitor-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- 资料库（个人研究文章与投资资料） ---------- */
+.doc-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 10px 0 4px;
+}
+.doc-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.doc-card:hover,
+.doc-card:focus-visible {
+  border-color: var(--accent);
+  box-shadow: var(--shadow);
+}
+.doc-card-main { min-width: 0; }
+.doc-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.doc-card h3 { margin: 8px 0 4px; font-size: 15.5px; }
+.doc-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.doc-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  color: var(--faint);
+  font-size: 12.5px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.doc-open { color: var(--accent); font-weight: 700; }
 '''
     js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
 const panels = Array.from(document.querySelectorAll(".category-panel"));
