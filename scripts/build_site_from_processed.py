@@ -1213,8 +1213,36 @@ tabs.forEach((tab) => {
 });
 
 if (refreshButton && refreshStatus) {
+  function expectedLatestTradingDay() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    while (d.getDay() === 0 || d.getDay() === 6) {
+      d.setDate(d.getDate() - 1);
+    }
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
   refreshButton.addEventListener("click", async () => {
     refreshButton.disabled = true;
+    refreshStatus.textContent = "正在检查数据是否已是最新...";
+    try {
+      const metaResponse = await fetch(`meta.json?t=${Date.now()}`, { cache: "no-store" });
+      if (metaResponse.ok) {
+        const meta = await metaResponse.json();
+        const latestDaily = meta.latest_daily_date || meta.latest_common_date || "";
+        const expected = expectedLatestTradingDay();
+        if (latestDaily && latestDaily >= expected) {
+          refreshStatus.textContent = `数据已更新（截至 ${latestDaily}），请勿重复获取，避免消耗 API 与 token 额度。`;
+          refreshButton.disabled = false;
+          return;
+        }
+      }
+    } catch (error) {
+      // meta 不可用时继续按原流程刷新。
+    }
     refreshStatus.textContent = "正在提交刷新任务...";
     try {
       const response = await fetch("/api/refresh", { method: "POST" });
@@ -1236,6 +1264,30 @@ if (refreshButton && refreshStatus) {
     (SITE_DIR / "styles.css").write_text(css, encoding="utf-8")
     (SITE_DIR / "app.js").write_text(js, encoding="utf-8")
     (ROOT / "index.html").write_text(html, encoding="utf-8")
+
+    chart_dates = {
+        "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
+        "limit_up": limit_up_date,
+        "turnover_concentration": (chart3 or {}).get("last_date", ""),
+        "southbound": (southbound_chart or {}).get("last_date", ""),
+        "sentiment": (sentiment_chart or {}).get("last_date", ""),
+        "amount_share": (amount_share_chart or {}).get("last_date", ""),
+        "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
+        "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
+        "macro": (macro_chart or {}).get("last_date", ""),
+        "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
+    }
+    latest_daily = max(
+        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro"}),
+        default="",
+    )
+    site_meta = {
+        "updated_at": updated_at,
+        "latest_common_date": latest,
+        "latest_daily_date": latest_daily,
+        "charts": chart_dates,
+    }
+    (SITE_DIR / "meta.json").write_text(json.dumps(site_meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def main() -> None:

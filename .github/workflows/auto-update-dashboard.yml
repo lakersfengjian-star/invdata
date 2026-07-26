@@ -2,7 +2,12 @@ name: Auto Update Dashboard
 
 on:
   schedule:
-    - cron: "30 9 * * 1-5"
+    # 日频 T+1:UTC 22:00 周一至周五 = 北京时间 06:00 周二至周六,
+    # 覆盖前一交易日(周一至周五)收盘数据;周六早同时覆盖本周周频需求。
+    - cron: "0 22 * * 1-5"
+    # 宏观:UTC 15:00 = 北京时间 23:00,限统计局/央行集中发布窗口
+    # (每月 9–20 日:PMI/CPI/PPI/进出口/金融数据/经济数据;28–31 日:PMI/季度GDP)。
+    - cron: "0 15 9-20,28-31 * *"
   workflow_dispatch:
 
 permissions:
@@ -38,18 +43,11 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Update data snapshots
+        env:
+          # 手动刷新跑全量;23:00 宏观窗口只跑宏观;其余为日频 T+1。
+          UPDATE_MODE: ${{ github.event_name == 'workflow_dispatch' && 'all' || (github.event.schedule == '0 15 9-20,28-31 * *' && 'macro' || 'daily') }}
         run: |
-          set +e
-          python scripts/update_etf_dashboard.py
-          python scripts/update_index_amount_share.py
-          python scripts/update_theme_amount_share.py
-          python scripts/update_market_turnover.py
-          python scripts/update_southbound_flow.py
-          python scripts/update_macro_overview.py
-          python scripts/update_limit_up_tables.py
-          python scripts/update_citic_industry_crowding.py
-          set -e
-          python scripts/build_site_from_processed.py
+          python scripts/run_scheduled_updates.py --mode "$UPDATE_MODE"
 
       - name: Commit and push changes
         run: |

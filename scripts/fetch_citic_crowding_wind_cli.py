@@ -11,6 +11,11 @@ interrupted runs can resume.
 
 Usage:
     python scripts/fetch_citic_crowding_wind_cli.py [--budget SECONDS]
+    python scripts/fetch_citic_crowding_wind_cli.py --refresh-latest
+
+--refresh-latest 用于每周例行增量更新: 仅删除并重新获取覆盖最近 45 天的
+缓存块(当前年度块)和日频估值缓存, 历史年份块保持复用, 把 Wind 调用量
+压到最低(每行业约 2 次调用)。
 """
 
 from __future__ import annotations
@@ -186,6 +191,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--budget", type=float, default=0,
                         help="Stop launching new calls after N seconds (0 = no limit).")
+    parser.add_argument("--refresh-latest", action="store_true",
+                        help="Invalidate caches covering the last 45 days so only "
+                             "recent chunks are refetched (weekly incremental update).")
     args = parser.parse_args()
     started = time.monotonic()
 
@@ -195,6 +203,25 @@ def main() -> None:
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     chunks = year_chunks()
+
+    if args.refresh_latest:
+        from datetime import timedelta
+
+        cutoff = (date.today() - timedelta(days=45)).strftime("%Y%m%d")
+        recent_ends = {e for _b, e in chunks if e >= cutoff}
+        removed = 0
+        for kind in ("val", "amt"):
+            for code in CITIC_LEVEL1:
+                for end in recent_ends:
+                    for begin in (b for b, e in chunks if e == end):
+                        path = cache_path(kind, code, begin, end)
+                        if path.exists():
+                            path.unlink()
+                            removed += 1
+        for path in CACHE_DIR.glob("val_daily_latest_*.json"):
+            path.unlink()
+            removed += 1
+        print(f"refresh-latest: invalidated {removed} cached files", flush=True)
     tasks = [(kind, code, b, e)
              for code in CITIC_LEVEL1
              for (b, e) in chunks
