@@ -289,3 +289,28 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   letter-spacing: .03em;
   vertical-align: 3px;
 }
+
+/* ---------- 行情监控面板 ---------- */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.monitor-block h3 {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--accent);
+}
+.monitor-block { margin-bottom: 18px; min-width: 0; }
+.monitor-grid .monitor-block { margin-bottom: 8px; }
+.monitor-table { font-size: 13px; min-width: 0; }
+.monitor-table td:nth-child(1) { color: var(--text); font-weight: 600; white-space: nowrap; }
+.monitor-table td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.monitor-table th:nth-child(n+2) { text-align: right; }
+.monitor-table .pos { color: #c5513c; font-weight: 700; }
+.monitor-table .neg { color: #2a9d55; font-weight: 700; }
+@media (max-width: 900px) {
+  .monitor-grid { grid-template-columns: 1fr; }
+}

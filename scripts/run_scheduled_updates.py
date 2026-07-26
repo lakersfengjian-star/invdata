@@ -53,6 +53,7 @@ DAILY_DATASETS: dict[str, list[str]] = {
         "index_close.csv",
     ],
     "update_limit_up_tables.py": ["limit_up_tables.metadata.json"],
+    "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
 }
 
 MACRO_SCRIPT = "update_macro_overview.py"

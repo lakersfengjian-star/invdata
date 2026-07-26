@@ -678,6 +678,116 @@ def freq_badge(freq: str) -> str:
     return f'<span class="freq-badge">{freq}</span>'
 
 
+EQUITY_ORDER = ["沪深300", "300收益", "上证指数", "万得全A", "恒生指数", "恒生科技指数", "中证红利"]
+RATE_ORDER = ["7天逆回购利率", "DR007(FDR007定盘)", "10年期国债", "30年期国债", "5年期AAA企业债(中短票)", "银行二级资本债AAA-(5年)"]
+
+
+def render_market_monitor(indices: pd.DataFrame | None, breadth: pd.DataFrame | None, rates: pd.DataFrame | None) -> str:
+    note_html = chart_note_block(
+        "权益指数来自东方财富、中证指数官网、新浪财经与 Wind(万得全A);市场宽度按东方财富全A快照统计;利率来自中国货币网与 Wind(7天逆回购)。DR007 用银银间回购定盘利率 FDR007 展示;5年期AAA企业债用中短期票据(AAA)收益率曲线;二级资本债取 AAA- 5年期。",
+        "不同数据源口径存在细微差异;公开接口若临时不可用,对应指标会显示上一可得交易日数据或待更新。",
+    )
+    sections: list[str] = []
+    latest_dates: list[str] = []
+
+    # ---------- 权益 ----------
+    eq_rows = []
+    if indices is not None and not indices.empty:
+        indices = indices.copy()
+        latest_dates.append(str(indices["date"].max()))
+        for name in EQUITY_ORDER:
+            sub = indices[indices["index"].eq(name)].sort_values("date")
+            if sub.empty:
+                eq_rows.append(f"<tr><td>{name}</td><td>—</td><td>—</td></tr>")
+                continue
+            last = sub.iloc[-1]
+            pct = last.get("change_pct")
+            pct_text = "—" if pd.isna(pct) else f"{float(pct):+.2f}%"
+            pct_class = "" if pd.isna(pct) else ("pos" if pct > 0 else "neg" if pct < 0 else "")
+            eq_rows.append(
+                f'<tr><td>{name}</td><td>{float(last["close"]):,.2f}</td>'
+                f'<td class="{pct_class}">{pct_text}</td></tr>'
+            )
+    equity_table = (
+        '<div class="monitor-block"><h3>权益</h3>'
+        '<div class="table-wrap"><table class="data-table monitor-table">'
+        "<thead><tr><th>指数</th><th>点位</th><th>涨跌幅</th></tr></thead>"
+        f'<tbody>{"".join(eq_rows)}</tbody></table></div></div>'
+    )
+    sections.append(equity_table)
+
+    # ---------- 市场宽度 ----------
+    if breadth is not None and not breadth.empty:
+        breadth = breadth.sort_values("date")
+        latest_dates.append(str(breadth["date"].max()))
+        cur = breadth.iloc[-1]
+        prev = breadth.iloc[-2] if len(breadth) >= 2 else None
+
+        def diff_text(col: str, fmt: str, scale: float = 1.0) -> str:
+            if prev is None or pd.isna(prev.get(col)) or pd.isna(cur.get(col)):
+                return "—"
+            diff = (float(cur[col]) - float(prev[col])) * scale
+            cls = "pos" if diff > 0 else "neg" if diff < 0 else ""
+            return f'<span class="{cls}">{fmt.format(diff)}</span>'
+
+        breadth_rows = [
+            ("上涨股票数量(家)", f"{int(cur['up_count'])}", diff_text("up_count", "{:+.0f}")),
+            ("下跌股票数量(家)", f"{int(cur['down_count'])}", diff_text("down_count", "{:+.0f}")),
+            ("中位数涨跌幅(%)", f"{float(cur['median_pct']):.2f}", diff_text("median_pct", "{:+.2f}")),
+            ("平均涨跌幅(%)", f"{float(cur['mean_pct']):.2f}", diff_text("mean_pct", "{:+.2f}")),
+            ("全A成交额(亿元)", f"{float(cur['amount_100mn']):,.0f}", diff_text("amount_100mn", "{:+,.0f}")),
+        ]
+        body = "".join(f"<tr><td>{n}</td><td>{v}</td><td>{d}</td></tr>" for n, v, d in breadth_rows)
+        width_table = (
+            '<div class="monitor-block"><h3>市场宽度</h3>'
+            '<div class="table-wrap"><table class="data-table monitor-table">'
+            f"<thead><tr><th>指标</th><th>当日({cur['date']})</th><th>较前一日变化</th></tr></thead>"
+            f"<tbody>{body}</tbody></table></div></div>"
+        )
+    else:
+        width_table = '<div class="monitor-block"><h3>市场宽度</h3><p class="empty-note">待更新:公开快照接口暂不可用,将于下次定时任务自动补齐。</p></div>'
+    sections.append(width_table)
+
+    # ---------- 固收 ----------
+    rate_rows = []
+    if rates is not None and not rates.empty:
+        rates = rates.copy()
+        latest_dates.append(str(rates["date"].max()))
+        for name in RATE_ORDER:
+            sub = rates[rates["rate"].eq(name)].sort_values("date")
+            if sub.empty:
+                rate_rows.append(f"<tr><td>{name}</td><td>—</td><td>—</td><td>—</td></tr>")
+                continue
+            cur_r = sub.iloc[-1]
+            prev_r = sub.iloc[-2] if len(sub) >= 2 else None
+            prev_text = "—" if prev_r is None else f"{float(prev_r['value']):.3f}"
+            if prev_r is None:
+                diff_text = "—"
+            else:
+                diff_bp = (float(cur_r["value"]) - float(prev_r["value"])) * 100
+                cls = "neg" if diff_bp > 0 else "pos" if diff_bp < 0 else ""
+                diff_text = f'<span class="{cls}">{diff_bp:+.1f}</span>'
+            rate_rows.append(
+                f"<tr><td>{name}</td><td>{float(cur_r['value']):.3f}</td>"
+                f"<td>{prev_text}</td><td>{diff_text}</td></tr>"
+            )
+    rates_table = (
+        '<div class="monitor-block"><h3>固收</h3>'
+        '<div class="table-wrap"><table class="data-table monitor-table">'
+        "<thead><tr><th>品种</th><th>当日(%)</th><th>上一交易日(%)</th><th>变化(bp)</th></tr></thead>"
+        f'<tbody>{"".join(rate_rows)}</tbody></table></div></div>'
+    )
+    sections.append(rates_table)
+
+    latest = max(latest_dates) if latest_dates else "待更新"
+    return f'''      <section class="chart-section">
+        <h2><span class="chart-num">001</span>行情监控面板（截至{latest}）{freq_badge("日频")}</h2>
+        <div class="monitor-grid">{sections[0]}{sections[2]}</div>
+        {sections[1]}
+        {note_html}
+      </section>'''
+
+
 def chart_note_block(data_note: str, risk_note: str) -> str:
     return f'''<div class="chart-notes">
           <p><strong>数据说明：</strong>{data_note}</p>
@@ -701,6 +811,7 @@ def build_page(
     limit_up_longest: pd.DataFrame | None = None,
     limit_up_amount_top: pd.DataFrame | None = None,
     limit_up_meta: dict | None = None,
+    market_monitor_html: str = "",
 ) -> None:
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -713,7 +824,7 @@ def build_page(
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     valuation_html = "\n\n".join(
         f'''      <section class="chart-section">
-      <h2><span class="chart-num">{5 + idx:03d}</span>{chart["title"]}{freq_badge("日频")}</h2>
+      <h2><span class="chart-num">{6 + idx:03d}</span>{chart["title"]}{freq_badge("日频")}</h2>
       <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
       {chart_note_block(
           f"统计区间自 {VALUATION_START_DATE} 起；PE_TTM 序列按交易日历史数据绘制，水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。",
@@ -725,7 +836,7 @@ def build_page(
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">012</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">013</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -735,7 +846,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">013</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">014</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -745,7 +856,7 @@ def build_page(
     market_turnover_html = ""
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">001</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">002</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={market_turnover_chart["last_date"].replace("-", "")}" alt="全市场成交额变化">
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
@@ -755,7 +866,7 @@ def build_page(
     southbound_html = ""
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">007</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">008</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -770,7 +881,7 @@ def build_page(
             if missing:
                 macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
         macro_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">004</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <h2><span class="chart-num">005</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(macro_chart["path"]).name}?v={macro_chart["last_date"].replace("-", "")}" alt="宏观经济数据概览">
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
@@ -778,14 +889,14 @@ def build_page(
         )}
       </section>'''
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
-    limit_up_html = render_limit_up_table("<span class=\"chart-num\">002</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
-    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
+    limit_up_html = render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
+    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
     sentiment_html = '<p class="empty-note">暂无图表。</p>'
     if sentiment_chart:
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">010</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">011</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -800,7 +911,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">014</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">015</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -838,6 +949,7 @@ def build_page(
 
     <section class="category-panel active" id="panel-market" data-category="market">
       <div class="category-head"><span class="sec-num">01</span><h2>行情</h2></div>
+{market_monitor_html}
 {market_turnover_html}
 {limit_up_html}
     </section>
@@ -861,7 +973,7 @@ def build_page(
       <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
 {southbound_html}
       <section class="chart-section">
-        <h2><span class="chart-num">008</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">009</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -869,7 +981,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">009</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">010</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -882,7 +994,7 @@ def build_page(
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
       <section class="chart-section">
-        <h2><span class="chart-num">011</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">012</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
@@ -1189,6 +1301,31 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   letter-spacing: .03em;
   vertical-align: 3px;
 }
+
+/* ---------- 行情监控面板 ---------- */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.monitor-block h3 {
+  margin: 4px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--accent);
+}
+.monitor-block { margin-bottom: 18px; min-width: 0; }
+.monitor-grid .monitor-block { margin-bottom: 8px; }
+.monitor-table { font-size: 13px; min-width: 0; }
+.monitor-table td:nth-child(1) { color: var(--text); font-weight: 600; white-space: nowrap; }
+.monitor-table td:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.monitor-table th:nth-child(n+2) { text-align: right; }
+.monitor-table .pos { color: #c5513c; font-weight: 700; }
+.monitor-table .neg { color: #2a9d55; font-weight: 700; }
+@media (max-width: 900px) {
+  .monitor-grid { grid-template-columns: 1fr; }
+}
 '''
     js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
 const panels = Array.from(document.querySelectorAll(".category-panel"));
@@ -1377,6 +1514,19 @@ def main() -> None:
         limit_up_amount_top = pd.read_csv(limit_up_amount_path, dtype={"代码": str})
     if limit_up_meta_path.exists():
         limit_up_meta = json.loads(limit_up_meta_path.read_text(encoding="utf-8"))
+    monitor_indices = None
+    monitor_breadth = None
+    monitor_rates = None
+    monitor_indices_path = PROCESSED_DIR / "market_monitor_indices.csv"
+    monitor_breadth_path = PROCESSED_DIR / "market_monitor_breadth.csv"
+    monitor_rates_path = PROCESSED_DIR / "market_monitor_rates.csv"
+    if monitor_indices_path.exists():
+        monitor_indices = pd.read_csv(monitor_indices_path)
+    if monitor_breadth_path.exists():
+        monitor_breadth = pd.read_csv(monitor_breadth_path)
+    if monitor_rates_path.exists():
+        monitor_rates = pd.read_csv(monitor_rates_path)
+    market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
     build_page(
         metadata,
         chart3,
@@ -1393,6 +1543,7 @@ def main() -> None:
         limit_up_longest,
         limit_up_amount_top,
         limit_up_meta,
+        market_monitor_html=market_monitor_html,
     )
     chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))

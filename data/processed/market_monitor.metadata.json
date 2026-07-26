@@ -1,0 +1,27 @@
+{
+  "latest_date": "2026-07-24",
+  "sections": {
+    "indices": "2026-07-24",
+    "breadth": "",
+    "rates": "2026-07-24"
+  },
+  "run": {
+    "expected": "2026-07-24",
+    "indices": {
+      "added": 3,
+      "notes": [
+        "fetch_em_indices: RuntimeError"
+      ]
+    },
+    "breadth": {
+      "added": 0,
+      "notes": [
+        "section failed: RuntimeError: em_get all hosts failed: http_get failed for https://55.push2.eastmoney.com/api/qt/clist/get"
+      ]
+    },
+    "rates": {
+      "added": 33,
+      "notes": []
+    }
+  }
+}
