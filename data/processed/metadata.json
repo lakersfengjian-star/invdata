@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-07-07 09:17:22",
+  "updated_at": "2026-07-24 15:53:21",
   "start_date": "2025-01-01",
-  "latest_common_date": "2026-07-06",
+  "latest_common_date": "2026-07-24",
   "etf_selection": [
     {
       "code": "510300",
@@ -49,61 +49,61 @@
   "chart_files": [
     {
       "path": "output/charts/fig_001_broad_etf_flow.png",
-      "last_date": "2026-07-06",
+      "last_date": "2026-07-24",
       "last_values": {
-        "沪深300": 4842.0,
-        "上证指数": 4041.24,
-        "daily_net_inflow_100mn": -23.504085,
-        "rolling_7d_net_inflow_100mn": -605.9752560000001
+        "沪深300": 4649.19,
+        "上证指数": 3814.2,
+        "daily_net_inflow_100mn": 14.822937,
+        "rolling_7d_net_inflow_100mn": 421.63460100000003
       }
     },
     {
       "path": "output/charts/fig_002_star50_etf_flow.png",
-      "last_date": "2026-07-06",
+      "last_date": "2026-07-24",
       "last_values": {
-        "科创50": 1996.1,
-        "daily_net_inflow_100mn": -0.88872,
-        "rolling_7d_net_inflow_100mn": 1.1544600000000067
+        "科创50": 1787.2,
+        "daily_net_inflow_100mn": -11.02725,
+        "rolling_7d_net_inflow_100mn": 213.41625000000002
       }
     },
     {
       "path": "output/charts/fig_003_a_share_turnover_concentration.png",
-      "last_date": "2026-07-06",
+      "last_date": "2026-07-24",
       "last_values": {
-        "top10_share_pct": 7.745182079370096,
-        "top100_share_pct": 30.77194948658842,
-        "market_amount_100mn": 30999.17554069
+        "top10_share_pct": 8.454986171567043,
+        "top100_share_pct": 32.607498190755884,
+        "market_amount_100mn": 19442.04095789
       }
     }
   ],
   "valuation_chart_files": [
     {
       "path": "output/charts/fig_004a_hs300_pe_ttm_channel.png",
-      "last_date": "2026-07-03",
+      "last_date": "2026-07-24",
       "last_values": {
-        "pe_ttm": 13.6,
-        "mean": 12.29963786531131,
-        "std": 1.411447996563572,
-        "mean_plus_1std": 13.711085861874881,
-        "mean_minus_1std": 10.888189868747737,
-        "mean_plus_2std": 15.122533858438453,
-        "mean_minus_2std": 9.476741872184165
+        "pe_ttm": 13.68,
+        "mean": 12.312485840151039,
+        "std": 1.4109845704707795,
+        "mean_plus_1std": 13.723470410621818,
+        "mean_minus_1std": 10.90150126968026,
+        "mean_plus_2std": 15.134454981092599,
+        "mean_minus_2std": 9.49051669920948
       },
-      "title": "图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-03）"
+      "title": "图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-24）"
     },
     {
       "path": "output/charts/fig_004b_sse_pe_ttm_channel.png",
-      "last_date": "2026-07-03",
+      "last_date": "2026-07-24",
       "last_values": {
-        "pe_ttm": 16.59,
-        "mean": 14.635250000000003,
-        "std": 1.8387923856433601,
-        "mean_plus_1std": 16.47404238564336,
-        "mean_minus_1std": 12.796457614356642,
-        "mean_plus_2std": 18.312834771286724,
-        "mean_minus_2std": 10.957665228713282
+        "pe_ttm": 15.76,
+        "mean": 14.624875000000003,
+        "std": 1.8300546397239073,
+        "mean_plus_1std": 16.45492963972391,
+        "mean_minus_1std": 12.794820360276095,
+        "mean_plus_2std": 18.28498427944782,
+        "mean_minus_2std": 10.964765720552188
       },
-      "title": "图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-03）"
+      "title": "图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-24）"
     }
   ],
   "notes": [
@@ -118,138 +118,103 @@
   "source_logs": [
     {
       "source": "Eastmoney ETF quote list",
-      "status": "failed",
-      "detail": "ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
+      "status": "ok",
+      "detail": "ranking snapshot: 100 ETFs"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "沪深300 close: 363 rows"
+      "detail": "沪深300 close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "上证指数 close: 363 rows"
+      "detail": "上证指数 close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "科创50 close: 363 rows"
+      "detail": "科创50 close: 377 rows"
     },
     {
       "source": "SSE ETF scale",
       "status": "ok",
-      "detail": "363 trading days, 0 failed days"
+      "detail": "377 trading days, 0 failed days"
+    },
+    {
+      "source": "SZSE ETF scale",
+      "status": "failed",
+      "detail": "2025-01-02 to 2025-03-27: ConnectionError(ProtocolError('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
     },
     {
       "source": "SZSE ETF scale",
       "status": "ok",
-      "detail": "363 trading days, 0 failed chunks"
+      "detail": "377 trading days, 1 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "510300: 243 rows"
+      "status": "failed",
+      "detail": "510300: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "510310: 243 rows"
+      "status": "failed",
+      "detail": "510310: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "510330: 243 rows"
+      "status": "failed",
+      "detail": "510330: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "159919: 243 rows"
+      "status": "failed",
+      "detail": "159919: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "510050: 243 rows"
+      "status": "failed",
+      "detail": "510050: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
-      "status": "cache",
-      "detail": "588000: 243 rows"
+      "status": "failed",
+      "detail": "588000: ValueError('Length mismatch: Expected axis has 14 elements, new values have 13 elements')"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510300 ETF close: 363 rows"
+      "detail": "510300 ETF close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510310 ETF close: 363 rows"
+      "detail": "510310 ETF close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510330 ETF close: 363 rows"
+      "detail": "510330 ETF close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "159919 ETF close: 363 rows"
+      "detail": "159919 ETF close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510050 ETF close: 363 rows"
+      "detail": "510050 ETF close: 377 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "588000 ETF close: 363 rows"
+      "detail": "588000 ETF close: 377 rows"
     },
     {
       "source": "AkShare stock_info_a_code_name",
       "status": "ok",
-      "detail": "A-share stock list: 5523 names"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh601901: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh601988: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh603501: ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh605599: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688146: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688181: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688265: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688575: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+      "detail": "A-share stock list: 5530 names"
     },
     {
       "source": "Sina A-share daily",
@@ -258,58 +223,23 @@
     },
     {
       "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688502: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688696: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh688750: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "bj920056: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "bj920090: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "bj920300: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "bj920974: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
       "status": "ok",
-      "detail": "5507 symbols ok, 16 symbols failed"
+      "detail": "5529 symbols ok, 1 symbols failed"
     },
     {
-      "source": "Index PE_TTM",
-      "status": "cache",
-      "detail": "沪深300指数: 1574 rows"
+      "source": "Legulegu index PE",
+      "status": "ok",
+      "detail": "沪深300指数: 1589 rows"
     },
     {
-      "source": "Index PE_TTM",
-      "status": "cache",
+      "source": "Legulegu market PE",
+      "status": "ok",
       "detail": "上证指数: 80 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "missing",
-      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
+      "detail": "/home/runner/work/invdata/invdata/data/raw/index_pe_ttm_wind.csv"
     },
     {
       "source": "Index PE_TTM",
@@ -319,7 +249,7 @@
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "missing",
-      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
+      "detail": "/home/runner/work/invdata/invdata/data/raw/index_pe_ttm_wind.csv"
     },
     {
       "source": "Index PE_TTM",
