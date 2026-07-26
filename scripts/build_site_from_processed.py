@@ -613,93 +613,74 @@ def draw_industrial_profits_chart(df: pd.DataFrame | None, out_path: Path) -> di
     if not projections:
         return None
 
-    fig = plt.figure(figsize=(16, 8.2), dpi=180)
-    gs = fig.add_gridspec(2, 2, width_ratios=[2.7, 1.0], height_ratios=[1.0, 1.0],
-                          wspace=0.16, hspace=0.42, left=0.055, right=0.985, top=0.94, bottom=0.08)
+    fig, ax = plt.subplots(figsize=(14.5, 7.8), dpi=180)
     fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
 
-    # 左: 官方累计同比走势(近36个月) + 外推全年同比虚线
-    ax1 = fig.add_subplot(gs[:, 0])
-    ax1.set_facecolor("#fbfbf8")
-    trend = data[data["date"].ge(data["date"].max() - pd.DateOffset(months=36))].dropna(subset=["cum_yoy"])
-    ax1.plot(trend["date"], trend["cum_yoy"], color="#1f6fb2", linewidth=2.4,
-             marker="o", markersize=4.5, label="官方累计同比（%）")
-    ax1.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
+    # 柱状图: 过去5年全年同比 vs 当年同期(1-cm月)累计同比 + 今年同期实际值, 外推全年用虚线
+    years = [y for y in range(cy - 5, cy)]
+    yoy_dec: dict[int, float] = {}
+    ytd_yoy: dict[int, float] = {}
+    for y in years + [cy]:
+        dec = data[(data["year"].eq(y)) & (data["month"].eq(12))]["cum_yoy"]
+        if y != cy and not dec.empty and pd.notna(dec.iloc[0]):
+            yoy_dec[y] = float(dec.iloc[0])
+        ytd = data[(data["year"].eq(y)) & (data["month"].eq(cm))]["cum_yoy"]
+        if not ytd.empty and pd.notna(ytd.iloc[0]):
+            ytd_yoy[y] = float(ytd.iloc[0])
+    latest_yoy = ytd_yoy.get(cy, float("nan"))
+
+    width = 0.36
+    xs = list(range(len(years)))
+    color_full, color_ytd, color_cur = "#b8c4d0", "#1f6fb2", "#e07b39"
+    for i, y in enumerate(years):
+        if y in yoy_dec:
+            ax.bar(i - width / 2 - 0.02, yoy_dec[y], width, color=color_full, alpha=0.95)
+            ax.text(i - width / 2 - 0.02, yoy_dec[y] + (1.5 if yoy_dec[y] >= 0 else -1.5),
+                    f"{yoy_dec[y]:+.1f}", ha="center", va="bottom" if yoy_dec[y] >= 0 else "top",
+                    fontsize=10, color="#6b7684")
+        if y in ytd_yoy:
+            ax.bar(i + width / 2 + 0.02, ytd_yoy[y], width, color=color_ytd, alpha=0.92)
+            ax.text(i + width / 2 + 0.02, ytd_yoy[y] + (1.5 if ytd_yoy[y] >= 0 else -1.5),
+                    f"{ytd_yoy[y]:+.1f}", ha="center", va="bottom" if ytd_yoy[y] >= 0 else "top",
+                    fontsize=10, color=color_ytd)
+    cur_x = len(years)
+    if cy in ytd_yoy:
+        ax.bar(cur_x, ytd_yoy[cy], width + 0.06, color=color_cur, alpha=0.95)
+        ax.text(cur_x, ytd_yoy[cy] + (1.5 if ytd_yoy[cy] >= 0 else -1.5),
+                f"{ytd_yoy[cy]:+.1f}", ha="center", va="bottom" if ytd_yoy[cy] >= 0 else "top",
+                fontsize=11.5, fontweight="bold", color=color_cur)
+
     proj_colors = {"近1年": "#c5513c", "近3年": "#e07b39", "近5年": "#8a6d1f"}
+    label_xs = {"近3年": 1.45, "近1年": 2.55, "近5年": 3.65}
     for label, value in projections.items():
         color = proj_colors[label]
-        ax1.axhline(value, linestyle="--", color=color, linewidth=1.4, alpha=0.9)
-        ax1.text(trend["date"].max(), value, f" 外推全年 {value:+.1f}%（{label}节奏）",
-                 color=color, fontsize=10.5, va="bottom" if value >= 0 else "top")
-    latest_yoy = float(latest["cum_yoy"]) if pd.notna(latest["cum_yoy"]) else float("nan")
-    ax1.annotate(
-        f"{latest_date}  官方累计同比 {latest_yoy:+.1f}%",
-        xy=(latest["date"], latest_yoy), xytext=(-12, -26), textcoords="offset points",
-        ha="right", fontsize=11, color="#1f6fb2",
-        bbox={"boxstyle": "round,pad=0.3", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.92},
+        ax.axhline(value, linestyle="--", color=color, linewidth=1.5, alpha=0.9)
+        ax.text(label_xs.get(label, 2.5), value + 0.9, f"外推{cy}全年 {value:+.1f}%（{label}节奏）",
+                color=color, fontsize=10, va="bottom", ha="left")
+
+    ax.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
+    tick_labels = [str(y) for y in years] + [f"{cy}\n(截至{cm}月)"]
+    ax.set_xticks(xs + [cur_x])
+    ax.set_xticklabels(tick_labels, fontsize=11.5)
+    all_vals = list(yoy_dec.values()) + list(ytd_yoy.values()) + list(projections.values())
+    ax.set_ylim(min(0, min(all_vals) - 10), max(all_vals) + 12)
+    ax.set_xlim(-0.7, cur_x + 0.62)
+    ax.set_ylabel("规模以上工业企业利润总额同比（%）", fontsize=12)
+    ax.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
+    ax.spines[["top", "right"]].set_visible(False)
+
+    from matplotlib.patches import Patch
+    ax.legend(
+        handles=[
+            Patch(facecolor=color_full, label="全年同比"),
+            Patch(facecolor=color_ytd, label=f"当年1-{cm}月累计同比"),
+            Patch(facecolor=color_cur, label=f"{cy}年1-{cm}月累计同比"),
+        ],
+        loc="upper left", frameon=False, fontsize=10.5,
     )
-    ax1.set_ylabel("利润总额累计同比（%）", fontsize=12)
-    ax1.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
-    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
-    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
-    ax1.set_xlim(trend["date"].min(), trend["date"].max() + pd.DateOffset(months=7))
-    ax1.legend(loc="upper left", frameon=False, fontsize=10.5)
-    ax1.spines[["top", "right"]].set_visible(False)
 
-    # 右上: 累计利润占全年比例的季节曲线
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax2.set_facecolor("#fbfbf8")
-    hist_years = [y for y in range(cy - 5, cy) if y in full_year.index]
-    for y in hist_years:
-        sub = data[data["year"].eq(y)].sort_values("month")
-        share = sub["cum_value"] / float(full_year[y]) * 100
-        ax2.plot(sub["month"], share, color="#b6bdc9", linewidth=1.0, alpha=0.85)
-    if hist_years:
-        months = sorted(data[data["year"].eq(hist_years[-1])]["month"])
-        mean_share = []
-        for m in months:
-            vals = []
-            for y in hist_years:
-                cum_m = data[(data["year"].eq(y)) & (data["month"].eq(m))]["cum_value"]
-                if not cum_m.empty:
-                    vals.append(float(cum_m.iloc[0]) / float(full_year[y]) * 100)
-            mean_share.append(sum(vals) / len(vals) if vals else float("nan"))
-        ax2.plot(months, mean_share, color="#8a6d1f", linewidth=2.0, label=f"{cy - 5}-{cy - 1}均值")
-    cur = data[data["year"].eq(cy)].sort_values("month")
-    cur_share = []
-    for m in cur["month"]:
-        est_full_5y = float(latest["cum_value"]) / (sum(share_by_year.values()) / len(share_by_year))
-        cum_m = cur[cur["month"].eq(m)]["cum_value"].iloc[0]
-        cur_share.append(float(cum_m) / est_full_5y * 100)
-    ax2.plot(cur["month"], cur_share, color="#c5513c", linewidth=2.2, marker="o", markersize=4.5, label=f"{cy}实际进度*")
-    ax2.set_xlim(1.5, 12.5)
-    ax2.set_ylim(0, 118)
-    ax2.set_xticks([2, 4, 6, 8, 10, 12])
-    ax2.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
-    ax2.set_title("累计利润占全年比例（%）", fontsize=11.5, color="#4a4a4a", pad=8)
-    ax2.grid(color="#e3e3e3", linewidth=0.6, alpha=0.6)
-    ax2.legend(loc="upper left", frameon=False, fontsize=9)
-    ax2.spines[["top", "right"]].set_visible(False)
-
-    # 右下: 官方累计同比 vs 三个外推值
-    ax3 = fig.add_subplot(gs[1, 1])
-    ax3.set_facecolor("#fbfbf8")
-    bar_labels = [f"官方累计\n1-{cm}月"] + [f"外推全年\n{k}节奏" for k in projections]
-    bar_values = [latest_yoy] + list(projections.values())
-    bar_colors = ["#1f6fb2"] + [proj_colors[k] for k in projections]
-    bars = ax3.bar(range(len(bar_values)), bar_values, width=0.56, color=bar_colors, alpha=0.88)
-    for rect, v in zip(bars, bar_values):
-        ax3.text(rect.get_x() + rect.get_width() / 2, v + (1.2 if v >= 0 else -1.2),
-                 f"{v:+.1f}%", ha="center", va="bottom" if v >= 0 else "top", fontsize=10.5, color="#4a4a4a")
-    ax3.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
-    ax3.set_xticks(range(len(bar_labels)))
-    ax3.set_xticklabels(bar_labels, fontsize=9.5)
-    ax3.set_ylim(min(0, min(bar_values) - 8), max(bar_values) + 9)
-    ax3.set_title(f"{cy}年全年同比：官方 vs 外推", fontsize=11.5, color="#4a4a4a", pad=8)
-    ax3.grid(axis="y", color="#e3e3e3", linewidth=0.6, alpha=0.6)
-    ax3.spines[["top", "right"]].set_visible(False)
-
+    fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {
@@ -1098,7 +1079,7 @@ def build_page(
         <h2><span class="chart-num">009</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(ipc["path"]).name}?v={ipc["last_date"].replace("-", "")}" alt="工业企业利润同比与全年外推">
         {chart_note_block(
-            f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。外推方法:以过去1年/3年/5年同期(1-{ipc['current_month']}月)累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比;当前外推结果——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。季节性进度图中{ipc['current_year']}年曲线以近5年节奏外推的全年利润为分母。",
+            f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。柱状图对比过去5年全年同比与当年同期(1-{ipc['current_month']}月)累计同比,橙色柱为{ipc['current_year']}年同期实际值。外推方法:以过去1年/3年/5年同期累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比,图中以虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。",
             "统计局对规模以上企业样本与基数有年度调整,官方同比与按累计额直接计算的同比存在口径差;外推基于季节性进度假设,下半年盈利节奏变化会使实际值偏离外推值,仅供参考。",
         )}
       </section>'''
