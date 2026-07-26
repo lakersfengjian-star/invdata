@@ -267,6 +267,15 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   .category-head h2 { font-size: 20px; }
 }
 
+.chart-num {
+  margin-right: 10px;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- 更新频率徽章 ---------- */
 .freq-badge {
   display: inline-block;

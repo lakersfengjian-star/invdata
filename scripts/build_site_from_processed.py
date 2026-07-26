@@ -524,7 +524,7 @@ def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> d
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
-    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "title": f"图四：{index_name}历史滚动市盈率及标准差通道（截至{latest_date}）"}
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "title": f"{index_name}历史滚动市盈率及标准差通道（截至{latest_date}）"}
 
 
 def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> dict | None:
@@ -658,19 +658,19 @@ def build_page(
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     valuation_html = "\n\n".join(
         f'''      <section class="chart-section">
-      <h2>{chart["title"]}{freq_badge("日频")}</h2>
+      <h2><span class="chart-num">{5 + idx:03d}</span>{chart["title"]}{freq_badge("日频")}</h2>
       <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
       {chart_note_block(
           f"统计区间自 {VALUATION_START_DATE} 起；PE_TTM 序列按交易日历史数据绘制，水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。",
           "估值分位和标准差通道仅反映历史相对位置，不代表合理估值中枢；若指数成分或口径调整，历史可比性会受影响。",
       )}
     </section>'''
-        for chart in valuation_charts
+        for idx, chart in enumerate(valuation_charts)
     )
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2>图五：主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">012</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -680,7 +680,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2>图七：TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">013</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -690,7 +690,7 @@ def build_page(
     market_turnover_html = ""
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
-        <h2>图八：全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">001</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={market_turnover_chart["last_date"].replace("-", "")}" alt="全市场成交额变化">
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
@@ -700,7 +700,7 @@ def build_page(
     southbound_html = ""
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2>图九：南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">008</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -715,7 +715,7 @@ def build_page(
             if missing:
                 macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
         macro_html = f'''      <section class="chart-section">
-        <h2>图十：宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <h2><span class="chart-num">004</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(macro_chart["path"]).name}?v={macro_chart["last_date"].replace("-", "")}" alt="宏观经济数据概览">
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
@@ -723,14 +723,14 @@ def build_page(
         )}
       </section>'''
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
-    limit_up_html = render_limit_up_table("涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
-    limit_up_html += "\n" + render_limit_up_table("涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
+    limit_up_html = render_limit_up_table("<span class=\"chart-num\">002</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
+    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
     sentiment_html = '<p class="empty-note">暂无图表。</p>'
     if sentiment_chart:
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2>图十一：上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">011</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -745,7 +745,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2>图六：中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">014</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -783,27 +783,8 @@ def build_page(
 
     <section class="category-panel active" id="panel-market" data-category="market">
       <div class="category-head"><span class="sec-num">01</span><h2>行情</h2></div>
-      <section class="chart-section">
-        <h2>图一：沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
-        {chart_note_block(
-            "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
-            broad_etf_risk,
-        )}
-      </section>
-      <section class="chart-section">
-        <h2>图二：科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
-        {chart_note_block(
-            "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
-            star_etf_risk,
-        )}
-      </section>
 {market_turnover_html}
 {limit_up_html}
-{amount_share_html}
-{theme_amount_html}
-{industry_crowding_html}
     </section>
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
@@ -824,7 +805,7 @@ def build_page(
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
       <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
       <section class="chart-section">
-        <h2>图三：A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">007</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
@@ -832,11 +813,30 @@ def build_page(
         )}
       </section>
 {southbound_html}
+      <section class="chart-section">
+        <h2><span class="chart-num">009</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
+        {chart_note_block(
+            "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
+            broad_etf_risk,
+        )}
+      </section>
+      <section class="chart-section">
+        <h2><span class="chart-num">010</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
+        {chart_note_block(
+            "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
+            star_etf_risk,
+        )}
+      </section>
     </section>
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
+{amount_share_html}
+{theme_amount_html}
+{industry_crowding_html}
     </section>
   </main>
   <script src="app.js"></script>
@@ -1110,6 +1110,15 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   .category-tab { padding: 0 14px; font-size: 13.5px; }
   .chart-section { padding: 16px 14px 12px; }
   .category-head h2 { font-size: 20px; }
+}
+
+.chart-num {
+  margin-right: 10px;
+  color: var(--faint);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------- 更新频率徽章 ---------- */
