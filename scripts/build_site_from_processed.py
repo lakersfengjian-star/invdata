@@ -539,8 +539,10 @@ def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> di
     latest_date = latest["date"].strftime("%Y-%m-%d")
     latest_val = latest["sentiment_3y"]
 
-    fig, ax1 = plt.subplots(figsize=(16, 7.6), dpi=180)
+    fig = plt.figure(figsize=(16, 7.6), dpi=180)
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.2, 1.0], wspace=0.20, left=0.055, right=0.985, top=0.93, bottom=0.09)
     fig.patch.set_facecolor("#fbfbf8")
+    ax1 = fig.add_subplot(gs[0, 0])
     ax1.set_facecolor("#fbfbf8")
     ax2 = ax1.twinx()
     ax2.plot(plot_df["date"], plot_df["close"], color="#98a2b3", linewidth=1.6, alpha=0.85, label="上证指数（右轴）")
@@ -553,16 +555,17 @@ def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> di
     ax1.annotate(
         f"{latest_date}  情绪 {latest_val:.2f}（{zone}）",
         xy=(latest["date"], latest_val),
-        xytext=(12, 0),
+        xytext=(-10, 22),
         textcoords="offset points",
-        va="center",
+        ha="right",
+        va="bottom",
         fontsize=11,
         color=zcolor,
         bbox={"boxstyle": "round,pad=0.3", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.92},
     )
     ax1.set_ylim(0, 1.05)
     ax1.set_ylabel("情绪指数（0–1，等权，3年分位）", fontsize=12)
-    ax2.set_ylabel("上证指数收盘价（点）", fontsize=12)
+    ax2.tick_params(axis="y", labelsize=9, pad=2)
     ax1.set_xlabel("日期", fontsize=12)
     ax1.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
     ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
@@ -573,7 +576,39 @@ def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> di
     ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
     ax1.spines[["top", "right"]].set_visible(False)
     ax2.spines[["top", "left"]].set_visible(False)
-    fig.tight_layout()
+
+    comp_specs = [
+        ("股债收益差", "pe_spread_pct3"),
+        ("换手率(20日均)", "turn_ma20_pct3"),
+        ("流动性冲击", "ls_pct3"),
+        ("新发基金占比", "fund30_pct3"),
+        ("乖离率(250日)", "bias250_pct3"),
+        ("RSI(90日)", "rsi90_pct3"),
+    ]
+    comp_names, comp_vals = [], []
+    for name, col in comp_specs:
+        val = latest.get(col)
+        if pd.notna(val):
+            comp_names.append(name)
+            comp_vals.append(float(val))
+    axb = fig.add_subplot(gs[0, 1])
+    axb.set_facecolor("#fbfbf8")
+    ypos = range(len(comp_vals) - 1, -1, -1)
+    bar_colors = ["#c5513c" if v >= 0.8 else "#2a9d55" if v <= 0.2 else "#e07b39" for v in comp_vals]
+    axb.barh(list(ypos), comp_vals, height=0.58, color=bar_colors, alpha=0.88)
+    for y, v in zip(ypos, comp_vals):
+        axb.text(min(v + 0.025, 0.97), y, f"{v:.2f}", va="center", fontsize=10.5, color="#4a4a4a")
+    for level, color in [(0.2, "#2a9d55"), (0.5, "#8a93a1"), (0.8, "#c5513c")]:
+        axb.axvline(level, linestyle="--", color=color, linewidth=0.9, alpha=0.7)
+    axb.set_yticks(list(ypos))
+    axb.set_yticklabels(comp_names, fontsize=10.5)
+    axb.set_xlim(0, 1.0)
+    axb.set_xticks([0, 0.2, 0.5, 0.8, 1.0])
+    axb.tick_params(axis="x", labelsize=9)
+    axb.set_title(f"分项当前分位（{latest_date}）", fontsize=11.5, color="#4a4a4a", pad=10)
+    axb.grid(axis="x", color="#e3e3e3", linewidth=0.7, alpha=0.6)
+    axb.spines[["top", "right", "left"]].set_visible(False)
+
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "value": float(latest_val)}
@@ -700,7 +735,7 @@ def build_page(
     southbound_html = ""
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">008</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">007</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -730,7 +765,7 @@ def build_page(
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">011</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">010</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -804,17 +839,9 @@ def build_page(
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
       <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
-      <section class="chart-section">
-        <h2><span class="chart-num">007</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
-        {chart_note_block(
-            "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
-            "个股成交额排名依赖公开行情接口完整性；停牌、新股、北交所覆盖和接口延迟都可能影响集中度读数。",
-        )}
-      </section>
 {southbound_html}
       <section class="chart-section">
-        <h2><span class="chart-num">009</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">008</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -822,7 +849,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">010</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">009</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -834,6 +861,14 @@ def build_page(
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
+      <section class="chart-section">
+        <h2><span class="chart-num">011</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
+        {chart_note_block(
+            "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
+            "个股成交额排名依赖公开行情接口完整性；停牌、新股、北交所覆盖和接口延迟都可能影响集中度读数。",
+        )}
+      </section>
 {amount_share_html}
 {theme_amount_html}
 {industry_crowding_html}
