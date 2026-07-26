@@ -163,7 +163,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 | 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | 周二至周六 06:00（覆盖前一交易日收盘） | GitHub Actions（cron `0 22 * * 1-5` UTC） |
 | 情绪指数（依赖 Wind 能力） | 周二至周六 06:00 | 本地定时任务（cron `0 6 * * 2-6` Asia/Shanghai） |
 | 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
-| 宏观（统计局/央行发布） | 每月 9–20 日、28–31 日 23:00（官方集中发布窗口） | GitHub Actions（cron `0 15 9-20,28-31 * *` UTC） |
+| 宏观（统计局/央行发布） | 每月 9–20 日、27–31 日 23:00（官方集中发布窗口；27 日覆盖工业企业利润发布） | GitHub Actions（cron `0 15 9-20,27-31 * *` UTC） |
 
 ### 增量取数与新鲜度守卫
 
