@@ -1,6 +1,6 @@
-# 投研数据页固定指令
+# 投研数据手册（Vibe Research）固定指令
 
-目标：维护一个可分享的静态投研页面。所有图表先由本地 Python 脚本增量抓数并生成 PNG/CSV，再推送到 GitHub，由 Vercel 自动部署静态站点。
+目标：维护一个可分享的静态投研页面「Vibe Research · 投研数据手册」。所有图表先由本地 Python 脚本增量抓数并生成 PNG/CSV，再推送到 GitHub，由 Vercel 自动部署静态站点。
 
 ## 一句话触发
 
@@ -149,13 +149,44 @@ git log --oneline -3
 
 ## 自动更新
 
-GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 每个工作日北京时间 17:30 自动运行，也可以在 GitHub Actions 页面手动触发。
+GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行，也可以在 GitHub Actions 页面手动触发。
 
-自动更新流程：
+### 更新时间与频率规则（2026-07-26 起，新增图表必须遵守）
+
+统一采用 **T+1** 规则，其他时间不自动更新，以控制 API 与 token 消耗：
+
+| 数据频率 | 自动更新时间（北京时间） | 执行位置 |
+| --- | --- | --- |
+| 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | 周二至周六 06:00（覆盖前一交易日收盘） | GitHub Actions（cron `0 22 * * 1-5` UTC） |
+| 情绪指数（依赖 Wind 能力） | 周二至周六 06:00 | 本地定时任务（cron `0 6 * * 2-6` Asia/Shanghai） |
+| 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
+| 宏观（统计局/央行发布） | 每月 9–20 日、28–31 日 23:00（官方集中发布窗口） | GitHub Actions（cron `0 15 9-20,28-31 * *` UTC） |
+
+### 增量取数与新鲜度守卫
+
+- 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `daily`/`macro`/`all`），它对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
+- 本地 Wind 任务（情绪、拥挤度）的 prompt 同样要求先查日期、已最新则直接结束。
+- Wind 取数一律使用缓存+断点续传，只补缺失区间：情绪用 `data/raw/sentiment_cache/`，拥挤度用 `data/raw/wind_cli_cache/`；拥挤度例行周更必须带 `--refresh-latest`（只失效最近 45 天缓存块，历史块复用）。
+- 新增图表的更新脚本也必须"只取增量"：先读本地 CSV 最大日期，仅请求缺失区间。
+
+### 刷新按钮防重复规则
+
+- 站点构建时输出 `site/meta.json`（含 `latest_daily_date` 及各图表最新日期）。
+- 用户点击"刷新数据"时，`app.js` 先拉取 `meta.json`：若 `latest_daily_date` 已覆盖上一交易日，直接提示"数据已更新，请勿重复获取，避免消耗 API 与 token 额度"，**不再提交** `/api/refresh`；否则才触发 GitHub Actions 手动全量（`--mode all`）。
+
+### 新增图表接入清单（务必按序执行）
+
+1. 编写 `scripts/update_xxx.py`：增量取数 → 输出 `data/processed/xxx.csv`（含 `date` 列）+ `xxx.metadata.json`（含 `latest_date`）。
+2. 在 `scripts/run_scheduled_updates.py` 的 `DAILY_DATASETS`（或周频/宏观相应位置）注册脚本与产出文件，新鲜度守卫自动生效。
+3. 在 `scripts/build_site_from_processed.py` 中：新增画图函数（图内无标题）、在对应板块插入 `chart-section`、标题前加 `<span class="chart-num">NNN</span>` 三位编号、`freq_badge()` 标注更新频率、附数据说明与风险提示；全站编号随之顺移。
+4. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 的日频/周频新建或并入本地定时任务（T+1 时间同上表）。
+5. 重建 `python scripts/build_site_from_processed.py`，确认 `site/meta.json` 包含新图表日期后本地提交。
+
+### 自动更新流程（GitHub Actions）
 
 1. 安装 Python 依赖和中文字体。
-2. 依次运行各数据更新脚本；单个公开接口失败时不中断整站构建，保留本地缓存数据。
-3. 运行 `scripts/build_site_from_processed.py` 重建 `site/` 与图表。
+2. `run_scheduled_updates.py` 按模式运行：手动触发 `--mode all`，23:00 发布窗口 `--mode macro`，其余 `--mode daily`；单个公开接口失败时不中断整站构建，保留本地缓存数据。
+3. 有更新时运行 `scripts/build_site_from_processed.py` 重建 `site/` 与图表。
 4. 若 `data/processed`、`data/raw`、`output/charts` 或 `site` 有变化，自动提交并推送到 GitHub。
 5. Vercel 由这次推送触发重新部署。
 

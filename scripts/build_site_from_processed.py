@@ -812,13 +812,13 @@ def build_page(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>投研数据页</title>
+  <title>Vibe Research · 投研数据手册</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main>
     <header class="page-head">
-      <div><p class="eyebrow">Investment Data Monitor</p><h1>投研数据页</h1></div>
+      <div><p class="eyebrow">Vibe Research</p><h1>投研数据手册</h1></div>
       <div class="meta">
         <div class="meta-line"><span class="live-dot" aria-hidden="true"></span>更新：{updated_at}</div>
         <div class="meta-line">区间：2025-01-01 至 {latest}</div>
