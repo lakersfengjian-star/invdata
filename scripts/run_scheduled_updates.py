@@ -56,8 +56,10 @@ DAILY_DATASETS: dict[str, list[str]] = {
     "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
 }
 
-MACRO_SCRIPT = "update_macro_overview.py"
-MACRO_METADATA = PROCESSED_DIR / "macro_overview.metadata.json"
+MACRO_DATASETS: dict[str, str] = {
+    "update_macro_overview.py": "macro_overview.metadata.json",
+    "update_industrial_profits.py": "industrial_profits.metadata.json",
+}
 MACRO_MIN_INTERVAL_H = 20  # 同一天发布窗口内不重复尝试
 
 
@@ -100,10 +102,11 @@ def run_script(name: str) -> bool:
     return True  # 即使失败也尝试重建, 保留已有部分更新
 
 
-def macro_fresh() -> bool:
-    if not MACRO_METADATA.exists():
+def macro_fresh(metadata_name: str) -> bool:
+    path = PROCESSED_DIR / metadata_name
+    if not path.exists():
         return False
-    age_h = (time.time() - MACRO_METADATA.stat().st_mtime) / 3600
+    age_h = (time.time() - path.stat().st_mtime) / 3600
     return age_h < MACRO_MIN_INTERVAL_H
 
 
@@ -125,11 +128,12 @@ def main() -> None:
             ran.append(script)
 
     if args.mode in {"macro", "all"}:
-        if args.mode != "all" and macro_fresh():
-            skipped.append(MACRO_SCRIPT)
-        else:
-            run_script(MACRO_SCRIPT)
-            ran.append(MACRO_SCRIPT)
+        for script, metadata_name in MACRO_DATASETS.items():
+            if args.mode != "all" and macro_fresh(metadata_name):
+                skipped.append(script)
+                continue
+            run_script(script)
+            ran.append(script)
 
     built = False
     if ran:

@@ -578,6 +578,142 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
 
 
+def draw_industrial_profits_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    """工业企业利润: 官方累计同比走势 + 按过去1/3/5年同期进度外推全年同比。"""
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    data = df.copy()
+    data["date"] = pd.to_datetime(data["date"])
+    data = data.dropna(subset=["date", "cum_value"]).sort_values("date")
+    data["year"] = data["date"].dt.year
+    data["month"] = data["date"].dt.month
+
+    latest = data.iloc[-1]
+    cy, cm = int(latest["year"]), int(latest["month"])
+    latest_date = latest["date"].strftime("%Y-%m")
+    full_year = data[data["month"].eq(12)].set_index("year")["cum_value"]
+    if cy - 1 not in full_year.index:
+        return None
+
+    # 各历史年份在月份 cm 的"累计利润占全年比例"
+    share_by_year: dict[int, float] = {}
+    for y in range(cy - 5, cy):
+        cum_m = data[(data["year"].eq(y)) & (data["month"].eq(cm))]["cum_value"]
+        if y in full_year.index and not cum_m.empty and full_year[y]:
+            share_by_year[y] = float(cum_m.iloc[0]) / float(full_year[y])
+
+    projections: dict[str, float] = {}
+    for label, years in [("近1年", [cy - 1]), ("近3年", list(range(cy - 3, cy))), ("近5年", list(range(cy - 5, cy)))]:
+        vals = [share_by_year[y] for y in years if y in share_by_year]
+        if vals:
+            avg_share = sum(vals) / len(vals)
+            est_full = float(latest["cum_value"]) / avg_share
+            projections[label] = (est_full / float(full_year[cy - 1]) - 1) * 100
+    if not projections:
+        return None
+
+    fig = plt.figure(figsize=(16, 8.2), dpi=180)
+    gs = fig.add_gridspec(2, 2, width_ratios=[2.7, 1.0], height_ratios=[1.0, 1.0],
+                          wspace=0.16, hspace=0.42, left=0.055, right=0.985, top=0.94, bottom=0.08)
+    fig.patch.set_facecolor("#fbfbf8")
+
+    # 左: 官方累计同比走势(近36个月) + 外推全年同比虚线
+    ax1 = fig.add_subplot(gs[:, 0])
+    ax1.set_facecolor("#fbfbf8")
+    trend = data[data["date"].ge(data["date"].max() - pd.DateOffset(months=36))].dropna(subset=["cum_yoy"])
+    ax1.plot(trend["date"], trend["cum_yoy"], color="#1f6fb2", linewidth=2.4,
+             marker="o", markersize=4.5, label="官方累计同比（%）")
+    ax1.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
+    proj_colors = {"近1年": "#c5513c", "近3年": "#e07b39", "近5年": "#8a6d1f"}
+    for label, value in projections.items():
+        color = proj_colors[label]
+        ax1.axhline(value, linestyle="--", color=color, linewidth=1.4, alpha=0.9)
+        ax1.text(trend["date"].max(), value, f" 外推全年 {value:+.1f}%（{label}节奏）",
+                 color=color, fontsize=10.5, va="bottom" if value >= 0 else "top")
+    latest_yoy = float(latest["cum_yoy"]) if pd.notna(latest["cum_yoy"]) else float("nan")
+    ax1.annotate(
+        f"{latest_date}  官方累计同比 {latest_yoy:+.1f}%",
+        xy=(latest["date"], latest_yoy), xytext=(-12, -26), textcoords="offset points",
+        ha="right", fontsize=11, color="#1f6fb2",
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.92},
+    )
+    ax1.set_ylabel("利润总额累计同比（%）", fontsize=12)
+    ax1.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
+    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax1.set_xlim(trend["date"].min(), trend["date"].max() + pd.DateOffset(months=7))
+    ax1.legend(loc="upper left", frameon=False, fontsize=10.5)
+    ax1.spines[["top", "right"]].set_visible(False)
+
+    # 右上: 累计利润占全年比例的季节曲线
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.set_facecolor("#fbfbf8")
+    hist_years = [y for y in range(cy - 5, cy) if y in full_year.index]
+    for y in hist_years:
+        sub = data[data["year"].eq(y)].sort_values("month")
+        share = sub["cum_value"] / float(full_year[y]) * 100
+        ax2.plot(sub["month"], share, color="#b6bdc9", linewidth=1.0, alpha=0.85)
+    if hist_years:
+        months = sorted(data[data["year"].eq(hist_years[-1])]["month"])
+        mean_share = []
+        for m in months:
+            vals = []
+            for y in hist_years:
+                cum_m = data[(data["year"].eq(y)) & (data["month"].eq(m))]["cum_value"]
+                if not cum_m.empty:
+                    vals.append(float(cum_m.iloc[0]) / float(full_year[y]) * 100)
+            mean_share.append(sum(vals) / len(vals) if vals else float("nan"))
+        ax2.plot(months, mean_share, color="#8a6d1f", linewidth=2.0, label=f"{cy - 5}-{cy - 1}均值")
+    cur = data[data["year"].eq(cy)].sort_values("month")
+    cur_share = []
+    for m in cur["month"]:
+        est_full_5y = float(latest["cum_value"]) / (sum(share_by_year.values()) / len(share_by_year))
+        cum_m = cur[cur["month"].eq(m)]["cum_value"].iloc[0]
+        cur_share.append(float(cum_m) / est_full_5y * 100)
+    ax2.plot(cur["month"], cur_share, color="#c5513c", linewidth=2.2, marker="o", markersize=4.5, label=f"{cy}实际进度*")
+    ax2.set_xlim(1.5, 12.5)
+    ax2.set_ylim(0, 118)
+    ax2.set_xticks([2, 4, 6, 8, 10, 12])
+    ax2.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
+    ax2.set_title("累计利润占全年比例（%）", fontsize=11.5, color="#4a4a4a", pad=8)
+    ax2.grid(color="#e3e3e3", linewidth=0.6, alpha=0.6)
+    ax2.legend(loc="upper left", frameon=False, fontsize=9)
+    ax2.spines[["top", "right"]].set_visible(False)
+
+    # 右下: 官方累计同比 vs 三个外推值
+    ax3 = fig.add_subplot(gs[1, 1])
+    ax3.set_facecolor("#fbfbf8")
+    bar_labels = [f"官方累计\n1-{cm}月"] + [f"外推全年\n{k}节奏" for k in projections]
+    bar_values = [latest_yoy] + list(projections.values())
+    bar_colors = ["#1f6fb2"] + [proj_colors[k] for k in projections]
+    bars = ax3.bar(range(len(bar_values)), bar_values, width=0.56, color=bar_colors, alpha=0.88)
+    for rect, v in zip(bars, bar_values):
+        ax3.text(rect.get_x() + rect.get_width() / 2, v + (1.2 if v >= 0 else -1.2),
+                 f"{v:+.1f}%", ha="center", va="bottom" if v >= 0 else "top", fontsize=10.5, color="#4a4a4a")
+    ax3.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
+    ax3.set_xticks(range(len(bar_labels)))
+    ax3.set_xticklabels(bar_labels, fontsize=9.5)
+    ax3.set_ylim(min(0, min(bar_values) - 8), max(bar_values) + 9)
+    ax3.set_title(f"{cy}年全年同比：官方 vs 外推", fontsize=11.5, color="#4a4a4a", pad=8)
+    ax3.grid(axis="y", color="#e3e3e3", linewidth=0.6, alpha=0.6)
+    ax3.spines[["top", "right"]].set_visible(False)
+
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {
+        "path": str(out_path.relative_to(ROOT)),
+        "last_date": latest_date,
+        "latest_cum_yoy": latest_yoy,
+        "current_month": cm,
+        "current_year": cy,
+        "proj_1y": projections.get("近1年"),
+        "proj_3y": projections.get("近3年"),
+        "proj_5y": projections.get("近5年"),
+    }
+
+
 def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> dict:
     setup_fonts()
     plot_df = df[df["index_name"].eq(index_name)].copy().sort_values("date")
@@ -895,7 +1031,7 @@ def render_library() -> str:
     if not cards:
         return '      <p class="empty-note">暂无资料。</p>'
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">017</span>研究资料库（个人研究文章与投资资料）</h2>
+        <h2><span class="chart-num">018</span>研究资料库（个人研究文章与投资资料）</h2>
         <div class="doc-list">
 {chr(10).join(cards)}
         </div>
@@ -923,6 +1059,7 @@ def build_page(
     limit_up_meta: dict | None = None,
     market_monitor_html: str = "",
     industry_pb_roe_chart: dict | None = None,
+    industrial_profit_chart: dict | None = None,
 ) -> None:
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -954,10 +1091,21 @@ def build_page(
             "PB-ROE 是相对估值观察框架,不构成买卖建议;推导口径 ROE 与财报口径可能存在细微差异。",
         )}
       </section>'''
+    earnings_html = '<p class="empty-note">暂无图表。</p>'
+    if industrial_profit_chart:
+        ipc = industrial_profit_chart
+        earnings_html = f'''      <section class="chart-section">
+        <h2><span class="chart-num">009</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(ipc["path"]).name}?v={ipc["last_date"].replace("-", "")}" alt="工业企业利润同比与全年外推">
+        {chart_note_block(
+            f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。外推方法:以过去1年/3年/5年同期(1-{ipc['current_month']}月)累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比;当前外推结果——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。季节性进度图中{ipc['current_year']}年曲线以近5年节奏外推的全年利润为分母。",
+            "统计局对规模以上企业样本与基数有年度调整,官方同比与按累计额直接计算的同比存在口径差;外推基于季节性进度假设,下半年盈利节奏变化会使实际值偏离外推值,仅供参考。",
+        )}
+      </section>'''
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">014</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">015</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -967,7 +1115,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">015</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">016</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -988,7 +1136,7 @@ def build_page(
     library_html = render_library()
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">009</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">010</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -1018,7 +1166,7 @@ def build_page(
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">012</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">013</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -1033,7 +1181,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">016</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">017</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -1090,14 +1238,14 @@ def build_page(
 
     <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
       <div class="category-head"><span class="sec-num">04</span><h2>盈利</h2></div>
-      <p class="empty-note">暂无图表。</p>
+{earnings_html}
     </section>
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
       <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
 {southbound_html}
       <section class="chart-section">
-        <h2><span class="chart-num">010</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">011</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1105,7 +1253,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">011</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">012</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1118,7 +1266,7 @@ def build_page(
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
       <section class="chart-section">
-        <h2><span class="chart-num">013</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">014</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
@@ -1593,9 +1741,10 @@ if (refreshButton && refreshStatus) {
         "macro": (macro_chart or {}).get("last_date", ""),
         "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
         "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
+        "industrial_profits": (industrial_profit_chart or {}).get("last_date", ""),
     }
     latest_daily = max(
-        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro", "pb_roe"}),
+        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro", "pb_roe", "industrial_profits"}),
         default="",
     )
     site_meta = {
@@ -1687,6 +1836,11 @@ def main() -> None:
     if pb_roe_weekly_path.exists():
         pb_roe_weekly = pd.read_csv(pb_roe_weekly_path)
         industry_pb_roe_chart = draw_industry_pb_roe_chart(pb_roe_weekly, industry_crowding if industry_crowding_path.exists() else None, CHART_DIR / "fig_012_citic_industry_pb_roe.png")
+    industrial_profit_chart = None
+    industrial_profit_path = PROCESSED_DIR / "industrial_profits.csv"
+    if industrial_profit_path.exists():
+        industrial_profit = pd.read_csv(industrial_profit_path, parse_dates=["date"])
+        industrial_profit_chart = draw_industrial_profits_chart(industrial_profit, CHART_DIR / "fig_013_industrial_profits.png")
     limit_up_longest = None
     limit_up_amount_top = None
     limit_up_meta = {}
@@ -1730,8 +1884,9 @@ def main() -> None:
         limit_up_meta,
         market_monitor_html=market_monitor_html,
         industry_pb_roe_chart=industry_pb_roe_chart,
+        industrial_profit_chart=industrial_profit_chart,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart))
+    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart)) + int(bool(industrial_profit_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 

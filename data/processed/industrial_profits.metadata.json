@@ -1,0 +1,11 @@
+{
+  "source": "Wind EDB M0000556/M0000557 底座 + AkShare NBS 增量(国家统计局)",
+  "indicator": "规模以上工业企业利润总额 累计值/累计同比",
+  "status": "ok",
+  "latest_date": "2026-05-31",
+  "expected_latest_month": "2026-05",
+  "unit": "亿元 / %",
+  "notes": [
+    "本地数据已覆盖预期最新月份 2026-05, 跳过 NBS 请求。"
+  ]
+}

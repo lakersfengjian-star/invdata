@@ -44,6 +44,7 @@
 - `fig_010_macro_overview.png`：宏观经济数据概览，展示各指标最近六个有效数据点
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图（周频）。构建时衍生图：由 `data/raw/citic_industry_crowding_weekly.csv` 最新周 PB_LF/PE_TTM 推导 ROE（ROE≈PB/PE 恒等式，同一价格口径下成立，零新增取数），叠加 `data/processed/citic_industry_crowding.csv` 的 PB 十年分位上色；随拥挤度周度数据自动更新，无需注册新取数脚本。
+- `fig_013_industrial_profits.png`：工业企业利润同比与全年外推（月频，宏观调度）。指标为规模以上工业企业利润总额累计值/累计同比（国家统计局，每月 27 日左右发布上月数据，归入月末 28–31 日 23:00 宏观发布窗口）。历史底座 `data/raw/industrial_profits_wind.csv`（Wind EDB M0000556/M0000557 一次性铺底），增量由 `scripts/update_industrial_profits.py` 走 AkShare 统计局接口，已覆盖预期月份时零请求。外推方法：过去 1/3/5 年同期累计利润占全年比例均值 → 线性外推全年利润总额 → 隐含全年同比。
 - 行情表格：`limit_up_longest.csv`、`limit_up_amount_top.csv`，展示最新交易日连续涨停天数前十和当日涨停成交额前十。
 
 ## 数据源优先级
