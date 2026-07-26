@@ -18,6 +18,10 @@
     {
       "source": "/app.js",
       "destination": "/site/app.js"
+    },
+    {
+      "source": "/meta.json",
+      "destination": "/site/meta.json"
     }
   ]
 }
