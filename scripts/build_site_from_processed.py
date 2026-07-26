@@ -527,6 +527,58 @@ def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> d
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "title": f"图四：{index_name}历史滚动市盈率及标准差通道（截至{latest_date}）"}
 
 
+def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    plot_df = plot_df.dropna(subset=["sentiment_3y"]).sort_values("date")
+    plot_df = plot_df[plot_df["date"].ge(plot_df["date"].max() - pd.DateOffset(years=3))]
+    latest = plot_df.iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    latest_val = latest["sentiment_3y"]
+
+    fig, ax1 = plt.subplots(figsize=(16, 7.6), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax1.set_facecolor("#fbfbf8")
+    ax2 = ax1.twinx()
+    ax2.plot(plot_df["date"], plot_df["close"], color="#98a2b3", linewidth=1.6, alpha=0.85, label="上证指数（右轴）")
+    for level, color, label in [(0.8, "#c5513c", "过热 0.8"), (0.5, "#8a93a1", "中性 0.5"), (0.2, "#2a9d55", "过冷 0.2")]:
+        ax1.axhline(level, linestyle="--", color=color, linewidth=1.1, alpha=0.85)
+        ax1.text(plot_df["date"].min(), level + 0.012, label, fontsize=9.5, color=color, va="bottom")
+    ax1.fill_between(plot_df["date"], plot_df["sentiment_3y"], 0, color="#e07b39", alpha=0.10, linewidth=0)
+    ax1.plot(plot_df["date"], plot_df["sentiment_3y"], color="#e07b39", linewidth=2.4, label="等权情绪指数（3年分位）")
+    zone, zcolor = ("过热区", "#c5513c") if latest_val >= 0.8 else ("过冷区", "#2a9d55") if latest_val <= 0.2 else ("中性区", "#8a6d1f")
+    ax1.annotate(
+        f"{latest_date}  情绪 {latest_val:.2f}（{zone}）",
+        xy=(latest["date"], latest_val),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=11,
+        color=zcolor,
+        bbox={"boxstyle": "round,pad=0.3", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.92},
+    )
+    ax1.set_ylim(0, 1.05)
+    ax1.set_ylabel("情绪指数（0–1，等权，3年分位）", fontsize=12)
+    ax2.set_ylabel("上证指数收盘价（点）", fontsize=12)
+    ax1.set_xlabel("日期", fontsize=12)
+    ax1.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
+    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
+    ax1.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "value": float(latest_val)}
+
+
 def format_table_value(field: str, value: object) -> str:
     if pd.isna(value):
         return ""
@@ -589,6 +641,8 @@ def build_page(
     southbound_chart: dict | None = None,
     macro_chart: dict | None = None,
     macro_meta: dict | None = None,
+    sentiment_chart: dict | None = None,
+    sentiment_meta: dict | None = None,
     limit_up_longest: pd.DataFrame | None = None,
     limit_up_amount_top: pd.DataFrame | None = None,
     limit_up_meta: dict | None = None,
@@ -671,6 +725,18 @@ def build_page(
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
     limit_up_html = render_limit_up_table("涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
     limit_up_html += "\n" + render_limit_up_table("涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
+    sentiment_html = '<p class="empty-note">暂无图表。</p>'
+    if sentiment_chart:
+        components = (sentiment_meta or {}).get("components", {})
+        comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
+        sentiment_html = f'''      <section class="chart-section">
+        <h2>图十一：上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
+        {chart_note_block(
+            f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
+            "情绪指数是历史相对位置的观察，不代表买卖建议；增量数据来自 Wind 与公开接口，换手率增量按普通换手率×2.607折算自由流通口径，可能与精确值有小幅偏差。",
+        )}
+      </section>'''
     industry_crowding_html = ""
     if industry_crowding_chart:
         crowding_date = industry_crowding_chart.get("last_date") or "待接入"
@@ -770,7 +836,7 @@ def build_page(
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
-      <p class="empty-note">暂无图表。</p>
+{sentiment_html}
     </section>
   </main>
   <script src="app.js"></script>
@@ -1149,6 +1215,15 @@ def main() -> None:
     if macro_path.exists():
         macro = pd.read_csv(macro_path, parse_dates=["date"])
         macro_chart = draw_macro_overview_chart(macro, macro_meta, CHART_DIR / "fig_010_macro_overview.png")
+    sentiment_chart = None
+    sentiment_meta = {}
+    sentiment_path = PROCESSED_DIR / "sentiment_index.csv"
+    sentiment_meta_path = PROCESSED_DIR / "sentiment_index.metadata.json"
+    if sentiment_meta_path.exists():
+        sentiment_meta = json.loads(sentiment_meta_path.read_text(encoding="utf-8"))
+    if sentiment_path.exists():
+        sentiment = pd.read_csv(sentiment_path, parse_dates=["date"])
+        sentiment_chart = draw_sentiment_chart(sentiment, sentiment_meta, CHART_DIR / "fig_011_sentiment_index.png")
     industry_crowding_chart = None
     industry_crowding_path = PROCESSED_DIR / "citic_industry_crowding.csv"
     industry_crowding_meta_path = PROCESSED_DIR / "citic_industry_crowding.metadata.json"
@@ -1197,11 +1272,13 @@ def main() -> None:
         southbound_chart,
         macro_chart,
         macro_meta,
+        sentiment_chart,
+        sentiment_meta,
         limit_up_longest,
         limit_up_amount_top,
         limit_up_meta,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart))
+    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 
