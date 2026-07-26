@@ -28,6 +28,7 @@ from matplotlib.ticker import FuncFormatter
 
 
 PROCESSED_DIR = ROOT / "data" / "processed"
+RAW_DIR = ROOT / "data" / "raw"
 CHART_DIR = ROOT / "output" / "charts"
 SITE_DIR = ROOT / "site"
 VALUATION_START_DATE = "2020-01-01"
@@ -510,6 +511,73 @@ def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, 
     }
 
 
+def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    """中信一级行业 PB-ROE 散点(最新周)。ROE_TTM 由 PB/PE 恒等式推导。"""
+    setup_fonts()
+    if weekly_df is None or weekly_df.empty:
+        return None
+    latest_date = str(weekly_df["date"].max())
+    df = weekly_df[weekly_df["date"].eq(weekly_df["date"].max())].copy()
+    df["roe_ttm"] = pd.to_numeric(df["pb_lf"], errors="coerce") / pd.to_numeric(df["pe_ttm"], errors="coerce") * 100
+    df = df.dropna(subset=["roe_ttm", "pb_lf"])
+    if crowding_df is not None and not crowding_df.empty:
+        pct = crowding_df[["industry", "pb_lf_pctile_10y"]].drop_duplicates("industry")
+        df = df.merge(pct, on="industry", how="left")
+    else:
+        df["pb_lf_pctile_10y"] = None
+    if df.empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(15.5, 9), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    colors = pd.to_numeric(df["pb_lf_pctile_10y"], errors="coerce")
+    sc = ax.scatter(
+        df["roe_ttm"],
+        df["pb_lf"],
+        c=colors,
+        s=220,
+        cmap="RdYlGn_r",
+        vmin=0,
+        vmax=100,
+        edgecolor="#ffffff",
+        linewidth=1.0,
+        zorder=3,
+    )
+    offsets = [(10, 6), (10, -12), (-10, 8), (-10, -12)]
+    for idx, (_, row) in enumerate(df.iterrows()):
+        dx, dy = offsets[idx % len(offsets)]
+        ha = "left" if dx > 0 else "right"
+        ax.annotate(
+            row["industry"],
+            xy=(row["roe_ttm"], row["pb_lf"]),
+            xytext=(dx, dy),
+            textcoords="offset points",
+            fontsize=9,
+            ha=ha,
+            color="#293642",
+        )
+    x_med, y_med = df["roe_ttm"].median(), df["pb_lf"].median()
+    ax.axvline(x_med, linestyle="--", color="#8a93a1", linewidth=1.0, alpha=0.8)
+    ax.axhline(y_med, linestyle="--", color="#8a93a1", linewidth=1.0, alpha=0.8)
+    x_max, y_max = df["roe_ttm"].max(), df["pb_lf"].max()
+    ax.text(x_max, y_med, "高ROE", fontsize=9.5, color="#8a93a1", va="center", ha="right")
+    ax.text(x_med, y_max, "高PB", fontsize=9.5, color="#8a93a1", va="top", ha="center")
+    ax.set_xlabel("ROE_TTM（%，由 PB/PE 推导）", fontsize=12)
+    ax.set_ylabel("PB_LF（倍）", fontsize=12)
+    ax.grid(color="#e3e3e3", linewidth=0.7, alpha=0.6)
+    ax.spines[["top", "right"]].set_visible(False)
+    missing = sorted(set(weekly_df[weekly_df["date"].eq(weekly_df["date"].max())]["industry"]) - set(df["industry"]))
+    note = f"虚线为中位数；颜色=PB十年分位(越红越高)。PE_TTM 缺失(亏损)未入图：{'、'.join(missing) if missing else '无'}"
+    ax.text(0, 1.02, note, transform=ax.transAxes, fontsize=10, color="#59636e")
+    cbar = fig.colorbar(sc, ax=ax, fraction=0.03, pad=0.02)
+    cbar.set_label("PB 十年分位（%）")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
 def draw_valuation_chart(df: pd.DataFrame, index_name: str, out_path: Path) -> dict:
     setup_fonts()
     plot_df = df[df["index_name"].eq(index_name)].copy().sort_values("date")
@@ -827,7 +895,7 @@ def render_library() -> str:
     if not cards:
         return '      <p class="empty-note">暂无资料。</p>'
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">016</span>研究资料库（个人研究文章与投资资料）</h2>
+        <h2><span class="chart-num">017</span>研究资料库（个人研究文章与投资资料）</h2>
         <div class="doc-list">
 {chr(10).join(cards)}
         </div>
@@ -854,6 +922,7 @@ def build_page(
     limit_up_amount_top: pd.DataFrame | None = None,
     limit_up_meta: dict | None = None,
     market_monitor_html: str = "",
+    industry_pb_roe_chart: dict | None = None,
 ) -> None:
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -875,10 +944,20 @@ def build_page(
     </section>'''
         for idx, chart in enumerate(valuation_charts)
     )
+    pb_roe_html = ""
+    if industry_pb_roe_chart:
+        pb_roe_html = f'''      <section class="chart-section">
+        <h2><span class="chart-num">008</span>中信一级行业 PB-ROE 对比（截至{industry_pb_roe_chart["last_date"]}）{freq_badge("周频")}</h2>
+        <img src="assets/charts/{Path(industry_pb_roe_chart["path"]).name}?v={industry_pb_roe_chart["last_date"].replace("-", "")}" alt="中信一级行业 PB-ROE 对比">
+        {chart_note_block(
+            "ROE_TTM 由 PB/PE 恒等式推导(同一价格口径下 ROE≈PB/PE);PE_TTM 缺失(亏损状态)的行业不参与绘图。颜色代表 PB 十年分位,数据与中信拥挤度同为每周最后一个交易日更新。",
+            "PB-ROE 是相对估值观察框架,不构成买卖建议;推导口径 ROE 与财报口径可能存在细微差异。",
+        )}
+      </section>'''
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">013</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">014</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -888,7 +967,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">014</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">015</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -909,7 +988,7 @@ def build_page(
     library_html = render_library()
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">008</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">009</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -939,7 +1018,7 @@ def build_page(
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">011</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">012</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -954,7 +1033,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">015</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">016</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -1006,6 +1085,7 @@ def build_page(
     <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
       <div class="category-head"><span class="sec-num">03</span><h2>估值</h2></div>
 {valuation_html}
+{pb_roe_html}
     </section>
 
     <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
@@ -1017,7 +1097,7 @@ def build_page(
       <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
 {southbound_html}
       <section class="chart-section">
-        <h2><span class="chart-num">009</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">010</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1025,7 +1105,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">010</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">011</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1038,7 +1118,7 @@ def build_page(
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
       <section class="chart-section">
-        <h2><span class="chart-num">012</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">013</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
@@ -1512,9 +1592,10 @@ if (refreshButton && refreshStatus) {
         "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
         "macro": (macro_chart or {}).get("last_date", ""),
         "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
+        "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
     }
     latest_daily = max(
-        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro"}),
+        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro", "pb_roe"}),
         default="",
     )
     site_meta = {
@@ -1601,6 +1682,11 @@ def main() -> None:
         )
         if chart
     ]
+    industry_pb_roe_chart = None
+    pb_roe_weekly_path = RAW_DIR / "citic_industry_crowding_weekly.csv"
+    if pb_roe_weekly_path.exists():
+        pb_roe_weekly = pd.read_csv(pb_roe_weekly_path)
+        industry_pb_roe_chart = draw_industry_pb_roe_chart(pb_roe_weekly, industry_crowding if industry_crowding_path.exists() else None, CHART_DIR / "fig_012_citic_industry_pb_roe.png")
     limit_up_longest = None
     limit_up_amount_top = None
     limit_up_meta = {}
@@ -1643,8 +1729,9 @@ def main() -> None:
         limit_up_amount_top,
         limit_up_meta,
         market_monitor_html=market_monitor_html,
+        industry_pb_roe_chart=industry_pb_roe_chart,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart))
+    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 
