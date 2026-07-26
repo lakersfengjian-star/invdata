@@ -433,42 +433,62 @@ def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, 
         plt.close(fig)
         return {"path": str(out_path.relative_to(ROOT)), "last_date": "", "status": "missing_data"}
 
-    plot_df = df.copy().sort_values("crowding_score", ascending=True)
+    plot_df = df.copy()
+    pctile_cols = ["pe_ttm_pctile_10y", "pb_lf_pctile_10y", "amount_pctile_5y"]
+    for col in pctile_cols:
+        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    if "crowding_score" in plot_df.columns:
+        plot_df["crowding_score"] = pd.to_numeric(plot_df["crowding_score"], errors="coerce")
+    else:
+        plot_df["crowding_score"] = plot_df[pctile_cols].mean(axis=1)
+    plot_df = plot_df.sort_values("crowding_score", ascending=True).reset_index(drop=True)
     metrics = [
         ("pe_ttm_pctile_10y", "PE_TTM十年分位", "pe_ttm_pctile_10y_wow"),
         ("pb_lf_pctile_10y", "PB_LF十年分位", "pb_lf_pctile_10y_wow"),
         ("amount_pctile_5y", "成交额五年分位", "amount_pctile_5y_wow"),
+        ("crowding_score", "综合拥挤度（三指标均值）", None),
     ]
     latest_date = str(plot_df["date"].max())
     fig_h = max(8.5, len(plot_df) * 0.34 + 2.2)
-    fig, ax = plt.subplots(figsize=(16, fig_h), dpi=180)
+    fig, ax = plt.subplots(figsize=(17.5, fig_h), dpi=180)
     fig.patch.set_facecolor("#fbfbf8")
     ax.set_facecolor("#fbfbf8")
     for x_pos, (col, _label, wow_col) in enumerate(metrics):
         values = pd.to_numeric(plot_df[col], errors="coerce")
+        is_composite = col == "crowding_score"
         sc = ax.scatter(
             [x_pos] * len(plot_df),
             range(len(plot_df)),
             c=values,
-            s=210,
+            s=290 if is_composite else 210,
             cmap="RdYlGn_r",
             vmin=0,
             vmax=100,
-            edgecolor="#ffffff",
-            linewidth=0.9,
+            edgecolor="#293642" if is_composite else "#ffffff",
+            linewidth=1.1 if is_composite else 0.9,
             zorder=3,
         )
         for y_pos, (_, row) in enumerate(plot_df.iterrows()):
             value = row[col]
-            wow = row.get(wow_col)
+            wow = row.get(wow_col) if wow_col else None
             if pd.isna(value):
                 label = "NA"
-            elif pd.isna(wow):
-                label = f"{value:.0f}%"
+            elif is_composite or pd.isna(wow):
+                label = f"{value:.1f}" if is_composite else f"{value:.0f}%"
             else:
                 sign = "+" if wow > 0 else ""
                 label = f"{value:.0f}% ({sign}{wow:.0f})"
-            ax.text(x_pos + 0.12, y_pos, label, va="center", ha="left", fontsize=9.2, color="#293642")
+            ax.text(
+                x_pos + 0.12,
+                y_pos,
+                label,
+                va="center",
+                ha="left",
+                fontsize=9.6 if is_composite else 9.2,
+                fontweight="bold" if is_composite else "normal",
+                color="#203040" if is_composite else "#293642",
+            )
+    ax.axvline(len(metrics) - 1.5, linestyle="--", color="#b8b3a8", linewidth=1.0, alpha=0.8)
     ax.set_yticks(range(len(plot_df)), plot_df["industry"])
     ax.set_xticks(range(len(metrics)), [label for _col, label, _wow_col in metrics])
     ax.tick_params(axis="x", labelsize=11, pad=10)
@@ -476,7 +496,7 @@ def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, 
     ax.set_xlim(-0.45, len(metrics) - 0.05)
     ax.set_ylim(-0.8, len(plot_df) - 0.2)
     ax.grid(axis="y", color="#e2dfd7", linewidth=0.7, alpha=0.75)
-    ax.text(0, 1.015, "括号内为较上周变化，单位：百分点；颜色越红代表分位越高。", transform=ax.transAxes, fontsize=10.5, color="#59636e")
+    ax.text(0, 1.015, "按综合拥挤度（三项分位均值）从高到低排序；括号内为较上周变化，单位：百分点；颜色越红代表分位越高。", transform=ax.transAxes, fontsize=10.5, color="#59636e")
     cbar = fig.colorbar(sc, ax=ax, fraction=0.025, pad=0.02)
     cbar.set_label("历史分位数（%）")
     ax.spines[["top", "right", "left", "bottom"]].set_visible(False)
@@ -783,7 +803,7 @@ def build_page(
         <h2><span class="chart-num">014</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
-            f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
+            f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
             "拥挤度是估值与交易热度的历史分位观察，不代表买卖建议；若 Wind API 不可用或本地 CSV 未补齐，结果会显示待接入或滞后。",
         )}
       </section>'''
