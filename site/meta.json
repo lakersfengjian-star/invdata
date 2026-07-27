@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-24 15:53:21",
+  "updated_at": "2026-07-27 14:04:53",
   "latest_common_date": "2026-07-24",
   "latest_daily_date": "2026-07-24",
   "charts": {
@@ -12,6 +12,8 @@
     "theme_amount_share": "2026-07-24",
     "industry_crowding": "2026-07-26",
     "macro": "2026-06-01",
-    "valuation": "2026-07-24"
+    "valuation": "2026-07-24",
+    "pb_roe": "2026-07-26",
+    "industrial_profits": "2026-05"
   }
 }
