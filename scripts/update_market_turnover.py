@@ -4,13 +4,16 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
-PROCESSED_DIR = ROOT / "data" / "processed"
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from common import PROCESSED_DIR, previous_bday, dataset_fresh
+
 SOURCE_CSV = PROCESSED_DIR / "index_amount_share.csv"
 OUT_CSV = PROCESSED_DIR / "market_turnover.csv"
 METADATA_JSON = PROCESSED_DIR / "market_turnover.metadata.json"
@@ -19,6 +22,12 @@ START_DATE = "2024-09-24"
 
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    expected = previous_bday()
+    if dataset_fresh(["market_turnover.csv"], expected):
+        latest = pd.read_csv(OUT_CSV, parse_dates=["date"])["date"].max().strftime("%Y-%m-%d")
+        print(json.dumps({"status": "fresh", "latest_date": latest}, ensure_ascii=False))
+        return
+
     if not SOURCE_CSV.exists():
         raise RuntimeError("Missing index_amount_share.csv; run update_index_amount_share.py first.")
     df = pd.read_csv(SOURCE_CSV, parse_dates=["date"])
@@ -32,7 +41,6 @@ def main() -> None:
     metadata = {
         "source": "CSI All Share trading value from index_amount_share.csv",
         "status": "ok",
-        "start_date": out["date"].min(),
         "latest_date": out["date"].max(),
         "unit": "100mn CNY",
         "notes": [

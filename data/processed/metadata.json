@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-24 15:53:21",
+  "updated_at": "2026-07-27 14:04:53",
   "start_date": "2025-01-01",
   "latest_common_date": "2026-07-24",
   "etf_selection": [
@@ -46,81 +46,14 @@
     "index": "科创50",
     "venue": "SSE"
   },
-  "chart_files": [
-    {
-      "path": "output/charts/fig_001_broad_etf_flow.png",
-      "last_date": "2026-07-24",
-      "last_values": {
-        "沪深300": 4649.19,
-        "上证指数": 3814.2,
-        "daily_net_inflow_100mn": 14.822937,
-        "rolling_7d_net_inflow_100mn": 421.63460100000003
-      }
-    },
-    {
-      "path": "output/charts/fig_002_star50_etf_flow.png",
-      "last_date": "2026-07-24",
-      "last_values": {
-        "科创50": 1787.2,
-        "daily_net_inflow_100mn": -11.02725,
-        "rolling_7d_net_inflow_100mn": 213.41625000000002
-      }
-    },
-    {
-      "path": "output/charts/fig_003_a_share_turnover_concentration.png",
-      "last_date": "2026-07-24",
-      "last_values": {
-        "top10_share_pct": 8.454986171567043,
-        "top100_share_pct": 32.607498190755884,
-        "market_amount_100mn": 19442.04095789
-      }
-    }
-  ],
-  "valuation_chart_files": [
-    {
-      "path": "output/charts/fig_004a_hs300_pe_ttm_channel.png",
-      "last_date": "2026-07-24",
-      "last_values": {
-        "pe_ttm": 13.68,
-        "mean": 12.312485840151039,
-        "std": 1.4109845704707795,
-        "mean_plus_1std": 13.723470410621818,
-        "mean_minus_1std": 10.90150126968026,
-        "mean_plus_2std": 15.134454981092599,
-        "mean_minus_2std": 9.49051669920948
-      },
-      "title": "图四：沪深300指数历史滚动市盈率及标准差通道（截至2026-07-24）"
-    },
-    {
-      "path": "output/charts/fig_004b_sse_pe_ttm_channel.png",
-      "last_date": "2026-07-24",
-      "last_values": {
-        "pe_ttm": 15.76,
-        "mean": 14.624875000000003,
-        "std": 1.8300546397239073,
-        "mean_plus_1std": 16.45492963972391,
-        "mean_minus_1std": 12.794820360276095,
-        "mean_plus_2std": 18.28498427944782,
-        "mean_minus_2std": 10.964765720552188
-      },
-      "title": "图四：上证指数历史滚动市盈率及标准差通道（截至2026-07-24）"
-    }
-  ],
   "notes": [
     "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
     "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；深交所ETF份额来自深交所基金规模日频接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
     "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
-    "最近出现合计净流入为0的日期：2025-01-02；需留意份额数据可能未更新。",
-    "成交集中度使用新浪财经A股日行情逐股抓取成交额，并以抓取到的沪深京A股个股成交额合计作为全市场成交额；新上市、退市或接口缺失个股可能造成轻微口径差异。",
     "万得全A PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。",
     "万得全A（除金融、石油石化） PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。"
   ],
   "source_logs": [
-    {
-      "source": "Eastmoney ETF quote list",
-      "status": "ok",
-      "detail": "ranking snapshot: 100 ETFs"
-    },
     {
       "source": "Tencent public kline",
       "status": "ok",
@@ -143,13 +76,8 @@
     },
     {
       "source": "SZSE ETF scale",
-      "status": "failed",
-      "detail": "2025-01-02 to 2025-03-27: ConnectionError(ProtocolError('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer')))"
-    },
-    {
-      "source": "SZSE ETF scale",
       "status": "ok",
-      "detail": "377 trading days, 1 failed chunks"
+      "detail": "377 trading days, 0 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
@@ -212,34 +140,24 @@
       "detail": "588000 ETF close: 377 rows"
     },
     {
-      "source": "AkShare stock_info_a_code_name",
-      "status": "ok",
-      "detail": "A-share stock list: 5530 names"
+      "source": "Turnover concentration",
+      "status": "fresh",
+      "detail": "data already up to date (2026-07-24)"
     },
     {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "ok",
-      "detail": "5529 symbols ok, 1 symbols failed"
-    },
-    {
-      "source": "Legulegu index PE",
-      "status": "ok",
+      "source": "Index PE_TTM",
+      "status": "cache",
       "detail": "沪深300指数: 1589 rows"
     },
     {
-      "source": "Legulegu market PE",
-      "status": "ok",
+      "source": "Index PE_TTM",
+      "status": "cache",
       "detail": "上证指数: 80 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "missing",
-      "detail": "/home/runner/work/invdata/invdata/data/raw/index_pe_ttm_wind.csv"
+      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
     },
     {
       "source": "Index PE_TTM",
@@ -249,7 +167,7 @@
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "missing",
-      "detail": "/home/runner/work/invdata/invdata/data/raw/index_pe_ttm_wind.csv"
+      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
     },
     {
       "source": "Index PE_TTM",

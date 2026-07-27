@@ -1708,7 +1708,6 @@ if (refreshButton && refreshStatus) {
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
     (SITE_DIR / "styles.css").write_text(css, encoding="utf-8")
     (SITE_DIR / "app.js").write_text(js, encoding="utf-8")
-    (ROOT / "index.html").write_text(html, encoding="utf-8")
 
     chart_dates = {
         "market_turnover": (market_turnover_chart or {}).get("last_date", ""),

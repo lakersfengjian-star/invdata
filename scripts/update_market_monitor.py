@@ -18,7 +18,7 @@ Sources
 
 Usage:
   python scripts/update_market_monitor.py              # 全部 section
-  python scripts/update_market_monitor.py --wind-only  # 仅 Wind 依赖部分(本地日更挂接)
+  python scripts/update_market_monitor.py --wind-only  # 仅更新 Wind 依赖部分(本地日更挂接)
   python scripts/update_market_monitor.py --force      # 忽略新鲜度强制刷新
 """
 
@@ -292,65 +292,115 @@ def update_indices(expected: pd.Timestamp, force: bool) -> dict:
 # ---------------------------------------------------------------- breadth ---
 
 def update_breadth(expected: pd.Timestamp, force: bool) -> dict:
+    """市场宽度: 优先东方财富 clist 分页; 失败时回退 AkShare 全A快照."""
     df = load_csv(BREADTH_CSV, ["date", "up_count", "down_count", "flat_count", "median_pct", "mean_pct", "amount_100mn"])
     if not df.empty and not force:
         if pd.to_datetime(df["date"]).max() >= expected:
             return {"added": 0, "notes": ["fresh"]}
 
-    # 东方财富全A快照(clist 分页): fields f3=涨跌幅(%), f6=成交额(元)
-    fs = "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048"
     pct_parts: list[float] = []
     amount_total = 0.0
-    page = 1
-    while True:
-        text = em_get(
-            "/api/qt/clist/get",
-            params={
-                "pn": page,
-                "pz": 100,
-                "po": 1,
-                "np": 1,
-                "ut": "bd1d9ddb04089700cf9c27f6f7426281",
-                "fltt": 2,
-                "invt": 2,
-                "fid": "f12",
-                "fs": fs,
-                "fields": "f3,f6",
-            },
-        )
-        data = json.loads(text).get("data") or {}
-        diff = data.get("diff") or []
-        for item in diff:
-            p, a = item.get("f3"), item.get("f6")
-            if isinstance(p, (int, float)):
-                pct_parts.append(float(p))
-            if isinstance(a, (int, float)):
-                amount_total += float(a)
-        total = data.get("total") or 0
-        if page * 100 >= total or not diff:
-            break
-        page += 1
-        time.sleep(0.15)
-    if not pct_parts:
-        raise RuntimeError("breadth snapshot empty")
+    notes: list[str] = []
 
-    pct = pd.Series(pct_parts)
-    row = {
+    # -------- 主路径: 东方财富 clist 分页 --------
+    try:
+        fs = "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048"
+        page = 1
+        while True:
+            text = em_get(
+                "/api/qt/clist/get",
+                params={
+                    "pn": page,
+                    "pz": 100,
+                    "po": 1,
+                    "np": 1,
+                    "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+                    "fltt": 2,
+                    "invt": 2,
+                    "fid": "f12",
+                    "fs": fs,
+                    "fields": "f3,f6",
+                },
+            )
+            data = json.loads(text).get("data") or {}
+            diff = data.get("diff") or []
+            for item in diff:
+                p, a = item.get("f3"), item.get("f6")
+                if isinstance(p, (int, float)):
+                    pct_parts.append(float(p))
+                if isinstance(a, (int, float)):
+                    amount_total += float(a)
+            total = data.get("total") or 0
+            if page * 100 >= total or not diff:
+                break
+            page += 1
+            time.sleep(0.15)
+    except Exception as exc:  # noqa: BLE001
+        notes.append(f"em_clist failed: {type(exc).__name__}")
+
+    # -------- 备用路径: AkShare 全A快照 --------
+    if not pct_parts:
+        try:
+            import akshare as ak
+            spot = ak.stock_zh_a_spot_em()
+            pct_col = "涨跌幅" if "涨跌幅" in spot.columns else "f3"
+            amt_col = "成交额" if "成交额" in spot.columns else "f6"
+            for _, row in spot.iterrows():
+                p = row.get(pct_col)
+                a = row.get(amt_col)
+                if pd.notna(p):
+                    pct_parts.append(float(p))
+                if pd.notna(a):
+                    amount_total += float(a)
+            notes.append("fallback: akshare spot")
+        except Exception as exc2:  # noqa: BLE001
+            notes.append(f"akshare fallback failed: {type(exc2).__name__}")
+
+    # -------- 最终回退: 从已有成交额汇总文件取 amount --------
+    if not pct_parts and not amount_total:
+        try:
+            tdf = load_csv(
+                PROCESSED_DIR / "a_share_turnover_concentration.csv",
+                ["date", "total_amount_100mn"],
+            )
+            if not tdf.empty:
+                latest = tdf.iloc[-1]
+                if str(latest.get("date", "")) == expected.strftime("%Y-%m-%d"):
+                    amount_total = float(latest.get("total_amount_100mn", 0)) * 1e8
+                    notes.append("fallback: turnover_concentration amount only")
+        except Exception:  # noqa: BLE001
+            pass
+
+    if not pct_parts and amount_total == 0:
+        return {"added": 0, "notes": notes + ["all breadth sources empty"]}
+
+    row: dict = {
         "date": expected.strftime("%Y-%m-%d"),
-        "up_count": int((pct > 0).sum()),
-        "down_count": int((pct < 0).sum()),
-        "flat_count": int((pct == 0).sum()),
-        "median_pct": round(float(pct.median()), 4),
-        "mean_pct": round(float(pct.mean()), 4),
-        "amount_100mn": round(amount_total / 1e8, 2),
+        "up_count": None,
+        "down_count": None,
+        "flat_count": None,
+        "median_pct": None,
+        "mean_pct": None,
+        "amount_100mn": round(amount_total / 1e8, 2) if amount_total else None,
     }
+    if pct_parts:
+        pct = pd.Series(pct_parts)
+        row.update({
+            "up_count": int((pct > 0).sum()),
+            "down_count": int((pct < 0).sum()),
+            "flat_count": int((pct == 0).sum()),
+            "median_pct": round(float(pct.median()), 4),
+            "mean_pct": round(float(pct.mean()), 4),
+            "amount_100mn": round(amount_total / 1e8, 2) if amount_total else None,
+        })
+
     added = append_rows(
         BREADTH_CSV,
         ["date", "up_count", "down_count", "flat_count", "median_pct", "mean_pct", "amount_100mn"],
         ["date"],
         [row],
     )
-    return {"added": added, "notes": []}
+    return {"added": added, "notes": notes}
 
 
 # ------------------------------------------------------------------ rates ---

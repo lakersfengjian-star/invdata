@@ -8,15 +8,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VENDOR = ROOT / ".work" / "vendor"
-if VENDOR.exists():
-    sys.path.insert(0, str(VENDOR))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from common import PROCESSED_DIR, previous_bday, dataset_fresh
 
 import akshare as ak
 import pandas as pd
 
-
-PROCESSED_DIR = ROOT / "data" / "processed"
 OUT_CSV = PROCESSED_DIR / "southbound_flow.csv"
 METADATA_JSON = PROCESSED_DIR / "southbound_flow.metadata.json"
 START_DATE = "2026-01-01"
@@ -24,6 +22,12 @@ START_DATE = "2026-01-01"
 
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    expected = previous_bday()
+    if dataset_fresh(["southbound_flow.csv"], expected):
+        latest = pd.read_csv(OUT_CSV, parse_dates=["date"])["date"].max().strftime("%Y-%m-%d")
+        print(json.dumps({"status": "fresh", "latest_date": latest}, ensure_ascii=False))
+        return
+
     raw = ak.stock_hsgt_hist_em(symbol="南向资金")
     if raw.empty:
         raise RuntimeError("东方财富沪深港通历史接口未返回南向资金数据。")
@@ -57,7 +61,6 @@ def main() -> None:
     metadata = {
         "source": "Eastmoney HSGT history API via AkShare stock_hsgt_hist_em(symbol='南向资金')",
         "status": "ok",
-        "start_date": out["date"].min(),
         "latest_date": out["date"].max(),
         "unit": "亿元",
         "notes": [

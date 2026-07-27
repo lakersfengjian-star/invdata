@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -15,7 +16,6 @@ if VENDOR.exists():
 import akshare as ak
 import pandas as pd
 
-
 PROCESSED_DIR = ROOT / "data" / "processed"
 CACHE_DIR = ROOT / ".work" / "cache" / "company_profiles"
 LONGEST_CSV = PROCESSED_DIR / "limit_up_longest.csv"
@@ -24,6 +24,18 @@ METADATA_JSON = PROCESSED_DIR / "limit_up_tables.metadata.json"
 
 
 def latest_market_date() -> str:
+    """Try to infer the latest market date from existing outputs or metadata."""
+    # 1. Use existing limit-up CSV date if available (most reliable).
+    if LONGEST_CSV.exists():
+        try:
+            df = pd.read_csv(LONGEST_CSV)
+            if not df.empty:
+                latest = pd.to_datetime(df.iloc[-1].get("date", ""), errors="coerce")
+                if pd.notna(latest):
+                    return latest.strftime("%Y%m%d")
+        except Exception:
+            pass
+    # 2. Fallback to metadata from other datasets.
     candidates = [
         PROCESSED_DIR / "index_amount_share.metadata.json",
         PROCESSED_DIR / "metadata.json",
@@ -31,10 +43,13 @@ def latest_market_date() -> str:
     for path in candidates:
         if not path.exists():
             continue
-        data = json.loads(path.read_text(encoding="utf-8"))
-        value = data.get("latest_date") or data.get("latest_common_date")
-        if value:
-            return str(value).replace("-", "")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            value = data.get("latest_date") or data.get("latest_common_date")
+            if value:
+                return str(value).replace("-", "")
+        except Exception:
+            continue
     return pd.Timestamp.today().strftime("%Y%m%d")
 
 
@@ -86,16 +101,20 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--date", type=str, default="", help="Target date YYYYMMDD (default: auto-detect)")
+    args = parser.parse_args()
+
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    date = latest_market_date()
+    date_str = args.date if args.date else latest_market_date()
     notes: list[str] = []
     try:
-        pool = ak.stock_zt_pool_em(date=date)
+        pool = ak.stock_zt_pool_em(date=date_str)
     except Exception as exc:
         metadata = {
             "source": "Eastmoney limit-up pool via AkShare",
             "status": "failed",
-            "latest_date": date,
+            "latest_date": date_str,
             "notes": [f"涨停股池获取失败：{type(exc).__name__}: {exc}"],
         }
         METADATA_JSON.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -106,7 +125,7 @@ def main() -> None:
         metadata = {
             "source": "Eastmoney limit-up pool via AkShare",
             "status": "empty",
-            "latest_date": date,
+            "latest_date": date_str,
             "notes": ["涨停股池为空，可能为非交易日或数据源未更新。"],
         }
         METADATA_JSON.write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -121,7 +140,7 @@ def main() -> None:
     metadata = {
         "source": "Eastmoney limit-up pool via AkShare; company profile from CNINFO via AkShare",
         "status": "ok",
-        "latest_date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
+        "latest_date": f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}",
         "pool_size": int(len(pool)),
         "notes": notes
         + [
