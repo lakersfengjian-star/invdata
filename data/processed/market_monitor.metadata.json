@@ -1,24 +1,24 @@
 {
-  "latest_date": "2026-07-27",
+  "latest_date": "2026-07-28",
   "sections": {
-    "indices": "2026-07-27",
-    "breadth": "2026-07-24",
+    "indices": "2026-07-28",
+    "breadth": "",
     "rates": "2026-07-27"
   },
   "run": {
-    "expected": "2026-07-24",
+    "expected": "2026-07-27",
     "indices": {
-      "added": 0,
+      "added": 5,
       "notes": []
     },
     "breadth": {
       "added": 0,
       "notes": [
-        "fresh"
+        "section failed: JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
       ]
     },
     "rates": {
-      "added": 1,
+      "added": 0,
       "notes": []
     }
   }
