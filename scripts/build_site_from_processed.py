@@ -27,12 +27,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import FuncFormatter
 
+from chart_registry import CHART_REGISTRY, REGISTRY_BY_KEY
+
 
 PROCESSED_DIR = ROOT / "data" / "processed"
 RAW_DIR = ROOT / "data" / "raw"
 CHART_DIR = ROOT / "output" / "charts"
 SITE_DIR = ROOT / "site"
 VALUATION_START_DATE = "2020-01-01"
+CURRENT_CHART_STATUS: dict[str, dict] = {}
 
 
 def setup_fonts() -> None:
@@ -161,6 +164,48 @@ def draw_turnover_chart(df: pd.DataFrame, out_path: Path) -> dict:
         color="#c5513c",
         bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#e2c1b9", "alpha": 0.9},
     )
+    ax1.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_turnover_share_chart(df: pd.DataFrame, share_col: str, label: str, color: str, out_path: Path) -> dict:
+    setup_fonts()
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    latest = plot_df.dropna(subset=[share_col]).iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax1 = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax1.set_facecolor("#fbfbf8")
+    ax2 = ax1.twinx()
+    ax1.plot(plot_df["date"], plot_df[share_col], color=color, linewidth=2.45, label=label)
+    ax2.plot(plot_df["date"], plot_df["上证指数"], color="#7a6f64", linewidth=1.75, alpha=0.75, label="上证指数")
+    ax1.annotate(
+        f"{latest_date}  {latest[share_col]:.2f}%",
+        xy=(latest["date"], latest[share_col]),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=11,
+        color=color,
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax1.set_xlabel("日期", fontsize=12)
+    ax1.set_ylabel("占全市场成交额比例（%）", fontsize=12)
+    ax2.set_ylabel("上证指数收盘价（点）", fontsize=12)
+    ax1.yaxis.set_major_formatter(FuncFormatter(pct_formatter))
+    ax1.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax1.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
     ax1.spines[["top", "right"]].set_visible(False)
     ax2.spines[["top", "left"]].set_visible(False)
     fig.tight_layout()
@@ -970,10 +1015,11 @@ def format_table_value(field: str, value: object) -> str:
     return escape(str(value))
 
 
-def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str) -> str:
+def render_limit_up_table(title: str, df: pd.DataFrame | None, latest_date: str, chart_key: str) -> str:
     note_html = chart_note_block(
         "涨停股池来自东方财富公开接口；主营业务来自巨潮公司概况。公开涨停池未披露逐股原因，原因字段先按所属行业、连板数和涨停统计归纳。",
         "涨停原因不是交易所官方逐股披露结论，仅用于快速观察；若个股信息为空或异常，通常代表公开接口尚未更新或公司概况抓取失败。",
+        chart_key,
     )
     if df is None or df.empty:
         return f'''      <section class="chart-section">
@@ -1010,6 +1056,7 @@ def render_market_monitor(indices: pd.DataFrame | None, breadth: pd.DataFrame | 
     note_html = chart_note_block(
         "权益指数来自东方财富、中证指数官网、新浪财经与 Wind(万得全A);市场宽度按东方财富全A快照统计;利率来自中国货币网与 Wind(7天逆回购)。DR007 用银银间回购定盘利率 FDR007 展示;5年期AAA企业债用中短期票据(AAA)收益率曲线;二级资本债取 AAA- 5年期。",
         "不同数据源口径存在细微差异;公开接口若临时不可用,对应指标会显示上一可得交易日数据或待更新。",
+        "market_monitor",
     )
     sections: list[str] = []
     latest_dates: list[str] = []
@@ -1112,8 +1159,81 @@ def render_market_monitor(indices: pd.DataFrame | None, breadth: pd.DataFrame | 
       </section>'''
 
 
-def chart_note_block(data_note: str, risk_note: str) -> str:
+def normalize_date_text(value: object) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    parsed = pd.to_datetime(text, errors="coerce")
+    if pd.notna(parsed):
+        return parsed.strftime("%Y-%m-%d")
+    return text
+
+
+def compare_date_text(actual: str, expected: str, frequency: str) -> str:
+    if frequency == "manual":
+        return "manual"
+    if not actual:
+        return "missing"
+    if not expected:
+        return "unknown"
+    if frequency == "monthly":
+        return "ok" if actual[:7] >= expected[:7] else "lagging"
+    return "ok" if actual >= expected else "lagging"
+
+
+def status_label(status: str) -> str:
+    return {
+        "ok": "正常",
+        "lagging": "滞后",
+        "missing": "缺失",
+        "manual": "不定期",
+        "unknown": "待确认",
+    }.get(status, status)
+
+
+def build_chart_audit(chart_dates: dict[str, str], expected_dates: dict[str, str], build_time: str) -> list[dict]:
+    audit = []
+    for item in CHART_REGISTRY:
+        key = item["key"]
+        actual = normalize_date_text(chart_dates.get(key, ""))
+        expected = normalize_date_text(expected_dates.get(item["frequency"], ""))
+        status = compare_date_text(actual, expected, item["frequency"])
+        audit.append({
+            "key": key,
+            "id": item["id"],
+            "title": item["title"],
+            "category": item["category"],
+            "frequency": item["frequency"],
+            "expected_date": expected,
+            "actual_date": actual,
+            "status": status,
+            "status_label": status_label(status),
+            "built_at": build_time,
+        })
+    return audit
+
+
+def chart_status_line(chart_key: str | None) -> str:
+    if not chart_key:
+        return ""
+    item = CURRENT_CHART_STATUS.get(chart_key)
+    if not item:
+        return ""
+    status = escape(str(item["status_label"]))
+    actual = escape(str(item.get("actual_date") or "暂无"))
+    expected = escape(str(item.get("expected_date") or "不适用"))
+    cls = escape(str(item.get("status") or "unknown"))
+    return (
+        f'<p class="chart-status status-{cls}"><strong>更新状态：</strong>'
+        f'应更新日期 {expected}；实际日期 {actual}；状态 {status}。</p>'
+    )
+
+
+def chart_note_block(data_note: str, risk_note: str, chart_key: str | None = None) -> str:
     return f'''<div class="chart-notes">
+          {chart_status_line(chart_key)}
           <p><strong>数据说明：</strong>{data_note}</p>
           <p><strong>风险提示：</strong>{risk_note}</p>
         </div>'''
@@ -1156,6 +1276,7 @@ def render_library() -> str:
 {chr(10).join(cards)}
         </div>
         <div class="chart-notes">
+          {chart_status_line("library")}
           <p><strong>资料说明：</strong>本板块收录个人研究文章与投资资料，点击卡片可在新标签页打开对应文件；后续新增资料会按时间倒序追加。</p>
         </div>
       </section>'''
@@ -1163,7 +1284,11 @@ def render_library() -> str:
 
 def build_page(
     metadata: dict,
+    broad_chart: dict,
+    star_chart: dict,
     chart3: dict,
+    chart3_top10: dict,
+    chart3_top100: dict,
     valuation_charts: list[dict],
     amount_share_chart: dict | None = None,
     industry_crowding_chart: dict | None = None,
@@ -1177,12 +1302,15 @@ def build_page(
     limit_up_longest: pd.DataFrame | None = None,
     limit_up_amount_top: pd.DataFrame | None = None,
     limit_up_meta: dict | None = None,
-    market_monitor_html: str = "",
+    monitor_indices: pd.DataFrame | None = None,
+    monitor_breadth: pd.DataFrame | None = None,
+    monitor_rates: pd.DataFrame | None = None,
     industry_pb_roe_chart: dict | None = None,
     industrial_profit_chart: dict | None = None,
     value_growth_spread_chart: dict | None = None,
     citic_pb_dispersion_chart: dict | None = None,
 ) -> None:
+    global CURRENT_CHART_STATUS
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
     for chart_file in CHART_DIR.glob("*.png"):
@@ -1192,17 +1320,61 @@ def build_page(
     asset_version = "".join(ch for ch in build_time if ch.isdigit())
     broad_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
-    valuation_html = "\n\n".join(
-        f'''      <section class="chart-section">
-      <h2><span class="chart-num">{6 + idx:03d}</span>{chart["title"]}{freq_badge("日频")}</h2>
-      <img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">
+    valuation_date_by_key = {chart.get("key", ""): chart.get("last_date", "") for chart in valuation_charts}
+    limit_up_date = (limit_up_meta or {}).get("latest_date", "")
+    chart_dates = {
+        "market_monitor": metadata.get("latest_common_date", ""),
+        "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
+        "limit_up_longest": limit_up_date,
+        "limit_up_amount_top": limit_up_date,
+        "macro": (macro_chart or {}).get("last_date", ""),
+        "valuation_hs300": valuation_date_by_key.get("valuation_hs300", ""),
+        "valuation_sse": valuation_date_by_key.get("valuation_sse", ""),
+        "valuation_wind_all_a": valuation_date_by_key.get("valuation_wind_all_a", ""),
+        "valuation_wind_all_a_ex_fin_petchem": valuation_date_by_key.get("valuation_wind_all_a_ex_fin_petchem", ""),
+        "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
+        "industrial_profits": (industrial_profit_chart or {}).get("last_date", ""),
+        "southbound": (southbound_chart or {}).get("last_date", ""),
+        "broad_etf_flow": (broad_chart or {}).get("last_date", ""),
+        "star50_etf_flow": (star_chart or {}).get("last_date", ""),
+        "sentiment": (sentiment_chart or {}).get("last_date", ""),
+        "turnover_top10": (chart3_top10 or chart3 or {}).get("last_date", ""),
+        "turnover_top100": (chart3_top100 or chart3 or {}).get("last_date", ""),
+        "amount_share": (amount_share_chart or {}).get("last_date", ""),
+        "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
+        "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
+        "value_growth_spread": (value_growth_spread_chart or {}).get("last_date", ""),
+        "citic_pb_dispersion": (citic_pb_dispersion_chart or {}).get("last_date", ""),
+        "library": "",
+    }
+    daily_keys = {item["key"] for item in CHART_REGISTRY if item["frequency"] == "daily"}
+    weekly_keys = {item["key"] for item in CHART_REGISTRY if item["frequency"] == "weekly"}
+    monthly_keys = {item["key"] for item in CHART_REGISTRY if item["frequency"] == "monthly"}
+    latest_daily = max((normalize_date_text(chart_dates[k]) for k in daily_keys if chart_dates.get(k)), default=latest)
+    latest_weekly = max((normalize_date_text(chart_dates[k]) for k in weekly_keys if chart_dates.get(k)), default="")
+    latest_macro = max((normalize_date_text(chart_dates[k]) for k in monthly_keys if chart_dates.get(k)), default="")
+    expected_dates = {"daily": latest_daily, "weekly": latest_weekly, "monthly": latest_macro, "manual": ""}
+    chart_audit = build_chart_audit(chart_dates, expected_dates, build_time)
+    CURRENT_CHART_STATUS = {item["key"]: item for item in chart_audit}
+    daily_lagging = sorted(k for k in daily_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") == "lagging")
+    market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
+    valuation_sections = []
+    for idx, chart in enumerate(valuation_charts):
+        media = (
+            f'<img src="assets/charts/{Path(chart["path"]).name}?v={asset_version}" alt="{chart["title"]}">'
+            if chart.get("path")
+            else '<p class="empty-note">暂无可展示数据，请先补充该指数 PE_TTM 时间序列。</p>'
+        )
+        valuation_sections.append(f'''      <section class="chart-section">
+      <h2><span class="chart-num">{REGISTRY_BY_KEY[chart["key"]]["id"]}</span>{chart["title"]}{freq_badge("日频")}</h2>
+      {media}
       {chart_note_block(
           f"统计区间自 {VALUATION_START_DATE} 起；PE_TTM 序列按交易日历史数据绘制，水平虚线分别为均值、均值±1倍标准差、均值±2倍标准差。",
-          "估值分位和标准差通道仅反映历史相对位置，不代表合理估值中枢；若指数成分或口径调整，历史可比性会受影响。",
+          "估值分位和标准差通道仅反映历史相对位置，不代表合理估值中枢；若指数成分或口径调整，历史可比性会受影响；若状态为缺失，说明本地尚无该图所需 PE_TTM 序列。",
+          chart.get("key"),
       )}
-    </section>'''
-        for idx, chart in enumerate(valuation_charts)
-    )
+    </section>''')
+    valuation_html = "\n\n".join(valuation_sections)
     pb_roe_html = ""
     if industry_pb_roe_chart:
         pb_roe_html = f'''      <section class="chart-section">
@@ -1211,6 +1383,7 @@ def build_page(
         {chart_note_block(
             "ROE_TTM 由 PB/PE 恒等式推导(同一价格口径下 ROE≈PB/PE);PE_TTM 缺失(亏损状态)的行业不参与绘图。颜色代表 PB 十年分位,数据与中信拥挤度同为每周最后一个交易日更新。",
             "PB-ROE 是相对估值观察框架,不构成买卖建议;推导口径 ROE 与财报口径可能存在细微差异。",
+            "pb_roe",
         )}
       </section>'''
     earnings_html = '<p class="empty-note">暂无图表。</p>'
@@ -1222,6 +1395,7 @@ def build_page(
         {chart_note_block(
             f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。柱状图对比过去5年全年同比与当年同期(1-{ipc['current_month']}月)累计同比,橙色柱为{ipc['current_year']}年同期实际值。外推方法:以过去1年/3年/5年同期累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比,图中以虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。",
             "统计局对规模以上企业样本与基数有年度调整,官方同比与按累计额直接计算的同比存在口径差;外推基于季节性进度假设,下半年盈利节奏变化会使实际值偏离外推值,仅供参考。",
+            "industrial_profits",
         )}
       </section>'''
     amount_share_html = ""
@@ -1232,6 +1406,7 @@ def build_page(
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
             "成交额占比受指数样本、停复牌、分母代理口径影响；若中证官网或代理分母未更新，最新日期可能滞后。",
+            "amount_share",
         )}
       </section>'''
     theme_amount_html = ""
@@ -1242,6 +1417,7 @@ def build_page(
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
             "主题指数成交额不能等同于板块全部股票成交额；红利低波使用右轴展示，读取时应关注左右轴刻度差异。",
+            "theme_amount_share",
         )}
       </section>'''
     market_turnover_html = ""
@@ -1252,6 +1428,7 @@ def build_page(
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
             "代理口径可能低估或高估沪深京全市场真实成交额，尤其在北交所或非成分股成交活跃时偏差会扩大。",
+            "market_turnover",
         )}
       </section>'''
     southbound_html = ""
@@ -1263,6 +1440,7 @@ def build_page(
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
             "若最新值长时间为 0、缺失或日期滞后，通常代表公开接口尚未更新；不同数据源对南向资金口径可能存在细微差异。",
+            "southbound",
         )}
       </section>'''
     macro_html = '<p class="empty-note">暂无图表。</p>'
@@ -1278,11 +1456,12 @@ def build_page(
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
             "宏观数据存在发布滞后、修订和接口失效风险；当前部分国家统计局、人民银行细分指标若未自动接入，会在图中保留占位。",
+            "macro",
         )}
       </section>'''
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
-    limit_up_html = render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date)
-    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date)
+    limit_up_html = render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date, "limit_up_longest")
+    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date, "limit_up_amount_top")
     sentiment_html = '<p class="empty-note">暂无图表。</p>'
     if sentiment_chart:
         components = (sentiment_meta or {}).get("components", {})
@@ -1293,6 +1472,7 @@ def build_page(
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
             "情绪指数是历史相对位置的观察，不代表买卖建议；增量数据来自 Wind 与公开接口，换手率增量按普通换手率×2.607折算自由流通口径，可能与精确值有小幅偏差。",
+            "sentiment",
         )}
       </section>'''
     value_growth_html = ""
@@ -1303,6 +1483,7 @@ def build_page(
         {chart_note_block(
             "价差 = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)，区间自 2021-01-01 起；虚线和阴影标注样本期历史上限/下限区间。数据优先来自 /gjdata 的 AIndexValuation 表。",
             "股息率和 PE_TTM 是指数估值口径，可能因成分调整、盈利口径修订和亏损样本处理而变化；极值区间只代表历史样本观察，不构成风格配置建议。",
+            "value_growth_spread",
         )}
       </section>'''
     pb_dispersion_html = ""
@@ -1313,6 +1494,7 @@ def build_page(
         {chart_note_block(
             "左轴为万得全A收盘价(881001.WI)，右轴为中信一级行业 PB_LF 历史分位的横截面标准差，并取 5 个交易日滚动平均(MA5)。PB 分位采用过去 10 年交易日滚动窗口计算，数据自 2005 年起从 /gjdata 读取。",
             "PB 分位标准差衡量行业估值分布离散程度，受行业样本、指数口径和 10 年滚动窗口影响；早期窗口未满时不会绘制离散度。",
+            "citic_pb_dispersion",
         )}
       </section>'''
     industry_crowding_html = ""
@@ -1327,45 +1509,13 @@ def build_page(
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
             "拥挤度是估值与交易热度的历史分位观察，不代表买卖建议；若 Wind API 不可用或本地 CSV 未补齐，结果会显示待接入或滞后。",
+            "industry_crowding",
         )}
       </section>'''
-    chart_dates = {
-        "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
-        "limit_up": limit_up_date,
-        "turnover_concentration": (chart3 or {}).get("last_date", ""),
-        "southbound": (southbound_chart or {}).get("last_date", ""),
-        "sentiment": (sentiment_chart or {}).get("last_date", ""),
-        "amount_share": (amount_share_chart or {}).get("last_date", ""),
-        "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
-        "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
-        "value_growth_spread": (value_growth_spread_chart or {}).get("last_date", ""),
-        "citic_pb_dispersion": (citic_pb_dispersion_chart or {}).get("last_date", ""),
-        "macro": (macro_chart or {}).get("last_date", ""),
-        "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
-        "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
-        "industrial_profits": (industrial_profit_chart or {}).get("last_date", ""),
-    }
-    daily_keys = {
-        "market_turnover",
-        "limit_up",
-        "turnover_concentration",
-        "southbound",
-        "sentiment",
-        "amount_share",
-        "theme_amount_share",
-        "valuation",
-        "value_growth_spread",
-        "citic_pb_dispersion",
-    }
-    weekly_keys = {"industry_crowding", "pb_roe"}
-    monthly_keys = {"macro", "industrial_profits"}
-    latest_daily = max((chart_dates[k] for k in daily_keys if chart_dates.get(k)), default=latest)
-    latest_weekly = max((chart_dates[k] for k in weekly_keys if chart_dates.get(k)), default="")
-    latest_macro = max((chart_dates[k] for k in monthly_keys if chart_dates.get(k)), default="")
-    daily_lagging = sorted(k for k in daily_keys if chart_dates.get(k) and chart_dates[k] < latest_daily)
     daily_note = ""
     if daily_lagging:
-        daily_note = f"<div class=\"meta-warning\">部分日频指标滞后：{', '.join(daily_lagging[:4])}</div>"
+        lagging_names = [REGISTRY_BY_KEY.get(key, {}).get("title", key) for key in daily_lagging[:4]]
+        daily_note = f"<div class=\"meta-warning\">部分日频指标滞后：{', '.join(lagging_names)}</div>"
     html = f'''<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -1431,6 +1581,7 @@ def build_page(
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
             broad_etf_risk,
+            "broad_etf_flow",
         )}
       </section>
       <section class="chart-section">
@@ -1439,6 +1590,7 @@ def build_page(
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
             star_etf_risk,
+            "star50_etf_flow",
         )}
       </section>
     </section>
@@ -1447,11 +1599,21 @@ def build_page(
       <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
 {sentiment_html}
       <section class="chart-section">
-        <h2><span class="chart-num">014</span>A股成交额前10大公司交易集中度变化（截至{chart3["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_003_a_share_turnover_concentration.png?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
+        <h2><span class="chart-num">014A</span>A股成交额前10大公司交易集中度变化（截至{chart3_top10["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(chart3_top10["path"]).name}?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
-            "样本覆盖当前沪深京A股清单；逐日计算前10、前100成交额占比。右轴为上证指数收盘价。",
+            "样本覆盖当前沪深京A股清单；逐日计算成交额前10股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
             "个股成交额排名依赖公开行情接口完整性；停牌、新股、北交所覆盖和接口延迟都可能影响集中度读数。",
+            "turnover_top10",
+        )}
+      </section>
+      <section class="chart-section">
+        <h2><span class="chart-num">014B</span>A股成交额前100大公司交易集中度变化（截至{chart3_top100["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(chart3_top100["path"]).name}?v={asset_version}" alt="A股成交额前100大公司交易集中度变化">
+        {chart_note_block(
+            "样本覆盖当前沪深京A股清单；逐日计算成交额前100股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
+            "前100集中度用于观察交易扩散程度，仍依赖公开逐股成交额接口完整性；接口延迟会影响最新交易日读数。",
+            "turnover_top100",
         )}
       </section>
 {amount_share_html}
@@ -1680,6 +1842,29 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 .chart-notes p { margin: 0; }
 .chart-notes p + p { margin-top: 3px; }
 .chart-notes strong { color: var(--ink); font-weight: 600; }
+.chart-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px !important;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f4f6f8;
+  border: 1px solid #e1e6ec;
+}
+.status-ok {
+  color: #16734f;
+  background: #e8f6ef;
+  border-color: #c6ead8;
+}
+.status-lagging, .status-missing {
+  color: #a3482f;
+  background: #fff0e8;
+  border-color: #f1c9b8;
+}
+.status-manual, .status-unknown {
+  color: #59636e;
+}
 .empty-note {
   margin: 8px 0 36px;
   padding: 26px;
@@ -1930,6 +2115,13 @@ if (refreshButton && refreshStatus) {
         "charts": chart_dates,
     }
     (SITE_DIR / "meta.json").write_text(json.dumps(site_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    audit_payload = {
+        "generated_at": build_time,
+        "expected_dates": expected_dates,
+        "charts": chart_audit,
+    }
+    (PROCESSED_DIR / "chart_audit.json").write_text(json.dumps(audit_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    (SITE_DIR / "chart_audit.json").write_text(json.dumps(audit_payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def main() -> None:
@@ -1941,9 +2133,11 @@ def main() -> None:
     star = pd.read_csv(PROCESSED_DIR / "star50_etf_flow.csv", parse_dates=["date"])
     turnover = pd.read_csv(PROCESSED_DIR / "a_share_turnover_concentration.csv", parse_dates=["date"])
     valuation = pd.read_csv(PROCESSED_DIR / "index_pe_ttm_valuation.csv", parse_dates=["date"])
-    draw_combo_chart(indices[["date", "沪深300", "上证指数"]].merge(broad, on="date", how="left"), [("沪深300", "沪深300", "#1f77b4"), ("上证指数", "上证指数", "#2a9d55")], "沪深300与上证指数走势及大宽基ETF资金流", CHART_DIR / "fig_001_broad_etf_flow.png")
-    draw_combo_chart(indices[["date", "科创50"]].merge(star, on="date", how="left"), [("科创50", "科创50", "#7b4ab8")], "科创50指数走势及科创50ETF资金流", CHART_DIR / "fig_002_star50_etf_flow.png")
-    chart3 = draw_turnover_chart(turnover, CHART_DIR / "fig_003_a_share_turnover_concentration.png")
+    broad_chart = draw_combo_chart(indices[["date", "沪深300", "上证指数"]].merge(broad, on="date", how="left"), [("沪深300", "沪深300", "#1f77b4"), ("上证指数", "上证指数", "#2a9d55")], "沪深300与上证指数走势及大宽基ETF资金流", CHART_DIR / "fig_001_broad_etf_flow.png")
+    star_chart = draw_combo_chart(indices[["date", "科创50"]].merge(star, on="date", how="left"), [("科创50", "科创50", "#7b4ab8")], "科创50指数走势及科创50ETF资金流", CHART_DIR / "fig_002_star50_etf_flow.png")
+    chart3 = {}
+    chart3_top10 = draw_turnover_share_chart(turnover, "top10_share_pct", "前10大占比", "#c5513c", CHART_DIR / "fig_003a_turnover_top10_concentration.png")
+    chart3_top100 = draw_turnover_share_chart(turnover, "top100_share_pct", "前100大占比", "#2f7cb8", CHART_DIR / "fig_003b_turnover_top100_concentration.png")
     amount_share_chart = None
     amount_share_path = PROCESSED_DIR / "index_amount_share.csv"
     if amount_share_path.exists():
@@ -2004,19 +2198,20 @@ def main() -> None:
     elif industry_crowding_meta_path.exists():
         industry_crowding_chart = draw_citic_industry_crowding_chart(None, industry_crowding_meta, CHART_DIR / "fig_006_citic_industry_crowding.png")
     valuation_chart_specs = [
-        ("沪深300指数", "fig_004a_hs300_pe_ttm_channel.png"),
-        ("上证指数", "fig_004b_sse_pe_ttm_channel.png"),
-        ("万得全A", "fig_004c_wind_all_a_pe_ttm_channel.png"),
-        ("万得全A（除金融、石油石化）", "fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png"),
+        ("valuation_hs300", "沪深300指数", "fig_004a_hs300_pe_ttm_channel.png"),
+        ("valuation_sse", "上证指数", "fig_004b_sse_pe_ttm_channel.png"),
+        ("valuation_wind_all_a", "万得全A", "fig_004c_wind_all_a_pe_ttm_channel.png"),
+        ("valuation_wind_all_a_ex_fin_petchem", "万得全A（除金融、石油石化）", "fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png"),
     ]
-    valuation_charts = [
-        chart
-        for chart in (
-            draw_valuation_chart(valuation, index_name, CHART_DIR / filename)
-            for index_name, filename in valuation_chart_specs
-        )
-        if chart
-    ]
+    valuation_charts = []
+    for key, index_name, filename in valuation_chart_specs:
+        chart = draw_valuation_chart(valuation, index_name, CHART_DIR / filename)
+        if chart:
+            chart["key"] = key
+            valuation_charts.append(chart)
+        else:
+            registry_item = REGISTRY_BY_KEY[key]
+            valuation_charts.append({"key": key, "title": registry_item["title"], "path": "", "last_date": ""})
     industry_pb_roe_chart = None
     pb_roe_weekly_path = RAW_DIR / "citic_industry_crowding_weekly.csv"
     if pb_roe_weekly_path.exists():
@@ -2051,10 +2246,13 @@ def main() -> None:
         monitor_breadth = pd.read_csv(monitor_breadth_path)
     if monitor_rates_path.exists():
         monitor_rates = pd.read_csv(monitor_rates_path)
-    market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
     build_page(
         metadata,
+        broad_chart,
+        star_chart,
         chart3,
+        chart3_top10,
+        chart3_top100,
         valuation_charts,
         amount_share_chart,
         industry_crowding_chart,
@@ -2068,13 +2266,15 @@ def main() -> None:
         limit_up_longest,
         limit_up_amount_top,
         limit_up_meta,
-        market_monitor_html=market_monitor_html,
+        monitor_indices=monitor_indices,
+        monitor_breadth=monitor_breadth,
+        monitor_rates=monitor_rates,
         industry_pb_roe_chart=industry_pb_roe_chart,
         industrial_profit_chart=industrial_profit_chart,
         value_growth_spread_chart=value_growth_spread_chart,
         citic_pb_dispersion_chart=citic_pb_dispersion_chart,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart)) + int(bool(industrial_profit_chart)) + int(bool(value_growth_spread_chart)) + int(bool(citic_pb_dispersion_chart))
+    chart_count = len(CHART_REGISTRY)
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 

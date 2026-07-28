@@ -208,6 +208,29 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 .chart-notes p { margin: 0; }
 .chart-notes p + p { margin-top: 3px; }
 .chart-notes strong { color: var(--ink); font-weight: 600; }
+.chart-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px !important;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f4f6f8;
+  border: 1px solid #e1e6ec;
+}
+.status-ok {
+  color: #16734f;
+  background: #e8f6ef;
+  border-color: #c6ead8;
+}
+.status-lagging, .status-missing {
+  color: #a3482f;
+  background: #fff0e8;
+  border-color: #f1c9b8;
+}
+.status-manual, .status-unknown {
+  color: #59636e;
+}
 .empty-note {
   margin: 8px 0 36px;
   padding: 26px;

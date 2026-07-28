@@ -28,17 +28,20 @@
 - 图表目录：`output/charts/`
 - 数据目录：`data/processed/`
 - 元数据：`data/processed/metadata.json`、`site/meta.json`
+- 图表注册表：`scripts/chart_registry.py`
+- 图表审计：`data/processed/chart_audit.json`、`site/chart_audit.json`
 - 自动更新审计：`data/processed/update_audit.json`
 
 ## 图表编号
 
 - `fig_001_broad_etf_flow.png`：沪深300/上证指数与大宽基ETF资金流
 - `fig_002_star50_etf_flow.png`：科创50指数与科创50ETF资金流
-- `fig_003_a_share_turnover_concentration.png`：A股成交额前10/前100集中度
-- `fig_004a_hs300_pe_ttm_channel.png`：沪深300PE_TTM标准差通道
-- `fig_004b_sse_pe_ttm_channel.png`：上证指数PE_TTM标准差通道
-- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM标准差通道，需本地CSV
-- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化PE_TTM标准差通道，需本地CSV
+- `fig_003a_turnover_top10_concentration.png`：A股成交额前10集中度（014A）
+- `fig_003b_turnover_top100_concentration.png`：A股成交额前100集中度（014B）
+- `fig_004a_hs300_pe_ttm_channel.png`：沪深300PE_TTM标准差通道（006A）
+- `fig_004b_sse_pe_ttm_channel.png`：上证指数PE_TTM标准差通道（006B）
+- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM标准差通道（006C），需本地CSV
+- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化PE_TTM标准差通道（006D），需本地CSV
 - `fig_005_index_amount_share.png`：沪深300、中证500、中证1000、中证2000成交额占全A成交额比例
 - `fig_006_citic_industry_crowding.png`：中信一级行业估值与成交拥挤度，按周更新
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例
@@ -198,15 +201,18 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 ### 刷新按钮防重复规则
 
 - 站点构建时输出 `site/meta.json`（含 `latest_daily_date` 及各图表最新日期）。
+- 站点构建时必须同步输出 `data/processed/chart_audit.json` 和 `site/chart_audit.json`：每张图包含 `key/id/title/category/frequency/expected_date/actual_date/status/status_label`。
+- 页面每个 `chart-section` 的说明区必须展示“应更新日期、实际日期、状态”。状态来自 `scripts/chart_registry.py` 和 `chart_audit.json` 同一套逻辑，避免页面与审计文件口径不一致。
 - 用户点击"刷新数据"时，`app.js` 先拉取 `meta.json`：若 `latest_daily_date` 已覆盖上一交易日，直接提示"数据已更新，请勿重复获取，避免消耗 API 与 token 额度"，**不再提交** `/api/refresh`；否则才触发 GitHub Actions 手动全量（`--mode all`）。
 
 ### 新增图表接入清单（务必按序执行）
 
 1. 编写 `scripts/update_xxx.py`：增量取数 → 输出 `data/processed/xxx.csv`（含 `date` 列）+ `xxx.metadata.json`（含 `latest_date`）。
 2. 在 `scripts/run_scheduled_updates.py` 的 `DAILY_DATASETS`（或周频/宏观相应位置）注册脚本与产出文件，新鲜度守卫自动生效。
-3. 在 `scripts/build_site_from_processed.py` 中：新增画图函数（图内无标题）、在对应板块插入 `chart-section`、标题前加 `<span class="chart-num">NNN</span>` 三位编号、`freq_badge()` 标注更新频率、附数据说明与风险提示；全站编号随之顺移。
-4. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 的日频/周频新建或并入本地定时任务（T+1 时间同上表）。
-5. 重建 `python scripts/build_site_from_processed.py`，确认 `site/meta.json` 包含新图表日期后本地提交。
+3. 先在 `scripts/chart_registry.py` 注册图表 `key/id/title/category/frequency`。编号需要稳定；需要拆图时优先用 `014A/014B`、`006A/006B` 这类子编号，避免大面积顺移。
+4. 在 `scripts/build_site_from_processed.py` 中：新增画图函数（图内无标题）、在对应板块插入 `chart-section`、标题前使用注册表编号、`freq_badge()` 标注更新频率、附数据说明与风险提示，并在 `chart_note_block(..., chart_key)` 中传入注册表 key。
+5. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 或 `/gjdata` 本地能力的日频/周频新建或并入本地定时任务（T+1 时间同上表）。
+6. 重建 `python scripts/build_site_from_processed.py`，确认 `site/meta.json` 包含新图表日期，`site/chart_audit.json` 包含新图表状态后本地提交。
 
 ### 自动更新流程（GitHub Actions）
 

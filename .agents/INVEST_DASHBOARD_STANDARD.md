@@ -206,11 +206,12 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 
 - `fig_001_broad_etf_flow.png`：沪深300/上证指数与大宽基ETF资金流
 - `fig_002_star50_etf_flow.png`：科创50指数与科创50ETF资金流
-- `fig_003_a_share_turnover_concentration.png`：A股成交额前10/前100交易集中度
-- `fig_004a_hs300_pe_ttm_channel.png`：沪深300指数 PE_TTM 标准差通道
-- `fig_004b_sse_pe_ttm_channel.png`：上证指数 PE_TTM 标准差通道
-- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM 标准差通道，依赖本地 CSV
-- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化 PE_TTM 标准差通道，依赖本地 CSV
+- `fig_003a_turnover_top10_concentration.png`：A股成交额前10集中度（014A）
+- `fig_003b_turnover_top100_concentration.png`：A股成交额前100集中度（014B）
+- `fig_004a_hs300_pe_ttm_channel.png`：沪深300指数 PE_TTM 标准差通道（006A）
+- `fig_004b_sse_pe_ttm_channel.png`：上证指数 PE_TTM 标准差通道（006B）
+- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM 标准差通道（006C），依赖本地 CSV
+- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化 PE_TTM 标准差通道（006D），依赖本地 CSV
 - `fig_005_index_amount_share.png`：沪深300、中证500、中证1000、中证2000成交额占全A成交额比例。数据优先来自中证指数官网指数行情接口；中证全指成交金额暂作为 Wind 全A成交额公开代理口径，后续若接入 Wind/Tushare 精确 Wind 全A成交额，可替换分母。
 - `fig_006_citic_industry_crowding.png`：中信一级行业估值与成交拥挤度。数据优先来自 Wind API；若本机没有 WindPy 或授权不可用，读取 `data/raw/citic_industry_crowding_weekly.csv`。
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例。数据来自中证指数官网指数行情接口，分母与图五一致。
