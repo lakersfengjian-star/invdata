@@ -1,21 +1,19 @@
 {
-  "updated_at": "2026-07-28 13:39:28",
-  "build_time": "2026-07-28 13:39:28",
-  "latest_common_date": "2026-07-24",
+  "updated_at": "2026-07-28 14:27:03",
+  "build_time": "2026-07-28 14:27:03",
+  "latest_common_date": "2026-07-27",
   "latest_daily_date": "2026-07-27",
   "latest_weekly_date": "2026-07-26",
   "latest_macro_date": "2026-06-01",
   "daily_lagging_charts": [
-    "sentiment",
-    "turnover_concentration",
     "valuation"
   ],
   "charts": {
     "market_turnover": "2026-07-27",
     "limit_up": "2026-07-27",
-    "turnover_concentration": "2026-07-24",
+    "turnover_concentration": "2026-07-27",
     "southbound": "2026-07-27",
-    "sentiment": "2026-07-24",
+    "sentiment": "2026-07-27",
     "amount_share": "2026-07-27",
     "theme_amount_share": "2026-07-27",
     "industry_crowding": "2026-07-26",

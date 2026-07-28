@@ -105,6 +105,17 @@ def nl_rows(inner: dict) -> tuple[list[str], list[list]]:
     return cols, blocks[0]["rows"]
 
 
+def find_date_col(cols: list[str], preferred: str = "日期") -> int | None:
+    """Return the date-like column index from Wind/AIFin natural-language tables."""
+    if preferred in cols:
+        return cols.index(preferred)
+    for i, col in enumerate(cols):
+        lower = str(col).lower()
+        if "日期" in str(col) or "时间" in str(col) or "date" in lower or "time" in lower:
+            return i
+    return None
+
+
 def chunks(begin_d: date, end_d: date) -> list[tuple[str, str]]:
     out = []
     cur = begin_d
@@ -133,7 +144,10 @@ def fetch_increments(last: date, today: date) -> pd.DataFrame:
             cols, rows = nl_rows(inner)
             if not cols:
                 continue
-            di = cols.index(date_key)
+            di = find_date_col(cols, date_key)
+            if di is None:
+                print(f"[warn] {kind}: no date column in {cols}", flush=True)
+                continue
             for old, new in col_map.items():
                 ci = next((i for i, c in enumerate(cols) if old in c), None)
                 if ci is None:
@@ -146,7 +160,8 @@ def fetch_increments(last: date, today: date) -> pd.DataFrame:
             if kv:
                 s = pd.Series(kv, name=new)
                 s.index = pd.to_datetime(s.index)
-                inc[new] = pd.to_numeric(s, errors="coerce")
+                s = pd.to_numeric(s, errors="coerce")
+                inc[new] = s.groupby(level=0).last()
 
     grab(
         "pe", lambda b, e: ("index_data", "get_index_fundamentals",
@@ -205,6 +220,7 @@ def fetch_increments(last: date, today: date) -> pd.DataFrame:
 
     if not inc:
         return pd.DataFrame()
+    inc = {name: series.groupby(level=0).last() for name, series in inc.items()}
     df = pd.DataFrame(inc).sort_index()
     if "turn_std" in df:
         df["free_turn"] = df["turn_std"] * FREE_TURN_RATIO

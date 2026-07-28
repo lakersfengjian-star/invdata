@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-07-27 14:04:53",
+  "updated_at": "2026-07-28 14:26:53",
   "start_date": "2025-01-01",
-  "latest_common_date": "2026-07-24",
+  "latest_common_date": "2026-07-27",
   "etf_selection": [
     {
       "code": "510300",
@@ -57,27 +57,27 @@
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "沪深300 close: 377 rows"
+      "detail": "沪深300 close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "上证指数 close: 377 rows"
+      "detail": "上证指数 close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "科创50 close: 377 rows"
+      "detail": "科创50 close: 378 rows"
     },
     {
       "source": "SSE ETF scale",
       "status": "ok",
-      "detail": "377 trading days, 0 failed days"
+      "detail": "378 trading days, 0 failed days"
     },
     {
       "source": "SZSE ETF scale",
       "status": "ok",
-      "detail": "377 trading days, 0 failed chunks"
+      "detail": "378 trading days, 0 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
@@ -112,37 +112,47 @@
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510300 ETF close: 377 rows"
+      "detail": "510300 ETF close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510310 ETF close: 377 rows"
+      "detail": "510310 ETF close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510330 ETF close: 377 rows"
+      "detail": "510330 ETF close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "159919 ETF close: 377 rows"
+      "detail": "159919 ETF close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510050 ETF close: 377 rows"
+      "detail": "510050 ETF close: 378 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "588000 ETF close: 377 rows"
+      "detail": "588000 ETF close: 378 rows"
     },
     {
-      "source": "Turnover concentration",
-      "status": "fresh",
-      "detail": "data already up to date (2026-07-24)"
+      "source": "AkShare stock_info_a_code_name",
+      "status": "ok",
+      "detail": "A-share stock list: 5532 names"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "ok",
+      "detail": "5531 symbols ok, 1 symbols failed"
     },
     {
       "source": "Index PE_TTM",
