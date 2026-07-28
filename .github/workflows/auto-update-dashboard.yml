@@ -2,12 +2,11 @@ name: Auto Update Dashboard
 
 on:
   schedule:
-    # 日频 T+1:UTC 22:00 周一至周五 = 北京时间 06:00 周二至周六,
-    # 覆盖前一交易日(周一至周五)收盘数据;周六早同时覆盖本周周频需求。
-    - cron: "0 22 * * 1-5"
-    # 宏观:UTC 15:00 = 北京时间 23:00,限统计局/央行集中发布窗口
-    # (每月 9–20 日:PMI/CPI/PPI/进出口/金融数据/经济数据;27 日:工业企业利润;28–31 日:PMI/季度GDP)。
-    - cron: "0 15 9-20,27-31 * *"
+    # 北京时间每天 06:00。调度器内部按频率判断：
+    # - 日频：T+1 06:00 补上一交易日；
+    # - 周频：周末/周一 06:00 检查最近完整交易周；
+    # - 月/季频：统计局、央行等发布窗口的次日 06:00 尝试补数。
+    - cron: "0 22 * * *"
   workflow_dispatch:
 
 permissions:
@@ -44,8 +43,8 @@ jobs:
 
       - name: Update data snapshots
         env:
-          # 手动刷新跑全量;23:00 宏观窗口只跑宏观;其余为日频 T+1。
-          UPDATE_MODE: ${{ github.event_name == 'workflow_dispatch' && 'all' || (github.event.schedule == '0 15 9-20,27-31 * *' && 'macro' || 'daily') }}
+          # 手动刷新跑全量；定时刷新由本地编排器按频率和发布日期判断。
+          UPDATE_MODE: ${{ github.event_name == 'workflow_dispatch' && 'all' || 'scheduled' }}
         run: |
           python scripts/run_scheduled_updates.py --mode "$UPDATE_MODE"
 
@@ -57,6 +56,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/processed data/raw output/charts site
+          git add index.html data/processed data/raw output/charts site
           git commit -m "auto update dashboard data"
           git push

@@ -22,10 +22,11 @@
 
 ## 输出
 
-- 页面入口：`index.html` -> `site/index.html`
+- 页面入口：`index.html` -> `site/index.html`（两者由建站脚本同步生成；Vercel 根路径优先读取根目录 `index.html`，不能只提交 `site/index.html`）
 - 图表目录：`output/charts/`
 - 数据目录：`data/processed/`
-- 元数据：`data/processed/metadata.json`
+- 元数据：`data/processed/metadata.json`、`site/meta.json`
+- 自动更新审计：`data/processed/update_audit.json`
 
 ## 图表编号
 
@@ -160,14 +161,16 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 
 | 数据频率 | 自动更新时间（北京时间） | 执行位置 |
 | --- | --- | --- |
-| 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | 周二至周六 06:00（覆盖前一交易日收盘） | GitHub Actions（cron `0 22 * * 1-5` UTC） |
+| 公开源总调度 | 每天 06:00 | GitHub Actions（cron `0 22 * * *` UTC），由 `scripts/run_scheduled_updates.py --mode scheduled` 判断日频/宏观是否需要运行 |
+| 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | T+1 06:00（覆盖上一交易日收盘，节假日用工作日近似，已最新则跳过） | GitHub Actions 调度器 |
 | 情绪指数（依赖 Wind 能力） | 周二至周六 06:00 | 本地定时任务（cron `0 6 * * 2-6` Asia/Shanghai） |
 | 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
-| 宏观（统计局/央行发布） | 每月 9–20 日、27–31 日 23:00（官方集中发布窗口；27 日覆盖工业企业利润发布） | GitHub Actions（cron `0 15 9-20,27-31 * *` UTC） |
+| 宏观（统计局/央行发布） | 官方常见发布窗口（每月 9–20 日、27–31 日）的次日 06:00 尝试更新 | GitHub Actions 调度器 |
 
 ### 增量取数与新鲜度守卫
 
-- 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `daily`/`macro`/`all`），它对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
+- 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `scheduled`/`daily`/`macro`/`all`），它使用 Asia/Shanghai 时间判断上一交易日和宏观发布窗口，对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
+- 编排器在实际运行脚本后写入 `data/processed/update_audit.json`，记录运行模式、期望日频日期、执行脚本、跳过原因、构建结果和 Wind 本地依赖提示。
 - 本地 Wind 任务（情绪、拥挤度）的 prompt 同样要求先查日期、已最新则直接结束。
 - Wind 取数一律使用缓存+断点续传，只补缺失区间：情绪用 `data/raw/sentiment_cache/`，拥挤度用 `data/raw/wind_cli_cache/`；拥挤度例行周更必须带 `--refresh-latest`（只失效最近 45 天缓存块，历史块复用）。
 - 新增图表的更新脚本也必须"只取增量"：先读本地 CSV 最大日期，仅请求缺失区间。
@@ -188,9 +191,9 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 ### 自动更新流程（GitHub Actions）
 
 1. 安装 Python 依赖和中文字体。
-2. `run_scheduled_updates.py` 按模式运行：手动触发 `--mode all`，23:00 发布窗口 `--mode macro`，其余 `--mode daily`；单个公开接口失败时不中断整站构建，保留本地缓存数据。
+2. `run_scheduled_updates.py` 按模式运行：手动触发 `--mode all`，定时触发 `--mode scheduled`；单个公开接口失败时不中断整站构建，保留本地缓存数据。
 3. 有更新时运行 `scripts/build_site_from_processed.py` 重建 `site/` 与图表。
-4. 若 `data/processed`、`data/raw`、`output/charts` 或 `site` 有变化，自动提交并推送到 GitHub。
+4. 若 `index.html`、`data/processed`、`data/raw`、`output/charts` 或 `site` 有变化，自动提交并推送到 GitHub。
 5. Vercel 由这次推送触发重新部署。
 
 注意：

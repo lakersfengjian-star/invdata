@@ -1,28 +1,9 @@
 #!/usr/bin/env python3
 """Scheduled update orchestrator.
 
-Implements the project's T+1 freshness rules so scheduled runs only fetch
-genuinely new data (minimal API / token cost):
-
-  - daily datasets : fresh when local data covers the previous trading day
-                     (approximated by the previous business day);
-  - weekly datasets: fresh when local data covers the most recent completed
-                     trading week;
-  - macro dataset  : attempted at most once every 20 hours; the workflow
-                     schedule already restricts runs to the official release
-                     windows (每月 9–20 日与月末 23:00 北京时间).
-
-Only datasets that are stale get their update script executed; the site is
-rebuilt only when at least one script actually ran, so a fully-fresh run
-produces no API calls and no commit noise.
-
-Usage:
-  python scripts/run_scheduled_updates.py --mode daily   # 日频(含估值/ETF/涨停等)
-  python scripts/run_scheduled_updates.py --mode macro   # 宏观(发布窗口 23:00)
-  python scripts/run_scheduled_updates.py --mode all     # 手动全量(忽略新鲜度)
-
-Note: 情绪指数与中信行业拥挤度依赖本地 Wind 能力, 由本地定时任务维护,
-不在本编排器内(GitHub Actions 无 Wind 环境)。
+The workflow runs once per day at 06:00 Asia/Shanghai. This script decides
+which datasets are stale, runs only those update scripts, rebuilds the static
+site when needed, and writes a compact audit file for later handoff.
 """
 
 from __future__ import annotations
@@ -32,15 +13,17 @@ import json
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = ROOT / "data" / "processed"
+AUDIT_PATH = PROCESSED_DIR / "update_audit.json"
+SHANGHAI_TZ = "Asia/Shanghai"
 
-# script -> csv outputs whose max(date) determines freshness;
-# value may also be a metadata json path containing "latest_date"
+# script -> outputs whose min(max(date/latest_date)) determines freshness.
 DAILY_DATASETS: dict[str, list[str]] = {
     "update_index_amount_share.py": ["index_amount_share.csv"],
     "update_theme_amount_share.py": ["theme_amount_share.csv"],
@@ -60,15 +43,28 @@ MACRO_DATASETS: dict[str, str] = {
     "update_macro_overview.py": "macro_overview.metadata.json",
     "update_industrial_profits.py": "industrial_profits.metadata.json",
 }
-MACRO_MIN_INTERVAL_H = 20  # 同一天发布窗口内不重复尝试
+
+MACRO_RELEASE_DAYS = set(range(9, 21)) | set(range(27, 32))
+MACRO_MIN_INTERVAL_H = 20
 
 
-def previous_bday() -> pd.Timestamp:
-    """上一交易日近似值(上一工作日, 不含法定节假日)。"""
-    d = pd.Timestamp.now().normalize() - pd.Timedelta(days=1)
-    while d.weekday() >= 5:
-        d -= pd.Timedelta(days=1)
-    return d
+def now_shanghai() -> pd.Timestamp:
+    return pd.Timestamp.now(tz=SHANGHAI_TZ)
+
+
+def previous_bday(now: pd.Timestamp | None = None) -> pd.Timestamp:
+    """Previous trading day approximation based on Asia/Shanghai workdays."""
+    base = (now or now_shanghai()).tz_localize(None).normalize() - pd.Timedelta(days=1)
+    while base.weekday() >= 5:
+        base -= pd.Timedelta(days=1)
+    return base
+
+
+def macro_release_window_due(now: pd.Timestamp | None = None) -> bool:
+    """Run macro updates at 06:00 on the day after likely official release days."""
+    local_now = now or now_shanghai()
+    release_day = (local_now.tz_localize(None).normalize() - pd.Timedelta(days=1)).day
+    return release_day in MACRO_RELEASE_DAYS
 
 
 def csv_max_date(path: Path) -> pd.Timestamp | None:
@@ -83,23 +79,18 @@ def csv_max_date(path: Path) -> pd.Timestamp | None:
         if col.empty:
             return None
         return pd.to_datetime(col, errors="coerce").max()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
-def dataset_fresh(csv_names: list[str], expected: pd.Timestamp) -> bool:
-    dates = [csv_max_date(PROCESSED_DIR / name) for name in csv_names]
-    if any(d is None or pd.isna(d) for d in dates):
-        return False
-    return min(dates) >= expected  # 所有产出都覆盖到上一交易日才算新鲜
-
-
-def run_script(name: str) -> bool:
-    print(f"[run] {name}", flush=True)
-    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / name)], cwd=ROOT)
-    if proc.returncode != 0:
-        print(f"[warn] {name} exited {proc.returncode} (continuing)", flush=True)
-    return True  # 即使失败也尝试重建, 保留已有部分更新
+def dataset_state(output_names: list[str], expected: pd.Timestamp) -> dict:
+    dates = {name: csv_max_date(PROCESSED_DIR / name) for name in output_names}
+    serializable = {
+        name: (None if value is None or pd.isna(value) else value.strftime("%Y-%m-%d"))
+        for name, value in dates.items()
+    }
+    fresh = bool(dates) and all(value is not None and not pd.isna(value) and value >= expected for value in dates.values())
+    return {"fresh": fresh, "outputs": serializable}
 
 
 def macro_fresh(metadata_name: str) -> bool:
@@ -110,43 +101,82 @@ def macro_fresh(metadata_name: str) -> bool:
     return age_h < MACRO_MIN_INTERVAL_H
 
 
+def run_script(name: str) -> dict:
+    print(f"[run] {name}", flush=True)
+    started = datetime.now().isoformat(timespec="seconds")
+    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / name)], cwd=ROOT)
+    status = "ok" if proc.returncode == 0 else "failed"
+    if proc.returncode != 0:
+        print(f"[warn] {name} exited {proc.returncode} (continuing)", flush=True)
+    return {
+        "script": name,
+        "status": status,
+        "returncode": proc.returncode,
+        "started_at": started,
+        "finished_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def write_audit(summary: dict) -> None:
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    AUDIT_PATH.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["daily", "macro", "all"], required=True)
+    parser.add_argument("--mode", choices=["scheduled", "daily", "macro", "all"], required=True)
     args = parser.parse_args()
 
-    ran: list[str] = []
-    skipped: list[str] = []
-    expected = previous_bday()
+    local_now = now_shanghai()
+    expected = previous_bday(local_now)
+    modes: set[str]
+    if args.mode == "scheduled":
+        modes = {"daily"}
+        if macro_release_window_due(local_now):
+            modes.add("macro")
+    elif args.mode == "all":
+        modes = {"daily", "macro"}
+    else:
+        modes = {args.mode}
 
-    if args.mode in {"daily", "all"}:
-        for script, csvs in DAILY_DATASETS.items():
-            if args.mode != "all" and dataset_fresh(csvs, expected):
-                skipped.append(script)
+    ran: list[dict] = []
+    skipped: list[dict] = []
+
+    if "daily" in modes:
+        for script, outputs in DAILY_DATASETS.items():
+            state = dataset_state(outputs, expected)
+            if args.mode not in {"all"} and state["fresh"]:
+                skipped.append({"script": script, "reason": "fresh", **state})
                 continue
-            run_script(script)
-            ran.append(script)
+            ran.append(run_script(script))
 
-    if args.mode in {"macro", "all"}:
+    if "macro" in modes:
         for script, metadata_name in MACRO_DATASETS.items():
             if args.mode != "all" and macro_fresh(metadata_name):
-                skipped.append(script)
+                skipped.append({"script": script, "reason": "recently_attempted", "metadata": metadata_name})
                 continue
-            run_script(script)
-            ran.append(script)
+            ran.append(run_script(script))
 
-    built = False
+    build_result = None
     if ran:
-        run_script("build_site_from_processed.py")
-        built = True
+        build_result = run_script("build_site_from_processed.py")
 
     summary = {
         "mode": args.mode,
-        "expected_latest": expected.strftime("%Y-%m-%d"),
+        "effective_modes": sorted(modes),
+        "checked_at": local_now.strftime("%Y-%m-%d %H:%M:%S %Z"),
+        "expected_latest_daily": expected.strftime("%Y-%m-%d"),
         "ran": ran,
-        "skipped_fresh": skipped,
-        "rebuilt": built,
+        "skipped": skipped,
+        "rebuilt": bool(build_result),
+        "build": build_result,
+        "notes": [
+            "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
+            "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。",
+        ],
     }
+    if ran or build_result:
+        write_audit(summary)
     print(json.dumps(summary, ensure_ascii=False), flush=True)
 
 

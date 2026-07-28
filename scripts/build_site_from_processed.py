@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import sys
+from datetime import datetime
 from html import escape
 from pathlib import Path
 
@@ -1047,8 +1048,8 @@ def build_page(
     for chart_file in CHART_DIR.glob("*.png"):
         shutil.copy2(chart_file, assets_dir / chart_file.name)
     latest = metadata["latest_common_date"]
-    updated_at = metadata["updated_at"]
-    asset_version = latest.replace("-", "")
+    build_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    asset_version = "".join(ch for ch in build_time if ch.isdigit())
     broad_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     valuation_html = "\n\n".join(
@@ -1066,7 +1067,7 @@ def build_page(
     if industry_pb_roe_chart:
         pb_roe_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">008</span>中信一级行业 PB-ROE 对比（截至{industry_pb_roe_chart["last_date"]}）{freq_badge("周频")}</h2>
-        <img src="assets/charts/{Path(industry_pb_roe_chart["path"]).name}?v={industry_pb_roe_chart["last_date"].replace("-", "")}" alt="中信一级行业 PB-ROE 对比">
+        <img src="assets/charts/{Path(industry_pb_roe_chart["path"]).name}?v={asset_version}" alt="中信一级行业 PB-ROE 对比">
         {chart_note_block(
             "ROE_TTM 由 PB/PE 恒等式推导(同一价格口径下 ROE≈PB/PE);PE_TTM 缺失(亏损状态)的行业不参与绘图。颜色代表 PB 十年分位,数据与中信拥挤度同为每周最后一个交易日更新。",
             "PB-ROE 是相对估值观察框架,不构成买卖建议;推导口径 ROE 与财报口径可能存在细微差异。",
@@ -1077,7 +1078,7 @@ def build_page(
         ipc = industrial_profit_chart
         earnings_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">009</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
-        <img src="assets/charts/{Path(ipc["path"]).name}?v={ipc["last_date"].replace("-", "")}" alt="工业企业利润同比与全年外推">
+        <img src="assets/charts/{Path(ipc["path"]).name}?v={asset_version}" alt="工业企业利润同比与全年外推">
         {chart_note_block(
             f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。柱状图对比过去5年全年同比与当年同期(1-{ipc['current_month']}月)累计同比,橙色柱为{ipc['current_year']}年同期实际值。外推方法:以过去1年/3年/5年同期累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比,图中以虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。",
             "统计局对规模以上企业样本与基数有年度调整,官方同比与按累计额直接计算的同比存在口径差;外推基于季节性进度假设,下半年盈利节奏变化会使实际值偏离外推值,仅供参考。",
@@ -1087,7 +1088,7 @@ def build_page(
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">015</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={amount_share_chart["last_date"].replace("-", "")}" alt="主要宽基指数成交额占全A成交额比例">
+        <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={asset_version}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
             "成交额占比受指数样本、停复牌、分母代理口径影响；若中证官网或代理分母未更新，最新日期可能滞后。",
@@ -1097,7 +1098,7 @@ def build_page(
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">016</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={theme_amount_chart["last_date"].replace("-", "")}" alt="TMT与红利低波成交额占全A成交额比例">
+        <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={asset_version}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
             "主题指数成交额不能等同于板块全部股票成交额；红利低波使用右轴展示，读取时应关注左右轴刻度差异。",
@@ -1107,7 +1108,7 @@ def build_page(
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">002</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={market_turnover_chart["last_date"].replace("-", "")}" alt="全市场成交额变化">
+        <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={asset_version}" alt="全市场成交额变化">
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
             "代理口径可能低估或高估沪深京全市场真实成交额，尤其在北交所或非成分股成交活跃时偏差会扩大。",
@@ -1118,7 +1119,7 @@ def build_page(
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">010</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={southbound_chart["last_date"].replace("-", "")}" alt="南向资金每日净流入">
+        <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={asset_version}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
             "若最新值长时间为 0、缺失或日期滞后，通常代表公开接口尚未更新；不同数据源对南向资金口径可能存在细微差异。",
@@ -1133,7 +1134,7 @@ def build_page(
                 macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
         macro_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">005</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
-        <img src="assets/charts/{Path(macro_chart["path"]).name}?v={macro_chart["last_date"].replace("-", "")}" alt="宏观经济数据概览">
+        <img src="assets/charts/{Path(macro_chart["path"]).name}?v={asset_version}" alt="宏观经济数据概览">
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
             "宏观数据存在发布滞后、修订和接口失效风险；当前部分国家统计局、人民银行细分指标若未自动接入，会在图中保留占位。",
@@ -1148,7 +1149,7 @@ def build_page(
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">013</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={sentiment_chart["last_date"].replace("-", "")}" alt="上证等权情绪指数">
+        <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={asset_version}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
             "情绪指数是历史相对位置的观察，不代表买卖建议；增量数据来自 Wind 与公开接口，换手率增量按普通换手率×2.607折算自由流通口径，可能与精确值有小幅偏差。",
@@ -1157,18 +1158,50 @@ def build_page(
     industry_crowding_html = ""
     if industry_crowding_chart:
         crowding_date = industry_crowding_chart.get("last_date") or "待接入"
-        crowding_version = (industry_crowding_chart.get("last_date") or asset_version).replace("-", "")
         crowding_status_note = ""
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
         <h2><span class="chart-num">017</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
-        <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={crowding_version}" alt="中信一级行业估值与成交拥挤度">
+        <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={asset_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
             "拥挤度是估值与交易热度的历史分位观察，不代表买卖建议；若 Wind API 不可用或本地 CSV 未补齐，结果会显示待接入或滞后。",
         )}
       </section>'''
+    chart_dates = {
+        "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
+        "limit_up": limit_up_date,
+        "turnover_concentration": (chart3 or {}).get("last_date", ""),
+        "southbound": (southbound_chart or {}).get("last_date", ""),
+        "sentiment": (sentiment_chart or {}).get("last_date", ""),
+        "amount_share": (amount_share_chart or {}).get("last_date", ""),
+        "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
+        "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
+        "macro": (macro_chart or {}).get("last_date", ""),
+        "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
+        "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
+        "industrial_profits": (industrial_profit_chart or {}).get("last_date", ""),
+    }
+    daily_keys = {
+        "market_turnover",
+        "limit_up",
+        "turnover_concentration",
+        "southbound",
+        "sentiment",
+        "amount_share",
+        "theme_amount_share",
+        "valuation",
+    }
+    weekly_keys = {"industry_crowding", "pb_roe"}
+    monthly_keys = {"macro", "industrial_profits"}
+    latest_daily = max((chart_dates[k] for k in daily_keys if chart_dates.get(k)), default=latest)
+    latest_weekly = max((chart_dates[k] for k in weekly_keys if chart_dates.get(k)), default="")
+    latest_macro = max((chart_dates[k] for k in monthly_keys if chart_dates.get(k)), default="")
+    daily_lagging = sorted(k for k in daily_keys if chart_dates.get(k) and chart_dates[k] < latest_daily)
+    daily_note = ""
+    if daily_lagging:
+        daily_note = f"<div class=\"meta-warning\">部分日频指标滞后：{', '.join(daily_lagging[:4])}</div>"
     html = f'''<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -1182,8 +1215,11 @@ def build_page(
     <header class="page-head">
       <div><p class="eyebrow">Vibe Research</p><h1>投研数据手册</h1></div>
       <div class="meta">
-        <div class="meta-line"><span class="live-dot" aria-hidden="true"></span>更新：{updated_at}</div>
-        <div class="meta-line">区间：2025-01-01 至 {latest}</div>
+        <div class="meta-line"><span class="live-dot" aria-hidden="true"></span>页面构建：{build_time}</div>
+        <div class="meta-line">日频截至：{latest_daily}</div>
+        <div class="meta-line">周频截至：{latest_weekly or "暂无"}</div>
+        <div class="meta-line">月/季频截至：{latest_macro or "暂无"}</div>
+{daily_note}
         <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
         <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
       </div>
@@ -1336,6 +1372,14 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   white-space: nowrap;
 }
 .meta .meta-line { display: flex; align-items: center; gap: 7px; }
+.meta-warning {
+  max-width: 360px;
+  white-space: normal;
+  text-align: right;
+  color: #b8664f;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .live-dot {
   width: 8px;
   height: 8px;
@@ -1708,29 +1752,15 @@ if (refreshButton && refreshStatus) {
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
     (SITE_DIR / "styles.css").write_text(css, encoding="utf-8")
     (SITE_DIR / "app.js").write_text(js, encoding="utf-8")
-
-    chart_dates = {
-        "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
-        "limit_up": limit_up_date,
-        "turnover_concentration": (chart3 or {}).get("last_date", ""),
-        "southbound": (southbound_chart or {}).get("last_date", ""),
-        "sentiment": (sentiment_chart or {}).get("last_date", ""),
-        "amount_share": (amount_share_chart or {}).get("last_date", ""),
-        "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
-        "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
-        "macro": (macro_chart or {}).get("last_date", ""),
-        "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
-        "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
-        "industrial_profits": (industrial_profit_chart or {}).get("last_date", ""),
-    }
-    latest_daily = max(
-        (d for key, d in chart_dates.items() if d and key not in {"industry_crowding", "macro", "pb_roe", "industrial_profits"}),
-        default="",
-    )
+    (ROOT / "index.html").write_text(html, encoding="utf-8")
     site_meta = {
-        "updated_at": updated_at,
+        "updated_at": build_time,
+        "build_time": build_time,
         "latest_common_date": latest,
         "latest_daily_date": latest_daily,
+        "latest_weekly_date": latest_weekly,
+        "latest_macro_date": latest_macro,
+        "daily_lagging_charts": daily_lagging,
         "charts": chart_dates,
     }
     (SITE_DIR / "meta.json").write_text(json.dumps(site_meta, ensure_ascii=False, indent=2), encoding="utf-8")

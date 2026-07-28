@@ -32,15 +32,17 @@
 
 定时自动更新（推荐，T+1 规则）：
 
-- 日频公开源：GitHub Actions 北京时间周二至周六 06:00；
+- 公开源调度：GitHub Actions 北京时间每天 06:00 运行一次，由 `scripts/run_scheduled_updates.py` 判断哪些数据需要补；
+- 日频公开源：覆盖上一交易日，已最新则跳过，不发 API 请求；
+- 宏观公开源：在统计局/央行常见发布窗口的次日 06:00 尝试更新；
 - 情绪指数（Wind）：本地定时任务周二至周六 06:00；
 - 中信拥挤度（Wind）：本地定时任务每周一 06:00；
-- 宏观：GitHub Actions 每月 9–20 日、28–31 日 23:00。
 
 手动更新（全部脚本，幂等增量）：
 
 ```bash
 python scripts/run_scheduled_updates.py --mode all    # 全量
+python scripts/run_scheduled_updates.py --mode scheduled # 按北京时间和发布窗口自动判断
 python scripts/run_scheduled_updates.py --mode daily  # 仅日频
 python scripts/run_scheduled_updates.py --mode macro  # 仅宏观
 ```
@@ -58,6 +60,7 @@ python scripts/build_site_from_processed.py                   # 重建图表与�
 
 - 页面入口：`index.html` → `site/index.html`（由 `scripts/build_site_from_processed.py` 全量生成，勿手改 site/）
 - 站点元数据：`site/meta.json`（各图表最新日期，刷新按钮防重复守卫用）
+- 自动更新审计：`data/processed/update_audit.json`（最近一次实际运行脚本、跳过原因、构建结果）
 - 图表目录：`output/charts/`
 - 数据目录：`data/processed/`（产出）、`data/raw/`（原始与缓存）
 - 定时编排：`scripts/run_scheduled_updates.py`（新鲜度守卫，已最新则零 API 跳过）

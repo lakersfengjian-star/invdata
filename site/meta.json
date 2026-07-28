@@ -1,7 +1,11 @@
 {
-  "updated_at": "2026-07-27 14:04:53",
+  "updated_at": "2026-07-28 13:38:09",
+  "build_time": "2026-07-28 13:38:09",
   "latest_common_date": "2026-07-24",
   "latest_daily_date": "2026-07-24",
+  "latest_weekly_date": "2026-07-26",
+  "latest_macro_date": "2026-06-01",
+  "daily_lagging_charts": [],
   "charts": {
     "market_turnover": "2026-07-24",
     "limit_up": "2026-07-24",

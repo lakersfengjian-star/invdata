@@ -66,6 +66,14 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   white-space: nowrap;
 }
 .meta .meta-line { display: flex; align-items: center; gap: 7px; }
+.meta-warning {
+  max-width: 360px;
+  white-space: normal;
+  text-align: right;
+  color: #b8664f;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .live-dot {
   width: 8px;
   height: 8px;

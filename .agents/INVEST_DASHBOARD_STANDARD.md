@@ -8,6 +8,7 @@
 - 本地预览：`site/index.html`
 - GitHub 仓库：`lakersfengjian-star/invdata`
 - Vercel：由 GitHub 仓库 `main` 分支推送自动触发部署。
+- 线上首页：Vercel 根路径会优先读取根目录 `index.html`；建站脚本必须同时生成根目录 `index.html` 和 `site/index.html`。
 - 图表文件统一放在：`output/charts/`
 - 静态站点目录统一放在：`site/`
 - 站点图片目录统一放在：`site/assets/charts/`
@@ -18,7 +19,7 @@
 2. 后续更新只补充“本地已有最大日期之后”的最新交易日数据。
 3. 本地完整刷新成功后，再生成静态网页和 PNG。
 4. Vercel 只发布静态文件；自动数据更新由 GitHub Actions 提交新快照后触发 Vercel 重新部署。
-5. 所有图表标题和网页标题必须展示最新数据日期，尤其是图三和图四。
+5. 网页头部展示页面构建时间、日频最新日期、周频最新日期、月/季频最新日期；每张图标题展示自己的最新数据日期。
 6. 当净流入为 0 或关键字段缺失时，在页面注释中保留“数据可能未更新”的风险提示。
 7. 严格执行 `TOKEN_EFFICIENT_WORKFLOW.md`：禁止通过对话或连接器搬运大型 base64、历史 CSV 或完整快照，优先本地增量、离线构建和正常 git 推送。
 8. GitHub 凭证、网页登录、VS Code 推送由 VS Code/GitHub 本地客户端完成；agent 不再把认证排障作为常规工作。
@@ -129,8 +130,10 @@ PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users
 该脚本只读取 `data/processed` 中的小型汇总表，生成：
 
 - `output/charts/*.png`
+- `index.html`
 - `site/index.html`
 - `site/assets/charts/*.png`
+- `site/meta.json`
 
 ### 5. 本地核验
 
@@ -156,7 +159,7 @@ Vercel 只部署静态站点。根目录保留：
 - `vercel.json`：把 `/` 重写到 `site/index.html`。
 - `.vercelignore`：排除 Python 脚本、数据中间文件、Excel 和本地缓存，避免 Vercel 误识别为 Python 项目。
 
-这样线上页面根目录就是 `site/index.html` 内容，图片路径可直接使用 `assets/charts/...`。
+注意：若根目录存在 `index.html`，Vercel 会优先命中该静态文件，rewrite 不会覆盖它。因此 `scripts/build_site_from_processed.py` 必须把同一份 HTML 同步写入根目录 `index.html` 和 `site/index.html`，自动更新工作流也必须提交根目录 `index.html`。图片路径可直接使用 `assets/charts/...`。
 
 发布优先使用 VS Code Source Control：
 
