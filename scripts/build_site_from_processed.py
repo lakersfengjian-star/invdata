@@ -820,6 +820,144 @@ def draw_sentiment_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> di
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "value": float(latest_val)}
 
 
+def draw_value_growth_spread_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    for col in ["dividend_yield", "growth_earnings_yield", "spread"]:
+        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.dropna(subset=["spread"]).sort_values("date")
+    if plot_df.empty:
+        return None
+    latest = plot_df.iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    min_row = plot_df.loc[plot_df["spread"].idxmin()]
+    max_row = plot_df.loc[plot_df["spread"].idxmax()]
+
+    fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax.plot(plot_df["date"], plot_df["spread"], color="#1f77b4", linewidth=2.3, label="价值成长风格价差")
+    ax.axhline(max_row["spread"], linestyle="--", color="#c5513c", linewidth=1.2, alpha=0.85, label=f"历史上限 {max_row['spread']:.2f}%")
+    ax.axhline(min_row["spread"], linestyle="--", color="#2a9d55", linewidth=1.2, alpha=0.85, label=f"历史下限 {min_row['spread']:.2f}%")
+    ax.fill_between(
+        plot_df["date"],
+        min_row["spread"],
+        max_row["spread"],
+        color="#e3e7ee",
+        alpha=0.22,
+        linewidth=0,
+        label="历史极值区间",
+    )
+    ax.annotate(
+        f"{latest_date}  {latest['spread']:.2f}%",
+        xy=(latest["date"], latest["spread"]),
+        xytext=(10, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=10.5,
+        color="#1f77b4",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax.annotate(
+        f"上限 {max_row['date'].strftime('%Y-%m-%d')}",
+        xy=(max_row["date"], max_row["spread"]),
+        xytext=(8, 10),
+        textcoords="offset points",
+        fontsize=9.5,
+        color="#c5513c",
+    )
+    ax.annotate(
+        f"下限 {min_row['date'].strftime('%Y-%m-%d')}",
+        xy=(min_row["date"], min_row["spread"]),
+        xytext=(8, -16),
+        textcoords="offset points",
+        fontsize=9.5,
+        color="#2a9d55",
+    )
+    ax.set_title("价值成长风格价差", fontsize=17, fontweight="bold", loc="left", pad=12)
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("价差（百分点）", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=30))
+    ax.legend(loc="upper left", ncol=4, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {
+        "path": str(out_path.relative_to(ROOT)),
+        "last_date": latest_date,
+        "min": float(min_row["spread"]),
+        "max": float(max_row["spread"]),
+    }
+
+
+def draw_citic_pb_dispersion_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    plot_df["wind_all_a_close"] = pd.to_numeric(plot_df["wind_all_a_close"], errors="coerce")
+    plot_df["pb_dispersion_ma5"] = pd.to_numeric(plot_df["pb_dispersion_ma5"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["pb_dispersion_ma5"]).sort_values("date")
+    if plot_df.empty:
+        return None
+    latest = plot_df.iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+
+    fig, ax1 = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax1.set_facecolor("#fbfbf8")
+    ax2 = ax1.twinx()
+    ax1.plot(plot_df["date"], plot_df["wind_all_a_close"], color="#7a6f64", linewidth=1.8, alpha=0.9, label="万得全A收盘价")
+    ax2.plot(plot_df["date"], plot_df["pb_dispersion_ma5"], color="#1f77b4", linewidth=2.2, label="PB分位标准差MA5")
+    if pd.notna(latest["wind_all_a_close"]):
+        ax1.annotate(
+            f"{latest_date}  {latest['wind_all_a_close']:,.0f}",
+            xy=(latest["date"], latest["wind_all_a_close"]),
+            xytext=(10, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=10,
+            color="#7a6f64",
+        )
+    ax2.annotate(
+        f"{latest_date}  {latest['pb_dispersion_ma5']:.3f}",
+        xy=(latest["date"], latest["pb_dispersion_ma5"]),
+        xytext=(10, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=10,
+        color="#1f77b4",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax1.set_title("中信一级行业估值离散度", fontsize=17, fontweight="bold", loc="left", pad=12)
+    ax1.set_xlabel("日期", fontsize=12)
+    ax1.set_ylabel("万得全A收盘价（点）", fontsize=12)
+    ax2.set_ylabel("PB历史分位标准差MA5", fontsize=12)
+    ax1.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax1.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    ax1.xaxis.set_major_locator(mdates.YearLocator(base=2))
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    ax1.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=90))
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
+    ax1.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
 def format_table_value(field: str, value: object) -> str:
     if pd.isna(value):
         return ""
@@ -1013,7 +1151,7 @@ def render_library() -> str:
     if not cards:
         return '      <p class="empty-note">暂无资料。</p>'
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">018</span>研究资料库（个人研究文章与投资资料）</h2>
+        <h2><span class="chart-num">020</span>研究资料库（个人研究文章与投资资料）</h2>
         <div class="doc-list">
 {chr(10).join(cards)}
         </div>
@@ -1042,6 +1180,8 @@ def build_page(
     market_monitor_html: str = "",
     industry_pb_roe_chart: dict | None = None,
     industrial_profit_chart: dict | None = None,
+    value_growth_spread_chart: dict | None = None,
+    citic_pb_dispersion_chart: dict | None = None,
 ) -> None:
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
@@ -1155,6 +1295,26 @@ def build_page(
             "情绪指数是历史相对位置的观察，不代表买卖建议；增量数据来自 Wind 与公开接口，换手率增量按普通换手率×2.607折算自由流通口径，可能与精确值有小幅偏差。",
         )}
       </section>'''
+    value_growth_html = ""
+    if value_growth_spread_chart:
+        value_growth_html = f'''      <section class="chart-section">
+        <h2><span class="chart-num">018</span>价值成长风格价差（截至{value_growth_spread_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(value_growth_spread_chart["path"]).name}?v={asset_version}" alt="价值成长风格价差">
+        {chart_note_block(
+            "价差 = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)，区间自 2021-01-01 起；虚线和阴影标注样本期历史上限/下限区间。数据优先来自 /gjdata 的 AIndexValuation 表。",
+            "股息率和 PE_TTM 是指数估值口径，可能因成分调整、盈利口径修订和亏损样本处理而变化；极值区间只代表历史样本观察，不构成风格配置建议。",
+        )}
+      </section>'''
+    pb_dispersion_html = ""
+    if citic_pb_dispersion_chart:
+        pb_dispersion_html = f'''      <section class="chart-section">
+        <h2><span class="chart-num">019</span>中信一级行业估值离散度（截至{citic_pb_dispersion_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(citic_pb_dispersion_chart["path"]).name}?v={asset_version}" alt="中信一级行业估值离散度">
+        {chart_note_block(
+            "左轴为万得全A收盘价(881001.WI)，右轴为中信一级行业 PB_LF 历史分位的横截面标准差，并取 5 个交易日滚动平均(MA5)。PB 分位采用过去 10 年交易日滚动窗口计算，数据自 2005 年起从 /gjdata 读取。",
+            "PB 分位标准差衡量行业估值分布离散程度，受行业样本、指数口径和 10 年滚动窗口影响；早期窗口未满时不会绘制离散度。",
+        )}
+      </section>'''
     industry_crowding_html = ""
     if industry_crowding_chart:
         crowding_date = industry_crowding_chart.get("last_date") or "待接入"
@@ -1178,6 +1338,8 @@ def build_page(
         "amount_share": (amount_share_chart or {}).get("last_date", ""),
         "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
         "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
+        "value_growth_spread": (value_growth_spread_chart or {}).get("last_date", ""),
+        "citic_pb_dispersion": (citic_pb_dispersion_chart or {}).get("last_date", ""),
         "macro": (macro_chart or {}).get("last_date", ""),
         "valuation": max((c.get("last_date", "") for c in valuation_charts), default=""),
         "pb_roe": (industry_pb_roe_chart or {}).get("last_date", ""),
@@ -1192,6 +1354,8 @@ def build_page(
         "amount_share",
         "theme_amount_share",
         "valuation",
+        "value_growth_spread",
+        "citic_pb_dispersion",
     }
     weekly_keys = {"industry_crowding", "pb_roe"}
     monthly_keys = {"macro", "industrial_profits"}
@@ -1293,6 +1457,8 @@ def build_page(
 {amount_share_html}
 {theme_amount_html}
 {industry_crowding_html}
+{value_growth_html}
+{pb_dispersion_html}
     </section>
 
     <section class="category-panel" id="panel-library" data-category="library" hidden>
@@ -1816,6 +1982,16 @@ def main() -> None:
     if sentiment_path.exists():
         sentiment = pd.read_csv(sentiment_path, parse_dates=["date"])
         sentiment_chart = draw_sentiment_chart(sentiment, sentiment_meta, CHART_DIR / "fig_011_sentiment_index.png")
+    value_growth_spread_chart = None
+    value_growth_path = PROCESSED_DIR / "value_growth_spread.csv"
+    if value_growth_path.exists():
+        value_growth = pd.read_csv(value_growth_path, parse_dates=["date"])
+        value_growth_spread_chart = draw_value_growth_spread_chart(value_growth, CHART_DIR / "fig_014_value_growth_spread.png")
+    citic_pb_dispersion_chart = None
+    citic_pb_dispersion_path = PROCESSED_DIR / "citic_pb_dispersion.csv"
+    if citic_pb_dispersion_path.exists():
+        citic_pb_dispersion = pd.read_csv(citic_pb_dispersion_path, parse_dates=["date"])
+        citic_pb_dispersion_chart = draw_citic_pb_dispersion_chart(citic_pb_dispersion, CHART_DIR / "fig_015_citic_pb_dispersion.png")
     industry_crowding_chart = None
     industry_crowding_path = PROCESSED_DIR / "citic_industry_crowding.csv"
     industry_crowding_meta_path = PROCESSED_DIR / "citic_industry_crowding.metadata.json"
@@ -1895,8 +2071,10 @@ def main() -> None:
         market_monitor_html=market_monitor_html,
         industry_pb_roe_chart=industry_pb_roe_chart,
         industrial_profit_chart=industrial_profit_chart,
+        value_growth_spread_chart=value_growth_spread_chart,
+        citic_pb_dispersion_chart=citic_pb_dispersion_chart,
     )
-    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart)) + int(bool(industrial_profit_chart))
+    chart_count = 5 + int(bool(amount_share_chart)) + int(bool(industry_crowding_chart)) + int(bool(theme_amount_chart)) + int(bool(market_turnover_chart)) + int(bool(southbound_chart)) + int(bool(macro_chart)) + int(bool(sentiment_chart)) + int(bool(industry_pb_roe_chart)) + int(bool(industrial_profit_chart)) + int(bool(value_growth_spread_chart)) + int(bool(citic_pb_dispersion_chart))
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
 
 

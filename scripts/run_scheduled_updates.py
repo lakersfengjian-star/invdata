@@ -21,6 +21,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = ROOT / "data" / "processed"
 AUDIT_PATH = PROCESSED_DIR / "update_audit.json"
+GJDATA_SCRIPT = Path("/Users/jianfeng/.codex/skills/gjdata/scripts/index.py")
 SHANGHAI_TZ = "Asia/Shanghai"
 
 # script -> outputs whose min(max(date/latest_date)) determines freshness.
@@ -29,6 +30,8 @@ DAILY_DATASETS: dict[str, list[str]] = {
     "update_theme_amount_share.py": ["theme_amount_share.csv"],
     "update_market_turnover.py": ["market_turnover.csv"],
     "update_southbound_flow.py": ["southbound_flow.csv"],
+    "update_value_growth_spread.py": ["value_growth_spread.csv"],
+    "update_citic_pb_dispersion.py": ["citic_pb_dispersion.csv"],
     "update_etf_dashboard.py": [
         "broad_etf_flow.csv",
         "star50_etf_flow.csv",
@@ -46,6 +49,10 @@ MACRO_DATASETS: dict[str, str] = {
 
 MACRO_RELEASE_DAYS = set(range(9, 21)) | set(range(27, 32))
 MACRO_MIN_INTERVAL_H = 20
+LOCAL_GJDATA_DATASETS = {
+    "update_value_growth_spread.py",
+    "update_citic_pb_dispersion.py",
+}
 
 
 def now_shanghai() -> pd.Timestamp:
@@ -148,6 +155,9 @@ def main() -> None:
             if args.mode not in {"all"} and state["fresh"]:
                 skipped.append({"script": script, "reason": "fresh", **state})
                 continue
+            if script in LOCAL_GJDATA_DATASETS and not GJDATA_SCRIPT.exists():
+                skipped.append({"script": script, "reason": "local_gjdata_unavailable", **state})
+                continue
             ran.append(run_script(script))
 
     if "macro" in modes:
@@ -172,6 +182,7 @@ def main() -> None:
         "build": build_result,
         "notes": [
             "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
+            "GitHub Actions 环境通常无本地 /gjdata 技能；依赖 /gjdata 的指标在缺少脚本时跳过，避免用旧缓存制造无效提交。",
             "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。",
         ],
     }

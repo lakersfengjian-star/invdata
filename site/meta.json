@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-07-28 14:27:03",
-  "build_time": "2026-07-28 14:27:03",
+  "updated_at": "2026-07-28 15:26:33",
+  "build_time": "2026-07-28 15:26:33",
   "latest_common_date": "2026-07-27",
   "latest_daily_date": "2026-07-27",
   "latest_weekly_date": "2026-07-26",
@@ -17,6 +17,8 @@
     "amount_share": "2026-07-27",
     "theme_amount_share": "2026-07-27",
     "industry_crowding": "2026-07-26",
+    "value_growth_spread": "2026-07-27",
+    "citic_pb_dispersion": "2026-07-27",
     "macro": "2026-06-01",
     "valuation": "2026-07-24",
     "pb_roe": "2026-07-26",

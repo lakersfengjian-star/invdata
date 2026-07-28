@@ -1,0 +1,11 @@
+{
+  "source": "gjdata:AIndexValuation+AIndexWindIndustriesEOD",
+  "status": "ok",
+  "latest_date": "2026-07-27",
+  "unit": "index/pctile-std",
+  "notes": [
+    "PB percentile uses trailing 10-year trading-day window (2520 days, min 1260 observations).",
+    "PB dispersion MA5 is the 5-trading-day moving average of cross-industry PB percentile standard deviation.",
+    "left axis uses Wind All A close, code 881001.WI, table AIndexWindIndustriesEOD."
+  ]
+}
