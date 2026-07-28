@@ -18,7 +18,7 @@
 | 估值 | 006C | 万得全A历史滚动市盈率及标准差通道 | 日频 |
 | 估值 | 006D | 万得全A（除金融、石油石化）历史滚动市盈率及标准差通道 | 日频 |
 | 估值 | 008 | 中信一级行业 PB-ROE 散点图（ROE 由 PB/PE 推导，颜色=PB十年分位） | 周频 |
-| 盈利 | 009 | 工业企业利润同比与全年外推（近1/3/5年同期进度线性外推） | 月频 |
+| 盈利 | 009 | 工业企业利润年度同比与全年外推（近1/3/5年同期进度线性外推） | 月频 |
 | 流动性 | 010 | 南向资金每日净流入 | 日频 |
 | 流动性 | 011 | 沪深300/上证指数 vs. 大宽基ETF资金流 | 日频 |
 | 流动性 | 012 | 科创50指数 vs. 科创50ETF资金流 | 日频 |
@@ -60,6 +60,7 @@ Wind 相关数据（GitHub Actions 无法运行）单独执行：
 python scripts/update_sentiment_index.py                      # 情绪指数增量
 python scripts/fetch_citic_crowding_wind_cli.py --refresh-latest  # 拥挤度周度增量取数
 python scripts/update_citic_industry_crowding.py
+python scripts/update_wind_index_valuation.py                 # 万得全A/除金融石化 PE_TTM 本地铺底或补数
 python scripts/build_site_from_processed.py                   # 重建图表与站点
 ```
 
@@ -93,5 +94,4 @@ python scripts/build_site_from_processed.py                   # 重建图表与�
 
 估值图说明：
 
-- 沪深300 PE_TTM 来自乐咕乐股指数估值接口；上证指数 PE 使用乐咕市场估值接口。
-- 万得全A、万得全A（除金融、石油石化）暂无稳定公开接口。可将 Wind 导出的数据保存为 `data/raw/index_pe_ttm_wind.csv`，字段为 `date,index_name,pe_ttm`。
+- 沪深300、上证指数、万得全A、万得全A（除金融、石油石化）PE_TTM 可通过 `scripts/update_wind_index_valuation.py` 调用 Wind 金融能力落地到 `data/raw/index_pe_ttm_wind.csv`；沪深300/上证指数仍保留乐咕公开接口 fallback。若 Wind 不可用，也可手动保存同名 CSV，字段为 `date,index_name,pe_ttm`。

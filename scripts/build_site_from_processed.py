@@ -563,9 +563,21 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
     if weekly_df is None or weekly_df.empty:
         return None
     latest_date = str(weekly_df["date"].max())
+    prev_dates = sorted(pd.Series(weekly_df["date"].dropna().unique()).astype(str))
+    prev_date = prev_dates[-2] if len(prev_dates) >= 2 else None
     df = weekly_df[weekly_df["date"].eq(weekly_df["date"].max())].copy()
     df["roe_ttm"] = pd.to_numeric(df["pb_lf"], errors="coerce") / pd.to_numeric(df["pe_ttm"], errors="coerce") * 100
     df = df.dropna(subset=["roe_ttm", "pb_lf"])
+    if prev_date:
+        prev = weekly_df[weekly_df["date"].eq(prev_date)].copy()
+        prev["prev_roe_ttm"] = pd.to_numeric(prev["pb_lf"], errors="coerce") / pd.to_numeric(prev["pe_ttm"], errors="coerce") * 100
+        prev = prev.rename(columns={"pb_lf": "prev_pb_lf"})[["industry", "prev_roe_ttm", "prev_pb_lf"]]
+        df = df.merge(prev, on="industry", how="left")
+        df["roe_change"] = df["roe_ttm"] - pd.to_numeric(df["prev_roe_ttm"], errors="coerce")
+        df["pb_change"] = pd.to_numeric(df["pb_lf"], errors="coerce") - pd.to_numeric(df["prev_pb_lf"], errors="coerce")
+    else:
+        df["roe_change"] = pd.NA
+        df["pb_change"] = pd.NA
     if crowding_df is not None and not crowding_df.empty:
         pct = crowding_df[["industry", "pb_lf_pctile_10y"]].drop_duplicates("industry")
         df = df.merge(pct, on="industry", how="left")
@@ -594,12 +606,15 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
     for idx, (_, row) in enumerate(df.iterrows()):
         dx, dy = offsets[idx % len(offsets)]
         ha = "left" if dx > 0 else "right"
+        change_label = ""
+        if pd.notna(row.get("roe_change")) and pd.notna(row.get("pb_change")):
+            change_label = f"\nROE {row['roe_change']:+.1f}pct / PB {row['pb_change']:+.2f}"
         ax.annotate(
-            row["industry"],
+            f"{row['industry']}{change_label}",
             xy=(row["roe_ttm"], row["pb_lf"]),
             xytext=(dx, dy),
             textcoords="offset points",
-            fontsize=9,
+            fontsize=8.4,
             ha=ha,
             color="#293642",
         )
@@ -614,7 +629,7 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
     ax.grid(color="#e3e3e3", linewidth=0.7, alpha=0.6)
     ax.spines[["top", "right"]].set_visible(False)
     missing = sorted(set(weekly_df[weekly_df["date"].eq(weekly_df["date"].max())]["industry"]) - set(df["industry"]))
-    note = f"虚线为中位数；颜色=PB十年分位(越红越高)。PE_TTM 缺失(亏损)未入图：{'、'.join(missing) if missing else '无'}"
+    note = f"虚线为中位数；颜色=PB十年分位(越红越高)；标签第二行为较上一期({prev_date or '无'})变化。PE_TTM 缺失(亏损)未入图：{'、'.join(missing) if missing else '无'}"
     ax.text(0, 1.02, note, transform=ax.transAxes, fontsize=10, color="#59636e")
     cbar = fig.colorbar(sc, ax=ax, fraction=0.03, pad=0.02)
     cbar.set_label("PB 十年分位（%）")
@@ -625,7 +640,7 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
 
 
 def draw_industrial_profits_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
-    """工业企业利润: 官方累计同比走势 + 按过去1/3/5年同期进度外推全年同比。"""
+    """工业企业利润年度同比折线 + 当年三种节奏外推。"""
     setup_fonts()
     if df is None or df.empty:
         return None
@@ -659,72 +674,45 @@ def draw_industrial_profits_chart(df: pd.DataFrame | None, out_path: Path) -> di
     if not projections:
         return None
 
-    fig, ax = plt.subplots(figsize=(14.5, 7.8), dpi=180)
+    fig, ax = plt.subplots(figsize=(15.5, 7.8), dpi=180)
     fig.patch.set_facecolor("#fbfbf8")
     ax.set_facecolor("#fbfbf8")
 
-    # 柱状图: 过去5年全年同比 vs 当年同期(1-cm月)累计同比 + 今年同期实际值, 外推全年用虚线
-    years = [y for y in range(cy - 5, cy)]
     yoy_dec: dict[int, float] = {}
-    ytd_yoy: dict[int, float] = {}
-    for y in years + [cy]:
+    for y in sorted(data["year"].unique()):
         dec = data[(data["year"].eq(y)) & (data["month"].eq(12))]["cum_yoy"]
         if y != cy and not dec.empty and pd.notna(dec.iloc[0]):
             yoy_dec[y] = float(dec.iloc[0])
-        ytd = data[(data["year"].eq(y)) & (data["month"].eq(cm))]["cum_yoy"]
-        if not ytd.empty and pd.notna(ytd.iloc[0]):
-            ytd_yoy[y] = float(ytd.iloc[0])
-    latest_yoy = ytd_yoy.get(cy, float("nan"))
+    latest_yoy = float(latest["cum_yoy"]) if pd.notna(latest.get("cum_yoy")) else float("nan")
 
-    width = 0.36
-    xs = list(range(len(years)))
-    color_full, color_ytd, color_cur = "#b8c4d0", "#1f6fb2", "#e07b39"
-    for i, y in enumerate(years):
-        if y in yoy_dec:
-            ax.bar(i - width / 2 - 0.02, yoy_dec[y], width, color=color_full, alpha=0.95)
-            ax.text(i - width / 2 - 0.02, yoy_dec[y] + (1.5 if yoy_dec[y] >= 0 else -1.5),
-                    f"{yoy_dec[y]:+.1f}", ha="center", va="bottom" if yoy_dec[y] >= 0 else "top",
-                    fontsize=10, color="#6b7684")
-        if y in ytd_yoy:
-            ax.bar(i + width / 2 + 0.02, ytd_yoy[y], width, color=color_ytd, alpha=0.92)
-            ax.text(i + width / 2 + 0.02, ytd_yoy[y] + (1.5 if ytd_yoy[y] >= 0 else -1.5),
-                    f"{ytd_yoy[y]:+.1f}", ha="center", va="bottom" if ytd_yoy[y] >= 0 else "top",
-                    fontsize=10, color=color_ytd)
-    cur_x = len(years)
-    if cy in ytd_yoy:
-        ax.bar(cur_x, ytd_yoy[cy], width + 0.06, color=color_cur, alpha=0.95)
-        ax.text(cur_x, ytd_yoy[cy] + (1.5 if ytd_yoy[cy] >= 0 else -1.5),
-                f"{ytd_yoy[cy]:+.1f}", ha="center", va="bottom" if ytd_yoy[cy] >= 0 else "top",
-                fontsize=11.5, fontweight="bold", color=color_cur)
+    hist_years = sorted(yoy_dec)
+    hist_vals = [yoy_dec[y] for y in hist_years]
+    ax.plot(hist_years, hist_vals, color="#1f6fb2", linewidth=2.4, marker="o", markersize=5.2, label="年度同比")
+    for y, value in zip(hist_years, hist_vals):
+        ax.text(y, value + (1.2 if value >= 0 else -1.2), f"{value:+.1f}", ha="center", va="bottom" if value >= 0 else "top", fontsize=9.3, color="#1f6fb2")
 
     proj_colors = {"近1年": "#c5513c", "近3年": "#e07b39", "近5年": "#8a6d1f"}
-    label_xs = {"近3年": 1.45, "近1年": 2.55, "近5年": 3.65}
+    last_hist_year = max(hist_years)
+    last_hist_value = yoy_dec[last_hist_year]
     for label, value in projections.items():
         color = proj_colors[label]
-        ax.axhline(value, linestyle="--", color=color, linewidth=1.5, alpha=0.9)
-        ax.text(label_xs.get(label, 2.5), value + 0.9, f"外推{cy}全年 {value:+.1f}%（{label}节奏）",
-                color=color, fontsize=10, va="bottom", ha="left")
+        ax.plot([last_hist_year, cy], [last_hist_value, value], linestyle="--", color=color, linewidth=1.8, marker="o", markersize=4.6, label=f"{cy}外推（{label}节奏）")
+        ax.text(cy + 0.05, value, f"{label} {value:+.1f}%", color=color, fontsize=10, va="center", ha="left")
+
+    if pd.notna(latest_yoy):
+        ax.scatter([cy], [latest_yoy], s=82, color="#203040", edgecolor="#ffffff", linewidth=1.0, zorder=5, label=f"{cy}最新实际累计同比")
+        ax.text(cy + 0.05, latest_yoy, f"{cy}年1-{cm}月实际 {latest_yoy:+.1f}%", color="#203040", fontsize=11, fontweight="bold", va="center", ha="left")
 
     ax.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.7)
-    tick_labels = [str(y) for y in years] + [f"{cy}\n(截至{cm}月)"]
-    ax.set_xticks(xs + [cur_x])
-    ax.set_xticklabels(tick_labels, fontsize=11.5)
-    all_vals = list(yoy_dec.values()) + list(ytd_yoy.values()) + list(projections.values())
+    ax.set_xticks(hist_years + [cy])
+    ax.set_xticklabels([str(y) for y in hist_years] + [f"{cy}E"], fontsize=10.5)
+    all_vals = list(yoy_dec.values()) + list(projections.values()) + ([] if pd.isna(latest_yoy) else [latest_yoy])
     ax.set_ylim(min(0, min(all_vals) - 10), max(all_vals) + 12)
-    ax.set_xlim(-0.7, cur_x + 0.62)
-    ax.set_ylabel("规模以上工业企业利润总额同比（%）", fontsize=12)
+    ax.set_xlim(min(hist_years) - 0.5, cy + 1.2)
+    ax.set_ylabel("规模以上工业企业利润年度同比（%）", fontsize=12)
     ax.grid(axis="y", color="#e3e3e3", linewidth=0.7, alpha=0.6)
     ax.spines[["top", "right"]].set_visible(False)
-
-    from matplotlib.patches import Patch
-    ax.legend(
-        handles=[
-            Patch(facecolor=color_full, label="全年同比"),
-            Patch(facecolor=color_ytd, label=f"当年1-{cm}月累计同比"),
-            Patch(facecolor=color_cur, label=f"{cy}年1-{cm}月累计同比"),
-        ],
-        loc="upper left", frameon=False, fontsize=10.5,
-    )
+    ax.legend(loc="upper left", ncol=2, frameon=False, fontsize=10)
 
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
@@ -1393,7 +1381,7 @@ def build_page(
         <h2><span class="chart-num">009</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(ipc["path"]).name}?v={asset_version}" alt="工业企业利润同比与全年外推">
         {chart_note_block(
-            f"指标为规模以上工业企业利润总额(国家统计局,每月27日左右发布上月数据)。柱状图对比过去5年全年同比与当年同期(1-{ipc['current_month']}月)累计同比,橙色柱为{ipc['current_year']}年同期实际值。外推方法:以过去1年/3年/5年同期累计利润占全年比例的均值,线性外推{ipc['current_year']}年全年利润总额,再与上年全年实际利润比较得到隐含全年同比,图中以虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。",
+            f"指标为规模以上工业企业利润总额年度同比(国家统计局,每月27日左右发布上月数据)。实线展示历史年度同比；{ipc['current_year']}年因尚未全年发布，以过去1年/3年/5年同期累计利润占全年比例的均值线性外推全年利润总额，再与上年全年实际利润比较得到隐含全年同比，图中以三条虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。黑色标签展示{ipc['current_year']}年1-{ipc['current_month']}月累计同比实际值 {ipc['latest_cum_yoy']:+.1f}%。",
             "统计局对规模以上企业样本与基数有年度调整,官方同比与按累计额直接计算的同比存在口径差;外推基于季节性进度假设,下半年盈利节奏变化会使实际值偏离外推值,仅供参考。",
             "industrial_profits",
         )}

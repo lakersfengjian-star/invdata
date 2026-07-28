@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-28 15:35:11",
+  "generated_at": "2026-07-28 16:01:48",
   "expected_dates": {
-    "daily": "2026-07-27",
+    "daily": "2026-07-28",
     "weekly": "2026-07-26",
     "monthly": "2026-06-01",
     "manual": ""
@@ -13,11 +13,11 @@
       "title": "行情监控面板",
       "category": "行情",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "market_turnover",
@@ -25,11 +25,11 @@
       "title": "全市场成交额变化",
       "category": "行情",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "limit_up_longest",
@@ -37,11 +37,11 @@
       "title": "涨停观察：连续涨停天数前十",
       "category": "行情",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "limit_up_amount_top",
@@ -49,11 +49,11 @@
       "title": "涨停观察：当日涨停成交额前十",
       "category": "行情",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "macro",
@@ -65,7 +65,7 @@
       "actual_date": "2026-06-01",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "valuation_hs300",
@@ -73,11 +73,11 @@
       "title": "沪深300指数历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
-      "actual_date": "2026-07-24",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 15:35:11"
+      "expected_date": "2026-07-28",
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "valuation_sse",
@@ -85,11 +85,11 @@
       "title": "上证指数历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
-      "actual_date": "2026-07-24",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 15:35:11"
+      "expected_date": "2026-07-28",
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "valuation_wind_all_a",
@@ -97,11 +97,11 @@
       "title": "万得全A历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
-      "actual_date": "",
-      "status": "missing",
-      "status_label": "缺失",
-      "built_at": "2026-07-28 15:35:11"
+      "expected_date": "2026-07-28",
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "valuation_wind_all_a_ex_fin_petchem",
@@ -109,11 +109,11 @@
       "title": "万得全A（除金融、石油石化）历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
-      "actual_date": "",
-      "status": "missing",
-      "status_label": "缺失",
-      "built_at": "2026-07-28 15:35:11"
+      "expected_date": "2026-07-28",
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "pb_roe",
@@ -125,7 +125,7 @@
       "actual_date": "2026-07-26",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "industrial_profits",
@@ -137,7 +137,7 @@
       "actual_date": "2026-05-01",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 15:35:11"
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "southbound",
@@ -145,11 +145,11 @@
       "title": "南向资金每日净流入",
       "category": "流动性",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "broad_etf_flow",
@@ -157,11 +157,11 @@
       "title": "沪深300/上证指数 vs. 大宽基ETF资金流",
       "category": "流动性",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "star50_etf_flow",
@@ -169,11 +169,11 @@
       "title": "科创50指数 vs. 科创50ETF资金流",
       "category": "流动性",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "sentiment",
@@ -181,11 +181,11 @@
       "title": "上证等权情绪指数（3年分位）",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "turnover_top10",
@@ -193,11 +193,11 @@
       "title": "A股成交额前10大公司交易集中度",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "turnover_top100",
@@ -205,11 +205,11 @@
       "title": "A股成交额前100大公司交易集中度",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "amount_share",
@@ -217,11 +217,11 @@
       "title": "主要宽基指数成交额占全A成交额比例",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "theme_amount_share",
@@ -229,11 +229,11 @@
       "title": "TMT与红利低波成交额占全A成交额比例",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "industry_crowding",
@@ -245,7 +245,7 @@
       "actual_date": "2026-07-26",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "value_growth_spread",
@@ -253,11 +253,11 @@
       "title": "价值成长风格价差",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "citic_pb_dispersion",
@@ -265,11 +265,11 @@
       "title": "中信一级行业估值离散度",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-07-27",
+      "expected_date": "2026-07-28",
       "actual_date": "2026-07-27",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-28 15:35:11"
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-28 16:01:48"
     },
     {
       "key": "library",
@@ -281,7 +281,7 @@
       "actual_date": "",
       "status": "manual",
       "status_label": "不定期",
-      "built_at": "2026-07-28 15:35:11"
+      "built_at": "2026-07-28 16:01:48"
     }
   ]
 }

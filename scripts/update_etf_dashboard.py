@@ -649,7 +649,7 @@ def fetch_valuation_series(cfg: dict[str, str]) -> pd.DataFrame:
     cache = PROCESSED_DIR / f"valuation_{cfg['key']}.csv"
     if cache.exists():
         cached = pd.read_csv(cache, parse_dates=["date"])
-        if not cached.empty and cached["date"].max() >= pd.Timestamp(date.today() - pd.Timedelta(days=10)):
+        if not cached.empty and cached["date"].max() >= previous_bday():
             log_source("Index PE_TTM", "cache", f"{cfg['name']}: {len(cached)} rows")
             return cached
     frames = []
@@ -671,8 +671,9 @@ def fetch_valuation_series(cfg: dict[str, str]) -> pd.DataFrame:
             except Exception as exc:
                 log_source("Index PE_TTM", "failed", f"{cfg['name']} attempt {attempt + 1}: {repr(exc)[:160]}")
                 time.sleep(1.2 * (attempt + 1))
-    if cfg["source"] == "local_csv":
-        frames.append(fetch_local_wind_valuation(cfg["name"]))
+    local_wind = fetch_local_wind_valuation(cfg["name"])
+    if not local_wind.empty:
+        frames.append(local_wind)
     if frames:
         out = pd.concat(frames, ignore_index=True).drop_duplicates(["date", "index_name"], keep="last").sort_values("date")
     else:

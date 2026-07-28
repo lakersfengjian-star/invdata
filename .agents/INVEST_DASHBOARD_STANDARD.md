@@ -220,7 +220,7 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 - `fig_010_macro_overview.png`：宏观经济数据概览。横向分面展示最近六个有效数据点，共享 Y 轴，0 值不绘制。
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）。
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图。随中信拥挤度周频数据衍生更新。
-- `fig_013_industrial_profits.png`：工业企业利润同比与全年外推（月频）。
+- `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频）。实线为历史年度同比，当前年份用近1/3/5年同期进度外推并以虚线表示。
 - `fig_014_value_growth_spread.png`：价值成长风格价差。中证红利股息率 - 双创50盈利收益率，日频，优先 `/gjdata`。
 - `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度。万得全A收盘价 vs 中信一级行业 PB 历史分位标准差 MA5，日频，优先 `/gjdata`。
 - 行情表格：最新交易日连续涨停天数前十、当日涨停成交额前十。数据来自东方财富涨停股池，主营业务来自巨潮公司概况。

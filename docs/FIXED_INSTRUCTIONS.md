@@ -16,6 +16,7 @@
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_southbound_flow.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_value_growth_spread.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_pb_dispersion.py
+/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_wind_index_valuation.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_overview.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_limit_up_tables.py
 /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_industry_crowding.py
@@ -50,7 +51,7 @@
 - `fig_010_macro_overview.png`：宏观经济数据概览，展示各指标最近六个有效数据点
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图（周频）。构建时衍生图：由 `data/raw/citic_industry_crowding_weekly.csv` 最新周 PB_LF/PE_TTM 推导 ROE（ROE≈PB/PE 恒等式，同一价格口径下成立，零新增取数），叠加 `data/processed/citic_industry_crowding.csv` 的 PB 十年分位上色；随拥挤度周度数据自动更新，无需注册新取数脚本。
-- `fig_013_industrial_profits.png`：工业企业利润同比与全年外推（月频，宏观调度）。指标为规模以上工业企业利润总额累计值/累计同比（国家统计局，每月 27 日左右发布上月数据，归入月末 28–31 日 23:00 宏观发布窗口）。历史底座 `data/raw/industrial_profits_wind.csv`（Wind EDB M0000556/M0000557 一次性铺底），增量由 `scripts/update_industrial_profits.py` 走 AkShare 统计局接口，已覆盖预期月份时零请求。外推方法：过去 1/3/5 年同期累计利润占全年比例均值 → 线性外推全年利润总额 → 隐含全年同比。
+- `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频，宏观调度）。指标为规模以上工业企业利润总额累计值/累计同比（国家统计局，每月 27 日左右发布上月数据，归入月末 28–31 日 23:00 宏观发布窗口）。历史底座 `data/raw/industrial_profits_wind.csv`（Wind EDB M0000556/M0000557 一次性铺底），增量由 `scripts/update_industrial_profits.py` 走 AkShare 统计局接口，已覆盖预期月份时零请求。图形以实线展示历史年度同比，2026 年按过去 1/3/5 年同期累计利润占全年比例均值线性外推全年利润总额，再计算隐含全年同比并用三条虚线表示；当年最新累计同比实际值只做点状标签。
 - `fig_014_value_growth_spread.png`：价值成长风格价差（日频）。口径为中证红利指数股息率减双创50盈利收益率（`100 / PE_TTM`），区间自 2021-01-01 起，数据优先来自 `/gjdata` 的 `AIndexValuation` 表。
 - `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度（日频）。左轴万得全A收盘价，右轴为中信一级行业 PB_LF 过去 10 年滚动历史分位的横截面标准差，并取 5 日均值；数据优先来自 `/gjdata` 的 `AIndexValuation` 与 `AIndexWindIndustriesEOD`。
 - 行情表格：`limit_up_longest.csv`、`limit_up_amount_top.csv`，展示最新交易日连续涨停天数前十和当日涨停成交额前十。
