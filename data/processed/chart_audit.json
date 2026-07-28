@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-28 16:01:48",
+  "generated_at": "2026-07-28 22:59:24",
   "expected_dates": {
     "daily": "2026-07-28",
     "weekly": "2026-07-26",
@@ -17,7 +17,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "market_turnover",
@@ -26,10 +26,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "limit_up_longest",
@@ -38,10 +38,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "limit_up_amount_top",
@@ -50,10 +50,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "macro",
@@ -65,7 +65,7 @@
       "actual_date": "2026-06-01",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "valuation_hs300",
@@ -77,7 +77,7 @@
       "actual_date": "2026-07-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "valuation_sse",
@@ -89,7 +89,7 @@
       "actual_date": "2026-07-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "valuation_wind_all_a",
@@ -101,7 +101,7 @@
       "actual_date": "2026-07-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "valuation_wind_all_a_ex_fin_petchem",
@@ -113,7 +113,7 @@
       "actual_date": "2026-07-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "pb_roe",
@@ -125,7 +125,7 @@
       "actual_date": "2026-07-26",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "industrial_profits",
@@ -137,7 +137,7 @@
       "actual_date": "2026-05-01",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "southbound",
@@ -146,10 +146,10 @@
       "category": "流动性",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "broad_etf_flow",
@@ -161,7 +161,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "star50_etf_flow",
@@ -173,7 +173,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "sentiment",
@@ -185,7 +185,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "turnover_top10",
@@ -197,7 +197,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "turnover_top100",
@@ -209,7 +209,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "amount_share",
@@ -218,10 +218,10 @@
       "category": "情绪",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "theme_amount_share",
@@ -230,10 +230,10 @@
       "category": "情绪",
       "frequency": "daily",
       "expected_date": "2026-07-28",
-      "actual_date": "2026-07-27",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "actual_date": "2026-07-28",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "industry_crowding",
@@ -245,7 +245,7 @@
       "actual_date": "2026-07-26",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "value_growth_spread",
@@ -257,7 +257,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "citic_pb_dispersion",
@@ -269,7 +269,7 @@
       "actual_date": "2026-07-27",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     },
     {
       "key": "library",
@@ -281,7 +281,7 @@
       "actual_date": "",
       "status": "manual",
       "status_label": "不定期",
-      "built_at": "2026-07-28 16:01:48"
+      "built_at": "2026-07-28 22:59:24"
     }
   ]
 }
