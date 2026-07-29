@@ -4,57 +4,57 @@
     "daily",
     "macro"
   ],
-  "checked_at": "2026-07-29 06:49:42 CST",
-  "expected_latest_daily": "2026-07-28",
+  "checked_at": "2026-07-30 06:46:18 CST",
+  "expected_latest_daily": "2026-07-29",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-28T22:49:42",
-      "finished_at": "2026-07-28T22:49:49"
+      "started_at": "2026-07-29T22:46:18",
+      "finished_at": "2026-07-29T22:46:25"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-28T22:49:49",
-      "finished_at": "2026-07-28T22:49:51"
+      "started_at": "2026-07-29T22:46:25",
+      "finished_at": "2026-07-29T22:46:28"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-28T22:49:51",
-      "finished_at": "2026-07-28T22:49:51"
+      "started_at": "2026-07-29T22:46:28",
+      "finished_at": "2026-07-29T22:46:28"
     },
     {
-      "script": "update_southbound_flow.py",
-      "status": "ok",
-      "returncode": 0,
-      "started_at": "2026-07-28T22:49:51",
-      "finished_at": "2026-07-28T22:50:00"
+      "script": "update_hk_dashboard.py",
+      "status": "failed",
+      "returncode": 1,
+      "started_at": "2026-07-29T22:46:28",
+      "finished_at": "2026-07-29T22:46:28"
     },
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-07-28T22:50:00",
-      "finished_at": "2026-07-28T22:55:41"
+      "started_at": "2026-07-29T22:46:28",
+      "finished_at": "2026-07-29T23:07:50"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-28T22:55:41",
-      "finished_at": "2026-07-28T22:56:51"
+      "started_at": "2026-07-29T23:07:50",
+      "finished_at": "2026-07-29T23:11:17"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-28T22:56:51",
-      "finished_at": "2026-07-28T22:59:14"
+      "started_at": "2026-07-29T23:11:17",
+      "finished_at": "2026-07-29T23:11:43"
     }
   ],
   "skipped": [
@@ -80,6 +80,16 @@
       "metadata": "macro_overview.metadata.json"
     },
     {
+      "script": "update_macro_credit_inventory.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_credit_inventory.metadata.json"
+    },
+    {
+      "script": "update_macro_fiscal.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_fiscal.metadata.json"
+    },
+    {
       "script": "update_industrial_profits.py",
       "reason": "recently_attempted",
       "metadata": "industrial_profits.metadata.json"
@@ -90,8 +100,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-07-28T22:59:14",
-    "finished_at": "2026-07-28T22:59:25"
+    "started_at": "2026-07-29T23:11:43",
+    "finished_at": "2026-07-29T23:11:57"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
