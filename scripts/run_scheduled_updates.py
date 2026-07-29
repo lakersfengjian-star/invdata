@@ -29,7 +29,15 @@ DAILY_DATASETS: dict[str, list[str]] = {
     "update_index_amount_share.py": ["index_amount_share.csv"],
     "update_theme_amount_share.py": ["theme_amount_share.csv"],
     "update_market_turnover.py": ["market_turnover.csv"],
-    "update_southbound_flow.py": ["southbound_flow.csv"],
+    "update_hk_dashboard.py": [
+        "hk_sentiment.csv",
+        "hk_rates.csv",
+        "hk_fx.csv",
+        "hk_ah_premium.csv",
+        "hk_hsi_valuation.csv",
+        "hk_dividend_yield.csv",
+        "southbound_flow.csv",
+    ],
     "update_value_growth_spread.py": ["value_growth_spread.csv"],
     "update_citic_pb_dispersion.py": ["citic_pb_dispersion.csv"],
     "update_etf_dashboard.py": [
@@ -44,6 +52,8 @@ DAILY_DATASETS: dict[str, list[str]] = {
 
 MACRO_DATASETS: dict[str, str] = {
     "update_macro_overview.py": "macro_overview.metadata.json",
+    "update_macro_credit_inventory.py": "macro_credit_inventory.metadata.json",
+    "update_macro_fiscal.py": "macro_fiscal.metadata.json",
     "update_industrial_profits.py": "industrial_profits.metadata.json",
 }
 

@@ -23,6 +23,7 @@
 6. 当净流入为 0 或关键字段缺失时，在页面注释中保留“数据可能未更新”的风险提示。
 7. 严格执行 `TOKEN_EFFICIENT_WORKFLOW.md`：禁止通过对话或连接器搬运大型 base64、历史 CSV 或完整快照，优先本地增量、离线构建和正常 git 推送。
 8. GitHub 凭证、网页登录、VS Code 推送由 VS Code/GitHub 本地客户端完成；agent 不再把认证排障作为常规工作。
+9. 仅修改网页展示、样式、图表排版或文档时，默认只本地构建和核验，不立即推送部署；等下一次自动数据更新提交时一并部署，除非用户明确要求“现在推送/部署”。
 
 ## 职责边界
 
@@ -169,6 +170,12 @@ Vercel 只部署静态站点。根目录保留：
 4. 用户点击 Commit/Push，VS Code 处理 GitHub 登录和 HTTPS 凭证。
 5. Vercel 自动部署；agent 只在用户推送后做轻量线上核验。
 
+节省 token 的默认发布节奏：
+
+- 数据更新类任务：本地或自动任务抓数、构建、提交，由 Vercel 自动部署。
+- 页面展示类任务：只本地构建和核验，暂不触发 GitHub/Vercel；下一次自动数据更新提交时一并发布。
+- 用户明确要求“推送”“部署”“线上生效”时，才进入提交/推送流程。
+
 不推荐 agent 继续处理：
 
 - GitHub 登录。
@@ -206,35 +213,46 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 
 - `fig_001_broad_etf_flow.png`：沪深300/上证指数与大宽基ETF资金流
 - `fig_002_star50_etf_flow.png`：科创50指数与科创50ETF资金流
-- `fig_003a_turnover_top10_concentration.png`：A股成交额前10集中度（014A）
-- `fig_003b_turnover_top100_concentration.png`：A股成交额前100集中度（014B）
-- `fig_004a_hs300_pe_ttm_channel.png`：沪深300指数 PE_TTM 标准差通道（006A）
-- `fig_004b_sse_pe_ttm_channel.png`：上证指数 PE_TTM 标准差通道（006B）
-- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM 标准差通道（006C），依赖本地 CSV
-- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化 PE_TTM 标准差通道（006D），依赖本地 CSV
+- `fig_003a_turnover_top10_concentration.png`：A股成交额前10集中度（F-002）
+- `fig_003b_turnover_top100_concentration.png`：A股成交额前100集中度（F-003）
+- `fig_004a_hs300_pe_ttm_channel.png`：沪深300指数 PE_TTM 标准差通道（C-001）
+- `fig_004b_sse_pe_ttm_channel.png`：上证指数 PE_TTM 标准差通道（C-002）
+- `fig_004c_wind_all_a_pe_ttm_channel.png`：万得全A PE_TTM 标准差通道（C-003），依赖本地 CSV
+- `fig_004d_wind_all_a_ex_fin_petchem_pe_ttm_channel.png`：万得全A除金融石油石化 PE_TTM 标准差通道（C-004），依赖本地 CSV
 - `fig_005_index_amount_share.png`：沪深300、中证500、中证1000、中证2000成交额占全A成交额比例。数据优先来自中证指数官网指数行情接口；中证全指成交金额暂作为 Wind 全A成交额公开代理口径，后续若接入 Wind/Tushare 精确 Wind 全A成交额，可替换分母。
 - `fig_006_citic_industry_crowding.png`：中信一级行业估值与成交拥挤度。数据优先来自 Wind API；若本机没有 WindPy 或授权不可用，读取 `data/raw/citic_industry_crowding_weekly.csv`。
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例。数据来自中证指数官网指数行情接口，分母与图五一致。
 - `fig_008_market_turnover.png`：全市场成交额变化。起始日期为 2024-09-24，当前复用中证全指成交金额作为沪深京全市场成交额公开代理口径。
-- `fig_009_southbound_flow.png`：南向资金每日净流入。起始日期为 2026-01-01，数据来自东方财富沪深港通历史数据，口径为“当日成交净买额”，单位亿元。
+- `fig_009_southbound_flow.png`：南向资金每日净流入与15日滚动累计。起始日期为 2026-01-01，数据来自 Wind 金融能力，口径为南向资金每日净买入合计，单位亿元。
 - `fig_010_macro_overview.png`：宏观经济数据概览。横向分面展示最近六个有效数据点，共享 Y 轴，0 值不绘制。
+- `fig_023_macro_inventory_cycle.png`：规模以上工业企业名义和实际库存同比（月频）。名义库存同比、PPI同比来自 Wind EDB；实际库存同比 = 名义库存同比 - PPI同比。
+- `fig_024_macro_m1_m2.png`：M1-M2剪刀差（月频）。M1-M2 = M1同比 - M2同比，数据来自 Wind EDB 中国人民银行月度数据。
+- `fig_025_macro_fiscal.png`：一般公共预算收支与央地收入分化（月频）。一般公共预算收入/支出、中央/地方本级收入累计同比来自 Wind EDB 财政部月度指标。
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）。
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图。随中信拥挤度周频数据衍生更新。
 - `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频）。实线为历史年度同比，当前年份用近1/3/5年同期进度外推并以虚线表示。
 - `fig_014_value_growth_spread.png`：价值成长风格价差。中证红利股息率 - 双创50盈利收益率，日频，优先 `/gjdata`。
 - `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度。万得全A收盘价 vs 中信一级行业 PB 历史分位标准差 MA5，日频，优先 `/gjdata`。
+- `fig_016_hk_sentiment.png`：港股情绪。参考 `3_情绪指标_港股.xlsx` 的分项Z值逻辑，数据来自 Wind 金融能力。
+- `fig_017_hk_rates.png`：HIBOR隔夜与美国10年国债收益率，数据来自 Wind 金融能力。
+- `fig_018_hk_fx.png`：美元指数与美元兑港元，数据来自 Wind 金融能力。
+- `fig_019_hk_ah_premium.png`：恒生沪深港通AH股溢价与H50069.CSI，数据来自 Wind 金融能力。
+- `fig_020_hsi_pe_ttm.png`：恒生指数PE_TTM及均值分位，数据来自 Wind 金融能力。
+- `fig_021_hsi_erp.png`：恒生指数ERP，数据来自 Wind 金融能力；若 Wind 原始 ERP 延迟发布，则按 `100 / PE_TTM - 中国10年国债收益率` 兜底补算。
+- `fig_022_hk_dividend_yield.png`：主要指数股息率TTM，周频展示最新可用交易日，数据来自 Wind 金融能力。
 - 行情表格：最新交易日连续涨停天数前十、当日涨停成交额前十。数据来自东方财富涨停股池，主营业务来自巨潮公司概况。
 
 ## 页面分类区域
 
-网页必须按六个固定区域组织，并通过顶部分类按钮切换展示：
+网页必须按八个固定区域组织，并通过顶部分类按钮切换展示：
 
 - 行情：指数走势、市场价格、全市场成交额、涨停观察等行情联动图。当前包含行情监控、全市场成交额、涨停观察表。
 - 宏观：利率、通胀、信用、经济增长、政策等宏观指标。当前包含图十。
 - 估值：PE、PB、ERP、标准差通道、估值分位等指标。当前包含图四系列和中信 PB-ROE。
 - 盈利：ROE、利润增速、收入增速、盈利预测、财报汇总等指标。当前包含工业企业利润同比与全年外推。
-- 流动性：ETF资金流、南向资金、融资融券、市场流动性指标。当前包含南向资金、大宽基 ETF 资金流、科创50 ETF 资金流。
+- 流动性：ETF资金流、融资融券、市场流动性指标。当前包含大宽基 ETF 资金流、科创50 ETF 资金流。
 - 情绪：换手、成交集中度、主题成交占比、风险偏好、拥挤度、风格价差、估值离散度、舆情或情绪指标。当前包含情绪指数、成交集中度、宽基/主题成交占比、中信拥挤度、价值成长价差、中信 PB 离散度。
+- 港股：港股情绪、南向资金、分母端利率、汇率、AH溢价、恒生估值、ERP、股息率等港股专属指标。当前使用 `scripts/update_hk_dashboard.py` 调用 Wind 金融能力并本地缓存。
 
 新增指标时，优先判断其所属分类，在 `scripts/build_site_from_processed.py` 和 `scripts/update_etf_dashboard.py` 的对应 `category-panel` 中追加图表，不要重新创建新的一级分类，除非用户明确要求扩展分类体系。
 
@@ -329,20 +347,20 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 - 生成 `data/processed/market_turnover.csv` 和 `fig_008_market_turnover.png`。
 - 后续若取得交易所逐日汇总或 Wind 全A 精确成交额，应替换该代理序列。
 
-## 南向资金每日净流入
+## 港股板块与南向资金
 
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_southbound_flow.py
+/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_hk_dashboard.py
 ```
 
 数据源与口径：
 
-- 东方财富沪深港通历史数据，经 AkShare `stock_hsgt_hist_em(symbol="南向资金")` 获取。
+- 数据来自 Wind 金融能力；Excel `港股监控指标.xlsx` 和 `3_情绪指标_港股.xlsx` 只作为计算逻辑参考，不作为数据源。
 - 时间区间自 2026-01-01 起。
-- 每日净流入采用“当日成交净买额”字段，单位为亿元。
-- 生成 `data/processed/southbound_flow.csv`、`data/processed/southbound_flow.metadata.json` 和 `fig_009_southbound_flow.png`。
+- 南向资金采用 Wind 返回的南向资金每日净买入合计，单位为亿元，并计算15个交易日滚动累计。
+- 生成 `data/processed/hk_*.csv`、`data/processed/southbound_flow.csv`、`data/processed/hk_dashboard.metadata.json`、`fig_009_southbound_flow.png` 和港股板块 `fig_016` 至 `fig_022`。
 - 若最新值长时间为 0 或缺失，页面保留“接口可能未更新”的风险提示。
 
 ## 宏观经济数据概览
@@ -364,6 +382,19 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 - 企业中长期贷款取人民银行“存款类金融机构企（事）业单位贷款：中长期贷款”存量并计算同比。
 - 若国家统计局或人民银行在线接口不可用，分别读取 `data/raw/macro_overview_extra.csv` 和 `data/raw/pbc_macro_credit.csv`。
 - 生成 `data/processed/macro_overview.csv`、`data/processed/macro_overview.metadata.json` 和 `fig_010_macro_overview.png`。
+
+宏观库存与 M1-M2：
+
+- 更新脚本：`scripts/update_macro_credit_inventory.py`。
+- 数据源：Wind EDB `M0000561`（规模以上工业企业产成品存货同比）、`M0001227`（PPI当月同比）、`M0001383`（M1同比）、`M0001385`（M2同比）。
+- 计算：实际库存同比 = 名义库存同比 - PPI同比；M1-M2 = M1同比 - M2同比。
+- 生成 `data/processed/macro_inventory_cycle.csv`、`data/processed/macro_m1_m2.csv`、`data/processed/macro_credit_inventory.metadata.json`、`fig_023_macro_inventory_cycle.png`、`fig_024_macro_m1_m2.png`。
+
+财政收支：
+
+- 更新脚本：`scripts/update_macro_fiscal.py`。
+- 数据源：Wind EDB `M0046169`（一般公共预算收入累计同比）、`M0046167`（一般公共预算支出累计同比）、`M0089129`（中央一般公共预算收入累计同比）、`M0089130`（地方一般公共预算本级收入累计同比）。
+- 生成 `data/processed/macro_fiscal.csv`、`data/processed/macro_fiscal.metadata.json`、`fig_025_macro_fiscal.png`。
 
 ## 后续增量优化 TODO
 

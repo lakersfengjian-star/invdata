@@ -1,0 +1,22 @@
+{
+  "source": "Wind AIFin Market CLI: index_data.get_index_kline, index_data.get_index_fundamentals, analytics_data.get_financial_data",
+  "status": "ok",
+  "latest_date": "2026-07-27",
+  "unit": "",
+  "notes": [],
+  "latest_by_dataset": {
+    "hk_sentiment": "2026-07-27",
+    "hk_rates": "2026-07-27",
+    "hk_fx": "2026-07-27",
+    "hk_ah_premium": "2026-07-27",
+    "hk_hsi_valuation": "2026-07-27",
+    "hk_dividend_yield": "2026-07-27",
+    "southbound": "2026-07-27"
+  },
+  "built_at": "2026-07-28",
+  "run_start": {
+    "daily": "20260717",
+    "valuation": "20260707",
+    "southbound": "20260101"
+  }
+}

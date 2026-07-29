@@ -1,0 +1,22 @@
+{
+  "source": "Wind EDB economic_data.natural_language_get_edb_data",
+  "status": "ok",
+  "latest_date": "2026-06-30",
+  "unit": "%",
+  "edb_codes": {
+    "budget_expenditure_ytd_yoy": "M0046167",
+    "budget_revenue_ytd_yoy": "M0046169",
+    "central_revenue_ytd_yoy": "M0089129",
+    "local_revenue_ytd_yoy": "M0089130"
+  },
+  "edb_names": {
+    "budget_expenditure_ytd_yoy": "中国:一般公共预算支出:累计同比",
+    "budget_revenue_ytd_yoy": "中国:一般公共预算收入:累计同比",
+    "central_revenue_ytd_yoy": "中国:中央一般公共预算收入:累计同比",
+    "local_revenue_ytd_yoy": "中国:地方一般公共预算本级收入:累计同比"
+  },
+  "notes": [
+    "财政收支指标均为累计同比。"
+  ],
+  "built_at": "2026-07-28 18:33:47"
+}

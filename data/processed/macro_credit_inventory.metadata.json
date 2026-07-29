@@ -1,0 +1,27 @@
+{
+  "source": "Wind EDB economic_data.natural_language_get_edb_data",
+  "status": "ok",
+  "latest_date": "2026-06-30",
+  "latest_by_dataset": {
+    "macro_inventory": "2026-06-30",
+    "macro_m1_m2": "2026-06-30"
+  },
+  "unit": "%",
+  "edb_codes": {
+    "inventory_yoy": "M0000561",
+    "ppi_yoy": "M0001227",
+    "m1_yoy": "M0001383",
+    "m2_yoy": "M0001385"
+  },
+  "edb_names": {
+    "inventory_yoy": "中国:产成品存货:规模以上工业企业:同比",
+    "ppi_yoy": "中国:PPI:当月同比",
+    "m1_yoy": "中国:M1:同比",
+    "m2_yoy": "中国:M2:同比"
+  },
+  "notes": [
+    "实际库存同比 = 规模以上工业企业产成品存货同比 - PPI当月同比。",
+    "M1-M2 = M1同比 - M2同比。"
+  ],
+  "built_at": "2026-07-28 18:26:58"
+}

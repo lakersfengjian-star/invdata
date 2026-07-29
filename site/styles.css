@@ -322,6 +322,29 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 }
 
 /* ---------- 行情监控面板 ---------- */
+.market-brief {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(32, 48, 64, .04);
+}
+.brief-kicker {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.market-brief ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.market-brief li + li { margin-top: 2px; }
 .monitor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

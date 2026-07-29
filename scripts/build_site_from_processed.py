@@ -38,6 +38,22 @@ VALUATION_START_DATE = "2020-01-01"
 CURRENT_CHART_STATUS: dict[str, dict] = {}
 
 
+def set_time_axis(ax, dates: pd.Series, *, compact: bool = True) -> None:
+    start = pd.to_datetime(dates).min()
+    end = pd.to_datetime(dates).max()
+    years = max((end - start).days / 365.25, 0)
+    if years >= 8:
+        ax.xaxis.set_major_locator(mdates.YearLocator(base=2 if compact else 1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    elif years >= 3:
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    else:
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3 if compact else 2))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax.tick_params(axis="x", labelrotation=0, labelsize=9.5)
+
+
 def setup_fonts() -> None:
     preferred = [
         "Noto Sans CJK SC",
@@ -334,12 +350,17 @@ def draw_southbound_flow_chart(df: pd.DataFrame, out_path: Path) -> dict:
     plot_df = df.copy().sort_values("date")
     plot_df["date"] = pd.to_datetime(plot_df["date"])
     plot_df["southbound_net_buy_100mn"] = pd.to_numeric(plot_df["southbound_net_buy_100mn"], errors="coerce")
+    if "rolling_15d_net_buy_100mn" not in plot_df:
+        plot_df["rolling_15d_net_buy_100mn"] = plot_df["southbound_net_buy_100mn"].rolling(15, min_periods=15).sum()
+    else:
+        plot_df["rolling_15d_net_buy_100mn"] = pd.to_numeric(plot_df["rolling_15d_net_buy_100mn"], errors="coerce")
     latest = plot_df.dropna(subset=["southbound_net_buy_100mn"]).iloc[-1]
     latest_date = latest["date"].strftime("%Y-%m-%d")
     colors = plot_df["southbound_net_buy_100mn"].apply(lambda value: "#c5513c" if value >= 0 else "#2a9d55")
     fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
     fig.patch.set_facecolor("#fbfbf8")
     ax.set_facecolor("#fbfbf8")
+    ax2 = ax.twinx()
     ax.bar(
         plot_df["date"],
         plot_df["southbound_net_buy_100mn"],
@@ -349,7 +370,18 @@ def draw_southbound_flow_chart(df: pd.DataFrame, out_path: Path) -> dict:
         linewidth=0.35,
         label="南向资金净流入",
     )
+    ax2.plot(plot_df["date"], plot_df["rolling_15d_net_buy_100mn"], color="#1f6fb2", linewidth=2.0, label="15日滚动累计净流入")
     ax.axhline(0, color="#59636e", linewidth=1.0, alpha=0.85)
+    if pd.notna(latest.get("rolling_15d_net_buy_100mn")):
+        ax2.annotate(
+            f"15日 {latest['rolling_15d_net_buy_100mn']:,.0f}亿元",
+            xy=(latest["date"], latest["rolling_15d_net_buy_100mn"]),
+            xytext=(12, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=10,
+            color="#1f6fb2",
+        )
     ax.annotate(
         f"{latest_date}  {latest['southbound_net_buy_100mn']:,.2f}亿元",
         xy=(latest["date"], latest["southbound_net_buy_100mn"]),
@@ -362,17 +394,233 @@ def draw_southbound_flow_chart(df: pd.DataFrame, out_path: Path) -> dict:
     )
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("净流入额（亿元）", fontsize=12)
+    ax2.set_ylabel("15日滚动累计（亿元）", fontsize=12)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f"{x:,.0f}"))
+    ax2.yaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f"{x:,.0f}"))
     ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
     ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    set_time_axis(ax, plot_df["date"], compact=True)
     ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_hk_sentiment_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    for col in ["hk_sentiment_z", "hsi_close", "breadth_z", "vhsi_z", "relative_z", "southbound_z", "short_z"]:
+        if col in plot_df:
+            plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    latest = plot_df.dropna(subset=["hk_sentiment_z"]).iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax = plt.subplots(figsize=(16, 7.4), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax2 = ax.twinx()
+    ax.plot(plot_df["date"], plot_df["hk_sentiment_z"], color="#c5513c", linewidth=2.35, label="港股情绪Z")
+    ax.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.8)
+    ax.fill_between(plot_df["date"], plot_df["hk_sentiment_z"], 0, color="#c5513c", alpha=0.12, linewidth=0)
+    ax2.plot(plot_df["date"], plot_df["hsi_close"], color="#1f6fb2", linewidth=1.9, alpha=0.82, label="恒生指数")
+    ax.annotate(
+        f"{latest_date}  {latest['hk_sentiment_z']:.2f}",
+        xy=(latest["date"], latest["hk_sentiment_z"]),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=10,
+        color="#c5513c",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("情绪指标Z", fontsize=12)
+    ax2.set_ylabel("恒生指数收盘价（点）", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_dual_line_chart(
+    df: pd.DataFrame,
+    left_col: str,
+    right_col: str,
+    left_label: str,
+    right_label: str,
+    title: str,
+    out_path: Path,
+    left_color: str = "#1f6fb2",
+    right_color: str = "#c5513c",
+) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    for col in [left_col, right_col]:
+        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    latest = plot_df.dropna(subset=[left_col, right_col], how="all").iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax2 = ax.twinx()
+    if plot_df[left_col].notna().any():
+        ax.plot(plot_df["date"], plot_df[left_col], color=left_color, linewidth=2.1, label=left_label)
+    if plot_df[right_col].notna().any():
+        ax2.plot(plot_df["date"], plot_df[right_col], color=right_color, linewidth=2.1, label=right_label)
+    label_lines = [latest_date]
+    if pd.notna(latest.get(left_col)):
+        label_lines.append(f"{left_label}: {latest[left_col]:.2f}")
+    if pd.notna(latest.get(right_col)):
+        label_lines.append(f"{right_label}: {latest[right_col]:.2f}")
+    ax.text(
+        0.985,
+        0.965,
+        "\n".join(label_lines),
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
+        fontsize=10.2,
+        bbox={"boxstyle": "round,pad=0.4", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax.set_title(title, fontsize=15, fontweight="bold", loc="left", pad=12)
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel(left_label, fontsize=12)
+    ax2.set_ylabel(right_label, fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    lines1, labels1 = ax.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax2.spines[["top", "left"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_hsi_pe_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    plot_df["pe_ttm"] = pd.to_numeric(plot_df["pe_ttm"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["pe_ttm"])
+    if plot_df.empty:
+        return None
+    mu = plot_df["pe_ttm"].mean()
+    sigma = plot_df["pe_ttm"].std(ddof=0)
+    latest = plot_df.iloc[-1]
+    pctile = (plot_df["pe_ttm"].le(latest["pe_ttm"]).mean()) * 100
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax.plot(plot_df["date"], plot_df["pe_ttm"], color="#1f6fb2", linewidth=2.2, label="PE_TTM")
+    for y, label, color in [(mu, "均值", "#59636e"), (mu + sigma, "+1σ", "#c88a2d"), (mu - sigma, "-1σ", "#c88a2d")]:
+        ax.axhline(y, linestyle="--", color=color, linewidth=1.1, alpha=0.85, label=label)
+    ax.annotate(f"{latest_date}  {latest['pe_ttm']:.2f}倍 / 分位 {pctile:.1f}%", xy=(latest["date"], latest["pe_ttm"]), xytext=(12, 0), textcoords="offset points", va="center", fontsize=10, color="#1f6fb2")
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("PE_TTM（倍）", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    ax.legend(loc="upper left", ncol=4, frameon=False, fontsize=10)
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_hsi_erp_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty or "erp" not in df:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    plot_df["erp"] = pd.to_numeric(plot_df["erp"], errors="coerce")
+    plot_df = plot_df.dropna(subset=["erp"])
+    if plot_df.empty:
+        return None
+    mu = plot_df["erp"].mean()
+    sigma = plot_df["erp"].std(ddof=0)
+    latest = plot_df.iloc[-1]
+    pctile = (plot_df["erp"].le(latest["erp"]).mean()) * 100
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+    fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax.plot(plot_df["date"], plot_df["erp"], color="#7b4ab8", linewidth=2.2, label="恒生指数ERP")
+    for y, label, color in [(mu, "均值", "#59636e"), (mu + sigma, "+1σ", "#c88a2d"), (mu - sigma, "-1σ", "#c88a2d")]:
+        ax.axhline(y, linestyle="--", color=color, linewidth=1.1, alpha=0.85, label=label)
+    ax.annotate(f"{latest_date}  {latest['erp']:.2f}% / 分位 {pctile:.1f}%", xy=(latest["date"], latest["erp"]), xytext=(12, 0), textcoords="offset points", va="center", fontsize=10, color="#7b4ab8")
+    ax.set_xlabel("日期", fontsize=12)
+    ax.set_ylabel("ERP（%）", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.45)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=8))
+    ax.legend(loc="upper left", ncol=4, frameon=False, fontsize=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
+
+
+def draw_hk_dividend_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"])
+    plot_df["dividend_yield_ttm"] = pd.to_numeric(plot_df["dividend_yield_ttm"], errors="coerce")
+    latest_date = plot_df["date"].max()
+    latest = plot_df[plot_df["date"].eq(latest_date)].dropna(subset=["dividend_yield_ttm"]).sort_values("dividend_yield_ttm", ascending=False)
+    if latest.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(14.8, 6.8), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    colors = ["#c5513c" if "港股" in name else "#1f6fb2" for name in latest["index_name"]]
+    bars = ax.bar(latest["index_name"], latest["dividend_yield_ttm"], color=colors, alpha=0.86)
+    for bar, value in zip(bars, latest["dividend_yield_ttm"]):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.06, f"{value:.2f}%", ha="center", va="bottom", fontsize=10)
+    ax.set_ylabel("股息率TTM（%）", fontsize=12)
+    ax.set_xlabel("指数", fontsize=12)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.tick_params(axis="x", rotation=20)
+    ax.text(0.985, 0.965, latest_date.strftime("%Y-%m-%d"), transform=ax.transAxes, ha="right", va="top", fontsize=10.5, bbox={"boxstyle": "round,pad=0.35", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9})
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date.strftime("%Y-%m-%d")}
 
 
 def draw_macro_overview_chart(df: pd.DataFrame, metadata: dict, out_path: Path) -> dict:
@@ -432,6 +680,183 @@ def draw_macro_overview_chart(df: pd.DataFrame, metadata: dict, out_path: Path) 
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date, "status": metadata.get("status", "ok")}
+
+
+def draw_macro_inventory_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"], errors="coerce")
+    for col in ["inventory_yoy", "real_inventory_yoy", "ppi_yoy"]:
+        if col in plot_df:
+            plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.dropna(subset=["date"])
+    latest = plot_df.dropna(subset=["inventory_yoy", "real_inventory_yoy"], how="all").iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m")
+
+    fig, ax = plt.subplots(figsize=(15.6, 7.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    nominal = plot_df.dropna(subset=["inventory_yoy"])
+    real = plot_df.dropna(subset=["real_inventory_yoy"])
+    ax.plot(nominal["date"], nominal["inventory_yoy"], color="#8d8acb", linewidth=2.6, label="工业企业产成品存货同比")
+    ax.plot(real["date"], real["real_inventory_yoy"], color="#2e315f", linewidth=2.6, label="实际库存同比（扣除PPI）")
+    ax.axhline(0, color="#59636e", linewidth=1.0, alpha=0.85)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.35)
+    ax.set_ylabel("同比（%）", fontsize=12)
+    ax.set_xlabel("日期", fontsize=12)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=120))
+    if pd.notna(latest.get("inventory_yoy")):
+        ax.annotate(
+            f"{latest_date} 名义 {latest['inventory_yoy']:.1f}%",
+            xy=(latest["date"], latest["inventory_yoy"]),
+            xytext=(12, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=9.8,
+            color="#8d8acb",
+        )
+    if pd.notna(latest.get("real_inventory_yoy")):
+        ax.annotate(
+            f"实际 {latest['real_inventory_yoy']:.1f}%",
+            xy=(latest["date"], latest["real_inventory_yoy"]),
+            xytext=(12, -14),
+            textcoords="offset points",
+            va="center",
+            fontsize=9.8,
+            color="#2e315f",
+        )
+    ax.legend(loc="upper center", ncol=2, frameon=False, fontsize=10.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest["date"].strftime("%Y-%m-%d")}
+
+
+def draw_macro_m1_m2_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"], errors="coerce")
+    for col in ["m1_yoy", "m2_yoy", "m1_minus_m2"]:
+        if col in plot_df:
+            plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.dropna(subset=["date", "m1_minus_m2"])
+    if plot_df.empty:
+        return None
+    latest = plot_df.iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m")
+
+    fig, ax = plt.subplots(figsize=(15.6, 6.8), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    ax.plot(plot_df["date"], plot_df["m1_minus_m2"], color="#c5513c", linewidth=2.4, label="M1-M2")
+    ax.fill_between(plot_df["date"], plot_df["m1_minus_m2"], 0, where=plot_df["m1_minus_m2"].ge(0), color="#c5513c", alpha=0.12, linewidth=0)
+    ax.fill_between(plot_df["date"], plot_df["m1_minus_m2"], 0, where=plot_df["m1_minus_m2"].lt(0), color="#2a9d55", alpha=0.12, linewidth=0)
+    ax.axhline(0, color="#59636e", linewidth=1.0, alpha=0.9)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.35)
+    ax.set_ylabel("百分点（%）", fontsize=12)
+    ax.set_xlabel("日期", fontsize=12)
+    set_time_axis(ax, plot_df["date"], compact=True)
+    ax.set_xlim(plot_df["date"].min(), plot_df["date"].max() + pd.Timedelta(days=120))
+    ax.annotate(
+        f"{latest_date}  {latest['m1_minus_m2']:.1f}pct",
+        xy=(latest["date"], latest["m1_minus_m2"]),
+        xytext=(12, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=10,
+        color="#c5513c",
+        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+    )
+    ax.legend(loc="upper left", frameon=False, fontsize=10.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest["date"].strftime("%Y-%m-%d")}
+
+
+def draw_macro_fiscal_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df.copy().sort_values("date")
+    plot_df["date"] = pd.to_datetime(plot_df["date"], errors="coerce")
+    cols = ["budget_revenue_ytd_yoy", "budget_expenditure_ytd_yoy", "central_revenue_ytd_yoy", "local_revenue_ytd_yoy"]
+    for col in cols:
+        if col in plot_df:
+            plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.dropna(subset=["date"])
+    if plot_df.empty:
+        return None
+    latest = plot_df.dropna(subset=cols, how="all").iloc[-1]
+    latest_date = latest["date"].strftime("%Y-%m-%d")
+
+    fig, axes = plt.subplots(1, 2, figsize=(16.8, 6.8), dpi=180, sharex=False)
+    fig.patch.set_facecolor("#fbfbf8")
+    for ax in axes:
+        ax.set_facecolor("#fbfbf8")
+        ax.axhline(0, color="#b9bdc3", linewidth=1.0, alpha=0.9)
+        ax.grid(axis="y", color="#e0ded8", linewidth=0.8, alpha=0.72)
+        ax.grid(axis="x", color="#eeeeee", linewidth=0.5, alpha=0.35)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.set_xlabel("日期", fontsize=11)
+        ax.tick_params(axis="x", labelrotation=55, labelsize=8.8)
+
+    left_series = [
+        ("budget_revenue_ytd_yoy", "一般公共预算收入累计同比", "#e9a7b6"),
+        ("budget_expenditure_ytd_yoy", "一般公共预算支出累计同比", "#2f6f9f"),
+    ]
+    right_series = [
+        ("central_revenue_ytd_yoy", "中央一般公共预算收入累计同比", "#12949d"),
+        ("local_revenue_ytd_yoy", "地方一般公共预算本级收入累计同比", "#f05a1a"),
+    ]
+    for col, label, color in left_series:
+        sub = plot_df.dropna(subset=[col])
+        axes[0].plot(sub["date"], sub[col], color=color, linewidth=2.8, label=label)
+    for col, label, color in right_series:
+        sub = plot_df.dropna(subset=[col])
+        axes[1].plot(sub["date"], sub[col], color=color, linewidth=2.8, label=label)
+
+    axes[0].set_title("一般公共预算收支累计同比（%）", loc="left", fontsize=13.2, fontweight="bold", pad=10)
+    axes[1].set_title("一般公共预算央地收入分化（%）", loc="left", fontsize=13.2, fontweight="bold", pad=10)
+    axes[0].set_ylabel("累计同比（%）", fontsize=11.5)
+    axes[0].legend(loc="upper center", frameon=False, fontsize=9.7)
+    axes[1].legend(loc="upper center", frameon=False, fontsize=9.7)
+    for ax in axes:
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+        ax.set_xlim(plot_df["date"].min() - pd.Timedelta(days=12), plot_df["date"].max() + pd.Timedelta(days=18))
+
+    label_specs = [
+        (axes[0], "budget_revenue_ytd_yoy", "#e9a7b6", "收入"),
+        (axes[0], "budget_expenditure_ytd_yoy", "#2f6f9f", "支出"),
+        (axes[1], "central_revenue_ytd_yoy", "#12949d", "中央"),
+        (axes[1], "local_revenue_ytd_yoy", "#f05a1a", "地方"),
+    ]
+    for ax, col, color, label in label_specs:
+        if col in latest and pd.notna(latest[col]):
+            ax.annotate(
+                f"{label} {latest[col]:+.1f}%",
+                xy=(latest["date"], latest[col]),
+                xytext=(8, 0),
+                textcoords="offset points",
+                va="center",
+                fontsize=9.2,
+                color=color,
+            )
+
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
 
 
 def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, out_path: Path) -> dict | None:
@@ -602,6 +1027,34 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
         linewidth=1.0,
         zorder=3,
     )
+    move_df = df.dropna(subset=["prev_roe_ttm", "prev_pb_lf", "roe_ttm", "pb_lf"]).copy()
+    if not move_df.empty:
+        ax.scatter(
+            move_df["prev_roe_ttm"],
+            move_df["prev_pb_lf"],
+            s=70,
+            color="#9aa3ad",
+            alpha=0.45,
+            edgecolor="#ffffff",
+            linewidth=0.6,
+            label=f"上一期 {prev_date}",
+            zorder=2,
+        )
+        for _, row in move_df.iterrows():
+            ax.annotate(
+                "",
+                xy=(row["roe_ttm"], row["pb_lf"]),
+                xytext=(row["prev_roe_ttm"], row["prev_pb_lf"]),
+                arrowprops={
+                    "arrowstyle": "->",
+                    "color": "#59636e",
+                    "lw": 0.9,
+                    "alpha": 0.58,
+                    "shrinkA": 4,
+                    "shrinkB": 7,
+                },
+                zorder=2,
+            )
     offsets = [(10, 6), (10, -12), (-10, 8), (-10, -12)]
     for idx, (_, row) in enumerate(df.iterrows()):
         dx, dy = offsets[idx % len(offsets)]
@@ -629,8 +1082,10 @@ def draw_industry_pb_roe_chart(weekly_df: pd.DataFrame | None, crowding_df: pd.D
     ax.grid(color="#e3e3e3", linewidth=0.7, alpha=0.6)
     ax.spines[["top", "right"]].set_visible(False)
     missing = sorted(set(weekly_df[weekly_df["date"].eq(weekly_df["date"].max())]["industry"]) - set(df["industry"]))
-    note = f"虚线为中位数；颜色=PB十年分位(越红越高)；标签第二行为较上一期({prev_date or '无'})变化。PE_TTM 缺失(亏损)未入图：{'、'.join(missing) if missing else '无'}"
+    note = f"箭头由上一期({prev_date or '无'})指向最新一期；虚线为中位数；颜色=PB十年分位(越红越高)。PE_TTM 缺失(亏损)未入图：{'、'.join(missing) if missing else '无'}"
     ax.text(0, 1.02, note, transform=ax.transAxes, fontsize=10, color="#59636e")
+    if not move_df.empty:
+        ax.legend(loc="lower right", frameon=False, fontsize=9.5)
     cbar = fig.colorbar(sc, ax=ax, fraction=0.03, pad=0.02)
     cbar.set_label("PB 十年分位（%）")
     fig.tight_layout()
@@ -1140,10 +1595,92 @@ def render_market_monitor(indices: pd.DataFrame | None, breadth: pd.DataFrame | 
 
     latest = max(latest_dates) if latest_dates else "待更新"
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">001</span>行情监控面板（截至{latest}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">A-001</span>行情监控面板（截至{latest}）{freq_badge("日频")}</h2>
         <div class="monitor-grid">{sections[0]}{sections[2]}</div>
         {sections[1]}
         {note_html}
+      </section>'''
+
+
+def render_market_brief(
+    indices: pd.DataFrame | None,
+    breadth: pd.DataFrame | None,
+    market_turnover: pd.DataFrame | None,
+    amount_share: pd.DataFrame | None,
+    theme_amount: pd.DataFrame | None,
+) -> str:
+    lines: list[str] = []
+    dates: list[str] = []
+
+    if indices is not None and not indices.empty:
+        idx = indices.copy()
+        idx["date"] = pd.to_datetime(idx["date"], errors="coerce")
+        idx["close"] = pd.to_numeric(idx["close"], errors="coerce")
+        idx["change_pct"] = pd.to_numeric(idx["change_pct"], errors="coerce")
+        latest_idx_date = idx[idx["index"].isin(["沪深300", "上证指数"])]["date"].max()
+        latest = idx[idx["date"].eq(latest_idx_date)].set_index("index")
+        dates.append(latest_idx_date.strftime("%Y-%m-%d"))
+        parts = []
+        for name in ["沪深300", "上证指数"]:
+            if name in latest.index and pd.notna(latest.loc[name, "change_pct"]):
+                parts.append(f"{name}{latest.loc[name, 'change_pct']:+.2f}%")
+        if parts:
+            lines.append(f"{latest_idx_date.strftime('%Y-%m-%d')}，主要A股指数偏弱，" + "、".join(parts) + "。")
+
+    if market_turnover is not None and not market_turnover.empty:
+        mt = market_turnover.copy().sort_values("date")
+        mt["date"] = pd.to_datetime(mt["date"], errors="coerce")
+        mt["market_turnover_100mn"] = pd.to_numeric(mt["market_turnover_100mn"], errors="coerce")
+        mt["turnover_ma5_100mn"] = pd.to_numeric(mt.get("turnover_ma5_100mn"), errors="coerce")
+        mt = mt.dropna(subset=["date", "market_turnover_100mn"])
+        if not mt.empty:
+            latest = mt.iloc[-1]
+            dates.append(latest["date"].strftime("%Y-%m-%d"))
+            prev = mt.iloc[-2] if len(mt) >= 2 else None
+            wow = ""
+            if prev is not None and prev["market_turnover_100mn"]:
+                wow = f"，较上一日{(latest['market_turnover_100mn'] / prev['market_turnover_100mn'] - 1) * 100:+.1f}%"
+            ma_note = ""
+            if pd.notna(latest.get("turnover_ma5_100mn")) and latest["turnover_ma5_100mn"]:
+                ma_note = f"，低于5日均值{(1 - latest['market_turnover_100mn'] / latest['turnover_ma5_100mn']) * 100:.1f}%"
+            lines.append(f"全市场成交额约{latest['market_turnover_100mn']:,.0f}亿元{wow}{ma_note}。")
+
+    if breadth is not None and not breadth.empty:
+        br = breadth.copy().sort_values("date")
+        br["date"] = pd.to_datetime(br["date"], errors="coerce")
+        for col in ["up_count", "down_count", "median_pct"]:
+            br[col] = pd.to_numeric(br[col], errors="coerce")
+        latest = br.dropna(subset=["date"]).iloc[-1]
+        dates.append(latest["date"].strftime("%Y-%m-%d"))
+        if pd.notna(latest.get("up_count")) and pd.notna(latest.get("down_count")):
+            lines.append(f"市场宽度最近一期为上涨{latest['up_count']:.0f}家、下跌{latest['down_count']:.0f}家，中位数涨跌幅{latest['median_pct']:+.2f}%。")
+
+    if amount_share is not None and not amount_share.empty:
+        share = amount_share.copy().sort_values("date")
+        share["date"] = pd.to_datetime(share["date"], errors="coerce")
+        for col in ["hs300_share_pct", "csi500_share_pct", "csi1000_share_pct", "csi2000_share_pct"]:
+            share[col] = pd.to_numeric(share[col], errors="coerce")
+        latest = share.dropna(subset=["date"]).iloc[-1]
+        dates.append(latest["date"].strftime("%Y-%m-%d"))
+        broad_sum = latest[["hs300_share_pct", "csi500_share_pct", "csi1000_share_pct", "csi2000_share_pct"]].sum()
+        small_mid = latest[["csi1000_share_pct", "csi2000_share_pct"]].sum()
+        theme_note = ""
+        if theme_amount is not None and not theme_amount.empty:
+            theme = theme_amount.copy().sort_values("date")
+            theme["date"] = pd.to_datetime(theme["date"], errors="coerce")
+            theme["tmt_share_pct"] = pd.to_numeric(theme["tmt_share_pct"], errors="coerce")
+            theme["dividend_low_vol_share_pct"] = pd.to_numeric(theme["dividend_low_vol_share_pct"], errors="coerce")
+            theme_latest = theme.dropna(subset=["date"]).iloc[-1]
+            theme_note = f"；TMT成交占比{theme_latest['tmt_share_pct']:.1f}%，红利低波{theme_latest['dividend_low_vol_share_pct']:.1f}%"
+        lines.append(f"主要宽基成交占全A代理口径约{broad_sum:.1f}%，其中中证1000+中证2000合计{small_mid:.1f}%{theme_note}。")
+
+    if not lines:
+        return ""
+    latest_text = max(dates) if dates else ""
+    items = "".join(f"<li>{escape(line)}</li>" for line in lines[:4])
+    return f'''      <section class="market-brief">
+        <div class="brief-kicker">市场简评{f"（截至{latest_text}）" if latest_text else ""}</div>
+        <ul>{items}</ul>
       </section>'''
 
 
@@ -1203,6 +1740,14 @@ def build_chart_audit(chart_dates: dict[str, str], expected_dates: dict[str, str
     return audit
 
 
+def expected_daily_audit_date() -> str:
+    """Most daily sources are stable after market close plus vendor lag."""
+    now = pd.Timestamp.now()
+    cutoff = now.normalize() + pd.Timedelta(hours=18, minutes=30)
+    target = now.normalize() if now >= cutoff else now.normalize() - pd.offsets.BDay(1)
+    return target.strftime("%Y-%m-%d")
+
+
 def chart_status_line(chart_key: str | None) -> str:
     if not chart_key:
         return ""
@@ -1259,7 +1804,7 @@ def render_library() -> str:
     if not cards:
         return '      <p class="empty-note">暂无资料。</p>'
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">020</span>研究资料库（个人研究文章与投资资料）</h2>
+        <h2><span class="chart-num">H-001</span>研究资料库（个人研究文章与投资资料）</h2>
         <div class="doc-list">
 {chr(10).join(cards)}
         </div>
@@ -1284,6 +1829,9 @@ def build_page(
     market_turnover_chart: dict | None = None,
     southbound_chart: dict | None = None,
     macro_chart: dict | None = None,
+    macro_inventory_chart: dict | None = None,
+    macro_m1_m2_chart: dict | None = None,
+    macro_fiscal_chart: dict | None = None,
     macro_meta: dict | None = None,
     sentiment_chart: dict | None = None,
     sentiment_meta: dict | None = None,
@@ -1293,10 +1841,20 @@ def build_page(
     monitor_indices: pd.DataFrame | None = None,
     monitor_breadth: pd.DataFrame | None = None,
     monitor_rates: pd.DataFrame | None = None,
+    market_turnover_data: pd.DataFrame | None = None,
+    amount_share_data: pd.DataFrame | None = None,
+    theme_amount_data: pd.DataFrame | None = None,
     industry_pb_roe_chart: dict | None = None,
     industrial_profit_chart: dict | None = None,
     value_growth_spread_chart: dict | None = None,
     citic_pb_dispersion_chart: dict | None = None,
+    hk_sentiment_chart: dict | None = None,
+    hk_rates_chart: dict | None = None,
+    hk_fx_chart: dict | None = None,
+    hk_ah_chart: dict | None = None,
+    hk_hsi_pe_chart: dict | None = None,
+    hk_hsi_erp_chart: dict | None = None,
+    hk_dividend_chart: dict | None = None,
 ) -> None:
     global CURRENT_CHART_STATUS
     assets_dir = SITE_DIR / "assets" / "charts"
@@ -1316,6 +1874,9 @@ def build_page(
         "limit_up_longest": limit_up_date,
         "limit_up_amount_top": limit_up_date,
         "macro": (macro_chart or {}).get("last_date", ""),
+        "macro_inventory": (macro_inventory_chart or {}).get("last_date", ""),
+        "macro_m1_m2": (macro_m1_m2_chart or {}).get("last_date", ""),
+        "macro_fiscal": (macro_fiscal_chart or {}).get("last_date", ""),
         "valuation_hs300": valuation_date_by_key.get("valuation_hs300", ""),
         "valuation_sse": valuation_date_by_key.get("valuation_sse", ""),
         "valuation_wind_all_a": valuation_date_by_key.get("valuation_wind_all_a", ""),
@@ -1333,6 +1894,13 @@ def build_page(
         "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
         "value_growth_spread": (value_growth_spread_chart or {}).get("last_date", ""),
         "citic_pb_dispersion": (citic_pb_dispersion_chart or {}).get("last_date", ""),
+        "hk_sentiment": (hk_sentiment_chart or {}).get("last_date", ""),
+        "hk_rates": (hk_rates_chart or {}).get("last_date", ""),
+        "hk_fx": (hk_fx_chart or {}).get("last_date", ""),
+        "hk_ah_premium": (hk_ah_chart or {}).get("last_date", ""),
+        "hk_hsi_pe": (hk_hsi_pe_chart or {}).get("last_date", ""),
+        "hk_hsi_erp": (hk_hsi_erp_chart or {}).get("last_date", ""),
+        "hk_dividend_yield": (hk_dividend_chart or {}).get("last_date", ""),
         "library": "",
     }
     daily_keys = {item["key"] for item in CHART_REGISTRY if item["frequency"] == "daily"}
@@ -1341,10 +1909,11 @@ def build_page(
     latest_daily = max((normalize_date_text(chart_dates[k]) for k in daily_keys if chart_dates.get(k)), default=latest)
     latest_weekly = max((normalize_date_text(chart_dates[k]) for k in weekly_keys if chart_dates.get(k)), default="")
     latest_macro = max((normalize_date_text(chart_dates[k]) for k in monthly_keys if chart_dates.get(k)), default="")
-    expected_dates = {"daily": latest_daily, "weekly": latest_weekly, "monthly": latest_macro, "manual": ""}
+    expected_dates = {"daily": expected_daily_audit_date(), "weekly": latest_weekly, "monthly": latest_macro, "manual": ""}
     chart_audit = build_chart_audit(chart_dates, expected_dates, build_time)
     CURRENT_CHART_STATUS = {item["key"]: item for item in chart_audit}
     daily_lagging = sorted(k for k in daily_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") == "lagging")
+    market_brief_html = render_market_brief(monitor_indices, monitor_breadth, market_turnover_data, amount_share_data, theme_amount_data)
     market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
     valuation_sections = []
     for idx, chart in enumerate(valuation_charts):
@@ -1366,7 +1935,7 @@ def build_page(
     pb_roe_html = ""
     if industry_pb_roe_chart:
         pb_roe_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">008</span>中信一级行业 PB-ROE 对比（截至{industry_pb_roe_chart["last_date"]}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">C-005</span>中信一级行业 PB-ROE 对比（截至{industry_pb_roe_chart["last_date"]}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_pb_roe_chart["path"]).name}?v={asset_version}" alt="中信一级行业 PB-ROE 对比">
         {chart_note_block(
             "ROE_TTM 由 PB/PE 恒等式推导(同一价格口径下 ROE≈PB/PE);PE_TTM 缺失(亏损状态)的行业不参与绘图。颜色代表 PB 十年分位,数据与中信拥挤度同为每周最后一个交易日更新。",
@@ -1378,7 +1947,7 @@ def build_page(
     if industrial_profit_chart:
         ipc = industrial_profit_chart
         earnings_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">009</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
+        <h2><span class="chart-num">D-001</span>工业企业利润同比与全年外推（截至{ipc["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(ipc["path"]).name}?v={asset_version}" alt="工业企业利润同比与全年外推">
         {chart_note_block(
             f"指标为规模以上工业企业利润总额年度同比(国家统计局,每月27日左右发布上月数据)。实线展示历史年度同比；{ipc['current_year']}年因尚未全年发布，以过去1年/3年/5年同期累计利润占全年比例的均值线性外推全年利润总额，再与上年全年实际利润比较得到隐含全年同比，图中以三条虚线表示——近1年节奏 {ipc['proj_1y']:+.1f}%、近3年 {ipc['proj_3y']:+.1f}%、近5年 {ipc['proj_5y']:+.1f}%。黑色标签展示{ipc['current_year']}年1-{ipc['current_month']}月累计同比实际值 {ipc['latest_cum_yoy']:+.1f}%。",
@@ -1389,7 +1958,7 @@ def build_page(
     amount_share_html = ""
     if amount_share_chart:
         amount_share_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">015</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-004</span>主要宽基指数成交额占全A成交额比例（截至{amount_share_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(amount_share_chart["path"]).name}?v={asset_version}" alt="主要宽基指数成交额占全A成交额比例">
         {chart_note_block(
             "数据来自中证指数官网指数行情接口。分子为沪深300、中证500、中证1000、中证2000指数成交金额；分母优先使用 Wind 全A成交额，当前公开数据用中证全指成交金额作为代理口径。",
@@ -1400,7 +1969,7 @@ def build_page(
     theme_amount_html = ""
     if theme_amount_chart:
         theme_amount_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">016</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-005</span>TMT与红利低波成交额占全A成交额比例（截至{theme_amount_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(theme_amount_chart["path"]).name}?v={asset_version}" alt="TMT与红利低波成交额占全A成交额比例">
         {chart_note_block(
             "分子为中证TMT（000998）和中证红利低波动指数（H30269）成交金额；分母与图五保持一致，使用中证全指成交金额作为 Wind 全A 成交额公开代理口径。",
@@ -1411,7 +1980,7 @@ def build_page(
     market_turnover_html = ""
     if market_turnover_chart:
         market_turnover_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">002</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">A-002</span>全市场成交额变化（截至{market_turnover_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(market_turnover_chart["path"]).name}?v={asset_version}" alt="全市场成交额变化">
         {chart_note_block(
             "区间自 2024-09-24 起。当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。",
@@ -1423,7 +1992,7 @@ def build_page(
     library_html = render_library()
     if southbound_chart:
         southbound_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">010</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">G-002</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={asset_version}" alt="南向资金每日净流入">
         {chart_note_block(
             "区间自 2026-01-01 起。数据来自东方财富沪深港通历史数据，经 AkShare 获取；净流入口径为“当日成交净买额”，单位为亿元。",
@@ -1431,31 +2000,62 @@ def build_page(
             "southbound",
         )}
       </section>'''
-    macro_html = '<p class="empty-note">暂无图表。</p>'
+    macro_sections = []
     if macro_chart:
         macro_notes = ""
         if macro_meta and macro_meta.get("status") == "partial":
             missing = [note for note in macro_meta.get("notes", []) if "暂无可用自动数据" in note]
             if missing:
                 macro_notes = "暂未自动接入：" + "；".join(note.split("：")[0] for note in missing[:6]) + "。"
-        macro_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">005</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-001</span>宏观经济数据概览（截至{macro_chart["last_date"]}）{freq_badge("月频")}</h2>
         <img src="assets/charts/{Path(macro_chart["path"]).name}?v={asset_version}" alt="宏观经济数据概览">
         {chart_note_block(
             f"展示各指标最近六个有效数据点，单位为同比增速（%）；0 值按缺失处理，不绘制数据点。月度指标按月展示，GDP 按季度展示。{macro_notes}",
             "宏观数据存在发布滞后、修订和接口失效风险；当前部分国家统计局、人民银行细分指标若未自动接入，会在图中保留占位。",
             "macro",
         )}
-      </section>'''
+      </section>''')
+    if macro_inventory_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-002</span>规模以上工业企业名义和实际库存同比（截至{macro_inventory_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_inventory_chart["path"]).name}?v={asset_version}" alt="规模以上工业企业名义和实际库存同比">
+        {chart_note_block(
+            "名义库存同比为 Wind EDB 的规模以上工业企业产成品存货同比；实际库存同比按名义库存同比 - PPI当月同比近似计算，单位为%。",
+            "该实际库存口径为价格调整后的近似指标，PPI不能完全代表企业产成品库存价格变化；早期库存序列披露频率不完全连续，图中按有效观测点连线。",
+            "macro_inventory",
+        )}
+      </section>''')
+    if macro_m1_m2_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-003</span>M1-M2剪刀差（截至{macro_m1_m2_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_m1_m2_chart["path"]).name}?v={asset_version}" alt="M1-M2剪刀差">
+        {chart_note_block(
+            "M1-M2 = M1同比 - M2同比，M1和M2同比均来自 Wind EDB 中国人民银行月度数据，单位为百分点。",
+            "货币供应量数据存在发布滞后和历史修订；M1-M2只刻画活化程度的方向性变化，不能单独代表信用扩张强弱。",
+            "macro_m1_m2",
+        )}
+      </section>''')
+    if macro_fiscal_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-004</span>一般公共预算收支与央地收入分化（截至{macro_fiscal_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_fiscal_chart["path"]).name}?v={asset_version}" alt="一般公共预算收支与央地收入分化">
+        {chart_note_block(
+            "左图展示一般公共预算收入、支出累计同比；右图展示中央一般公共预算收入和地方一般公共预算本级收入累计同比。数据均来自 Wind EDB 财政部月度指标，单位为%。",
+            "财政数据为累计同比，受预算节奏、退税缴税节奏、转移支付和财政口径调整影响，单月变化不宜简单线性外推全年。",
+            "macro_fiscal",
+        )}
+      </section>''')
+    macro_html = "\n".join(macro_sections) if macro_sections else '<p class="empty-note">暂无图表。</p>'
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
-    limit_up_html = render_limit_up_table("<span class=\"chart-num\">003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date, "limit_up_longest")
-    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date, "limit_up_amount_top")
+    limit_up_html = render_limit_up_table("<span class=\"chart-num\">A-003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date, "limit_up_longest")
+    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">A-004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date, "limit_up_amount_top")
     sentiment_html = '<p class="empty-note">暂无图表。</p>'
     if sentiment_chart:
         components = (sentiment_meta or {}).get("components", {})
         comp_text = "；".join(f"{k} {v:.2f}" for k, v in components.items() if v is not None)
         sentiment_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">013</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-001</span>上证等权情绪指数（3年分位）（截至{sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(sentiment_chart["path"]).name}?v={asset_version}" alt="上证等权情绪指数">
         {chart_note_block(
             f"六个指标等权平均：股债收益差、自由流通换手率(20日均)、流动性冲击、30日新发基金占比、乖离率(250日)、RSI(90日)；各取过去750个交易日(约3年)分位数后等权。当前各指标分位：{comp_text}。",
@@ -1466,7 +2066,7 @@ def build_page(
     value_growth_html = ""
     if value_growth_spread_chart:
         value_growth_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">018</span>价值成长风格价差（截至{value_growth_spread_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-007</span>价值成长风格价差（截至{value_growth_spread_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(value_growth_spread_chart["path"]).name}?v={asset_version}" alt="价值成长风格价差">
         {chart_note_block(
             "价差 = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)，区间自 2021-01-01 起；虚线和阴影标注样本期历史上限/下限区间。数据优先来自 /gjdata 的 AIndexValuation 表。",
@@ -1477,7 +2077,7 @@ def build_page(
     pb_dispersion_html = ""
     if citic_pb_dispersion_chart:
         pb_dispersion_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">019</span>中信一级行业估值离散度（截至{citic_pb_dispersion_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-008</span>中信一级行业估值离散度（截至{citic_pb_dispersion_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(citic_pb_dispersion_chart["path"]).name}?v={asset_version}" alt="中信一级行业估值离散度">
         {chart_note_block(
             "左轴为万得全A收盘价(881001.WI)，右轴为中信一级行业 PB_LF 历史分位的横截面标准差，并取 5 个交易日滚动平均(MA5)。PB 分位采用过去 10 年交易日滚动窗口计算，数据自 2005 年起从 /gjdata 读取。",
@@ -1492,7 +2092,7 @@ def build_page(
         if industry_crowding_chart.get("status") == "missing_data":
             crowding_status_note = "当前未取得中信一级行业完整 PE_TTM/PB_LF/成交额历史数据，图中显示数据待接入状态。"
         industry_crowding_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">017</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
+        <h2><span class="chart-num">F-006</span>中信一级行业估值与成交拥挤度（截至{crowding_date}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(industry_crowding_chart["path"]).name}?v={asset_version}" alt="中信一级行业估值与成交拥挤度">
         {chart_note_block(
             f"按每周最后一个交易日更新。PE_TTM、PB_LF分别计算最近10年历史分位，成交额计算最近5年历史分位；括号为较上周变化，单位为百分点。综合拥挤度为三项分位最新值的算术均值，行业按综合拥挤度从高到低排序。数据优先使用 Wind API，Wind 不可用时读取本地 CSV。{crowding_status_note}",
@@ -1500,6 +2100,64 @@ def build_page(
             "industry_crowding",
         )}
       </section>'''
+    hk_sections: list[str] = []
+    if hk_sentiment_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-001</span>港股情绪（截至{hk_sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_sentiment_chart["path"]).name}?v={asset_version}" alt="港股情绪">
+        {chart_note_block(
+            "港股情绪Z参考《3_情绪指标_港股》口径，由恒指成份腾落线20日均、恒指波幅、恒生科技/恒指相对强度、南向资金20日均、卖空占比等分项Z值动态平均；当前使用 Wind 金融能力取数并本地缓存。",
+            "情绪指标是历史相对强弱观察，不代表买卖建议；若卖空、南向或宽度分项当日未更新，综合值按已取得分项计算。",
+            "hk_sentiment",
+        )}
+      </section>''')
+    if southbound_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-002</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={asset_version}" alt="南向资金每日净流入">
+        {chart_note_block(
+            "区间自 2026-01-01 起。数据来自 Wind 金融能力；柱状图为南向资金每日净买入合计，折线为15个交易日滚动累计净买入，单位为亿元。",
+            "若最新值长时间为 0、缺失或日期滞后，通常代表 Wind 数据尚未更新或接口字段变化，不应机械解读为真实无净买入。",
+            "southbound",
+        )}
+      </section>''')
+    if hk_rates_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-003</span>港股分母端：HIBOR隔夜与美国10年国债收益率（截至{hk_rates_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_rates_chart["path"]).name}?v={asset_version}" alt="HIBOR隔夜与美国10年国债收益率">
+        {chart_note_block("HIBOR隔夜与美国10年国债收益率均来自 Wind 金融能力，单位为%。", "利率是港股估值分母端观察变量，跨市场假期会导致最新日期不完全一致。", "hk_rates")}
+      </section>''')
+    if hk_fx_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-004</span>美元指数与美元兑港元（截至{hk_fx_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_fx_chart["path"]).name}?v={asset_version}" alt="美元指数与美元兑港元">
+        {chart_note_block("美元指数(USDX.FX)与美元兑港元(USDHKD.FX)收盘价来自 Wind 金融能力。", "汇率序列存在不同市场收盘时点差异，最新日缺失时以后续更新为准。", "hk_fx")}
+      </section>''')
+    if hk_ah_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-005</span>AH股溢价与港股通指数（截至{hk_ah_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_ah_chart["path"]).name}?v={asset_version}" alt="AH股溢价与港股通指数">
+        {chart_note_block("左轴为恒生沪深港通AH股溢价指数(HSAHP.HI)，右轴为H50069.CSI收盘价，均来自 Wind 金融能力。", "AH溢价反映A/H相对价格，不直接等同于港股整体估值吸引力。", "hk_ah_premium")}
+      </section>''')
+    if hk_hsi_pe_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-006</span>恒生指数PE_TTM及均值分位（截至{hk_hsi_pe_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_hsi_pe_chart["path"]).name}?v={asset_version}" alt="恒生指数PE_TTM及均值分位">
+        {chart_note_block("恒生指数 PE_TTM 来自 Wind 金融能力；均值、标准差和分位数基于2013年以来本地缓存样本计算。", "估值分位会随历史样本扩展和指数成分调整变化，适合做区间参考。", "hk_hsi_pe")}
+      </section>''')
+    if hk_hsi_erp_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-007</span>恒生指数ERP（截至{hk_hsi_erp_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(hk_hsi_erp_chart["path"]).name}?v={asset_version}" alt="恒生指数ERP">
+        {chart_note_block("恒生指数 ERP 优先来自 Wind 金融能力；若 Wind 原始 ERP 延迟发布，则按 100/PE_TTM - 中国10年国债收益率兜底补算，均值、标准差和分位数基于2013年以来样本计算。", "ERP口径依赖盈利收益率和利率设定，适合观察风险补偿方向，不宜单独作为配置信号。", "hk_hsi_erp")}
+      </section>''')
+    if hk_dividend_chart:
+        hk_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">G-008</span>主要指数股息率TTM（截至{hk_dividend_chart["last_date"]}）{freq_badge("周频")}</h2>
+        <img src="assets/charts/{Path(hk_dividend_chart["path"]).name}?v={asset_version}" alt="主要指数股息率TTM">
+        {chart_note_block("展示港股通高股息CNY、中证红利、央企大盘、港股通央企红利、恒生指数、上证指数的最新股息率TTM，数据来自 Wind 金融能力。", "股息率受成分调整、股利预案确认和指数口径影响；周频图按最新可用交易日展示。", "hk_dividend_yield")}
+      </section>''')
+    hk_html = "\n".join(hk_sections) if hk_sections else '<p class="empty-note">暂无港股图表。</p>'
     daily_note = ""
     if daily_lagging:
         lagging_names = [REGISTRY_BY_KEY.get(key, {}).get("title", key) for key in daily_lagging[:4]]
@@ -1534,37 +2192,38 @@ def build_page(
       <button class="category-tab" type="button" data-target="earnings" aria-selected="false">盈利</button>
       <button class="category-tab" type="button" data-target="liquidity" aria-selected="false">流动性</button>
       <button class="category-tab" type="button" data-target="sentiment" aria-selected="false">情绪</button>
+      <button class="category-tab" type="button" data-target="hongkong" aria-selected="false">港股</button>
       <button class="category-tab" type="button" data-target="library" aria-selected="false">资料</button>
     </nav>
 
     <section class="category-panel active" id="panel-market" data-category="market">
-      <div class="category-head"><span class="sec-num">01</span><h2>行情</h2></div>
+      <div class="category-head"><span class="sec-num">A</span><h2>行情</h2></div>
+{market_brief_html}
 {market_monitor_html}
 {market_turnover_html}
 {limit_up_html}
     </section>
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
-      <div class="category-head"><span class="sec-num">02</span><h2>宏观</h2></div>
+      <div class="category-head"><span class="sec-num">B</span><h2>宏观</h2></div>
 {macro_html}
     </section>
 
     <section class="category-panel" id="panel-valuation" data-category="valuation" hidden>
-      <div class="category-head"><span class="sec-num">03</span><h2>估值</h2></div>
+      <div class="category-head"><span class="sec-num">C</span><h2>估值</h2></div>
 {valuation_html}
 {pb_roe_html}
     </section>
 
     <section class="category-panel" id="panel-earnings" data-category="earnings" hidden>
-      <div class="category-head"><span class="sec-num">04</span><h2>盈利</h2></div>
+      <div class="category-head"><span class="sec-num">D</span><h2>盈利</h2></div>
 {earnings_html}
     </section>
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
-      <div class="category-head"><span class="sec-num">05</span><h2>流动性</h2></div>
-{southbound_html}
+      <div class="category-head"><span class="sec-num">E</span><h2>流动性</h2></div>
       <section class="chart-section">
-        <h2><span class="chart-num">011</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">E-001</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
         {chart_note_block(
             "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1573,7 +2232,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">012</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">E-002</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
         <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
         {chart_note_block(
             "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
@@ -1584,10 +2243,10 @@ def build_page(
     </section>
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
-      <div class="category-head"><span class="sec-num">06</span><h2>情绪</h2></div>
+      <div class="category-head"><span class="sec-num">F</span><h2>情绪</h2></div>
 {sentiment_html}
       <section class="chart-section">
-        <h2><span class="chart-num">014A</span>A股成交额前10大公司交易集中度变化（截至{chart3_top10["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-002</span>A股成交额前10大公司交易集中度变化（截至{chart3_top10["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(chart3_top10["path"]).name}?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算成交额前10股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
@@ -1596,7 +2255,7 @@ def build_page(
         )}
       </section>
       <section class="chart-section">
-        <h2><span class="chart-num">014B</span>A股成交额前100大公司交易集中度变化（截至{chart3_top100["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-003</span>A股成交额前100大公司交易集中度变化（截至{chart3_top100["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(chart3_top100["path"]).name}?v={asset_version}" alt="A股成交额前100大公司交易集中度变化">
         {chart_note_block(
             "样本覆盖当前沪深京A股清单；逐日计算成交额前100股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
@@ -1611,8 +2270,13 @@ def build_page(
 {pb_dispersion_html}
     </section>
 
+    <section class="category-panel" id="panel-hongkong" data-category="hongkong" hidden>
+      <div class="category-head"><span class="sec-num">G</span><h2>港股</h2></div>
+{hk_html}
+    </section>
+
     <section class="category-panel" id="panel-library" data-category="library" hidden>
-      <div class="category-head"><span class="sec-num">07</span><h2>资料</h2></div>
+      <div class="category-head"><span class="sec-num">H</span><h2>资料</h2></div>
 {library_html}
     </section>
   </main>
@@ -1944,6 +2608,29 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 }
 
 /* ---------- 行情监控面板 ---------- */
+.market-brief {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-left: 4px solid var(--accent);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(32, 48, 64, .04);
+}
+.brief-kicker {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.market-brief ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.market-brief li + li { margin-top: 2px; }
 .monitor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2127,16 +2814,19 @@ def main() -> None:
     chart3_top10 = draw_turnover_share_chart(turnover, "top10_share_pct", "前10大占比", "#c5513c", CHART_DIR / "fig_003a_turnover_top10_concentration.png")
     chart3_top100 = draw_turnover_share_chart(turnover, "top100_share_pct", "前100大占比", "#2f7cb8", CHART_DIR / "fig_003b_turnover_top100_concentration.png")
     amount_share_chart = None
+    amount_share = None
     amount_share_path = PROCESSED_DIR / "index_amount_share.csv"
     if amount_share_path.exists():
         amount_share = pd.read_csv(amount_share_path, parse_dates=["date"])
         amount_share_chart = draw_index_amount_share_chart(amount_share, CHART_DIR / "fig_005_index_amount_share.png")
     theme_amount_chart = None
+    theme_amount = None
     theme_amount_path = PROCESSED_DIR / "theme_amount_share.csv"
     if theme_amount_path.exists():
         theme_amount = pd.read_csv(theme_amount_path, parse_dates=["date"])
         theme_amount_chart = draw_theme_amount_share_chart(theme_amount, CHART_DIR / "fig_007_theme_amount_share.png")
     market_turnover_chart = None
+    market_turnover = None
     market_turnover_path = PROCESSED_DIR / "market_turnover.csv"
     if market_turnover_path.exists():
         market_turnover = pd.read_csv(market_turnover_path, parse_dates=["date"])
@@ -2146,7 +2836,42 @@ def main() -> None:
     if southbound_path.exists():
         southbound = pd.read_csv(southbound_path, parse_dates=["date"])
         southbound_chart = draw_southbound_flow_chart(southbound, CHART_DIR / "fig_009_southbound_flow.png")
+    hk_sentiment_chart = None
+    hk_rates_chart = None
+    hk_fx_chart = None
+    hk_ah_chart = None
+    hk_hsi_pe_chart = None
+    hk_hsi_erp_chart = None
+    hk_dividend_chart = None
+    hk_sentiment_path = PROCESSED_DIR / "hk_sentiment.csv"
+    if hk_sentiment_path.exists():
+        hk_sentiment = pd.read_csv(hk_sentiment_path, parse_dates=["date"])
+        hk_sentiment_chart = draw_hk_sentiment_chart(hk_sentiment, CHART_DIR / "fig_016_hk_sentiment.png")
+    hk_rates_path = PROCESSED_DIR / "hk_rates.csv"
+    if hk_rates_path.exists():
+        hk_rates = pd.read_csv(hk_rates_path, parse_dates=["date"])
+        hk_rates_chart = draw_dual_line_chart(hk_rates, "hibor_on", "us10y", "HIBOR隔夜（%）", "美国10年国债（%）", "港股分母端：HIBOR隔夜与美国10年国债收益率", CHART_DIR / "fig_017_hk_rates.png")
+    hk_fx_path = PROCESSED_DIR / "hk_fx.csv"
+    if hk_fx_path.exists():
+        hk_fx = pd.read_csv(hk_fx_path, parse_dates=["date"])
+        hk_fx_chart = draw_dual_line_chart(hk_fx, "usd_index", "usdhkd", "美元指数", "美元兑港元", "美元指数与美元兑港元", CHART_DIR / "fig_018_hk_fx.png")
+    hk_ah_path = PROCESSED_DIR / "hk_ah_premium.csv"
+    if hk_ah_path.exists():
+        hk_ah = pd.read_csv(hk_ah_path, parse_dates=["date"])
+        hk_ah_chart = draw_dual_line_chart(hk_ah, "ah_premium", "h50069_close", "AH溢价指数", "H50069.CSI", "AH股溢价与港股通指数", CHART_DIR / "fig_019_hk_ah_premium.png", left_color="#c5513c", right_color="#1f6fb2")
+    hk_valuation_path = PROCESSED_DIR / "hk_hsi_valuation.csv"
+    if hk_valuation_path.exists():
+        hk_valuation = pd.read_csv(hk_valuation_path, parse_dates=["date"])
+        hk_hsi_pe_chart = draw_hsi_pe_chart(hk_valuation, CHART_DIR / "fig_020_hsi_pe_ttm.png")
+        hk_hsi_erp_chart = draw_hsi_erp_chart(hk_valuation, CHART_DIR / "fig_021_hsi_erp.png")
+    hk_dividend_path = PROCESSED_DIR / "hk_dividend_yield.csv"
+    if hk_dividend_path.exists():
+        hk_dividend = pd.read_csv(hk_dividend_path, parse_dates=["date"])
+        hk_dividend_chart = draw_hk_dividend_chart(hk_dividend, CHART_DIR / "fig_022_hk_dividend_yield.png")
     macro_chart = None
+    macro_inventory_chart = None
+    macro_m1_m2_chart = None
+    macro_fiscal_chart = None
     macro_meta = {}
     macro_path = PROCESSED_DIR / "macro_overview.csv"
     macro_meta_path = PROCESSED_DIR / "macro_overview.metadata.json"
@@ -2155,6 +2880,18 @@ def main() -> None:
     if macro_path.exists():
         macro = pd.read_csv(macro_path, parse_dates=["date"])
         macro_chart = draw_macro_overview_chart(macro, macro_meta, CHART_DIR / "fig_010_macro_overview.png")
+    macro_inventory_path = PROCESSED_DIR / "macro_inventory_cycle.csv"
+    if macro_inventory_path.exists():
+        macro_inventory = pd.read_csv(macro_inventory_path, parse_dates=["date"])
+        macro_inventory_chart = draw_macro_inventory_chart(macro_inventory, CHART_DIR / "fig_023_macro_inventory_cycle.png")
+    macro_m1_m2_path = PROCESSED_DIR / "macro_m1_m2.csv"
+    if macro_m1_m2_path.exists():
+        macro_m1_m2 = pd.read_csv(macro_m1_m2_path, parse_dates=["date"])
+        macro_m1_m2_chart = draw_macro_m1_m2_chart(macro_m1_m2, CHART_DIR / "fig_024_macro_m1_m2.png")
+    macro_fiscal_path = PROCESSED_DIR / "macro_fiscal.csv"
+    if macro_fiscal_path.exists():
+        macro_fiscal = pd.read_csv(macro_fiscal_path, parse_dates=["date"])
+        macro_fiscal_chart = draw_macro_fiscal_chart(macro_fiscal, CHART_DIR / "fig_025_macro_fiscal.png")
     sentiment_chart = None
     sentiment_meta = {}
     sentiment_path = PROCESSED_DIR / "sentiment_index.csv"
@@ -2248,6 +2985,9 @@ def main() -> None:
         market_turnover_chart,
         southbound_chart,
         macro_chart,
+        macro_inventory_chart,
+        macro_m1_m2_chart,
+        macro_fiscal_chart,
         macro_meta,
         sentiment_chart,
         sentiment_meta,
@@ -2257,10 +2997,20 @@ def main() -> None:
         monitor_indices=monitor_indices,
         monitor_breadth=monitor_breadth,
         monitor_rates=monitor_rates,
+        market_turnover_data=market_turnover,
+        amount_share_data=amount_share,
+        theme_amount_data=theme_amount,
         industry_pb_roe_chart=industry_pb_roe_chart,
         industrial_profit_chart=industrial_profit_chart,
         value_growth_spread_chart=value_growth_spread_chart,
         citic_pb_dispersion_chart=citic_pb_dispersion_chart,
+        hk_sentiment_chart=hk_sentiment_chart,
+        hk_rates_chart=hk_rates_chart,
+        hk_fx_chart=hk_fx_chart,
+        hk_ah_chart=hk_ah_chart,
+        hk_hsi_pe_chart=hk_hsi_pe_chart,
+        hk_hsi_erp_chart=hk_hsi_erp_chart,
+        hk_dividend_chart=hk_dividend_chart,
     )
     chart_count = len(CHART_REGISTRY)
     print(json.dumps({"latest_common_date": metadata["latest_common_date"], "charts": chart_count}, ensure_ascii=False))
