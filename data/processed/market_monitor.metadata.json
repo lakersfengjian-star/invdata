@@ -1,12 +1,12 @@
 {
-  "latest_date": "2026-07-29",
+  "latest_date": "2026-07-30",
   "sections": {
-    "indices": "2026-07-29",
-    "breadth": "2026-07-28",
-    "rates": "2026-07-29"
+    "indices": "2026-07-30",
+    "breadth": "2026-07-29",
+    "rates": "2026-07-30"
   },
   "run": {
-    "expected": "2026-07-28",
+    "expected": "2026-07-29",
     "indices": {
       "added": 6,
       "notes": []
