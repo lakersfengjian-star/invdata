@@ -4,74 +4,105 @@
     "daily",
     "macro"
   ],
-  "checked_at": "2026-07-31 06:55:13 CST",
-  "expected_latest_daily": "2026-07-30",
+  "checked_at": "2026-08-01 06:49:29 CST",
+  "expected_latest_daily": "2026-07-31",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-30T22:55:13",
-      "finished_at": "2026-07-30T22:55:23"
+      "started_at": "2026-07-31T22:49:29",
+      "finished_at": "2026-07-31T22:49:35"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-30T22:55:23",
-      "finished_at": "2026-07-30T22:55:27"
+      "started_at": "2026-07-31T22:49:35",
+      "finished_at": "2026-07-31T22:49:37"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-30T22:55:27",
-      "finished_at": "2026-07-30T22:55:28"
-    },
-    {
-      "script": "update_hk_dashboard.py",
-      "status": "failed",
-      "returncode": 1,
-      "started_at": "2026-07-30T22:55:28",
-      "finished_at": "2026-07-30T22:55:28"
+      "started_at": "2026-07-31T22:49:37",
+      "finished_at": "2026-07-31T22:49:38"
     },
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-07-30T22:55:28",
-      "finished_at": "2026-07-30T23:16:29"
+      "started_at": "2026-07-31T22:49:38",
+      "finished_at": "2026-07-31T23:09:12"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-30T23:16:29",
-      "finished_at": "2026-07-30T23:17:53"
+      "started_at": "2026-07-31T23:09:12",
+      "finished_at": "2026-07-31T23:12:07"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-07-30T23:17:53",
-      "finished_at": "2026-07-30T23:18:30"
+      "started_at": "2026-07-31T23:12:07",
+      "finished_at": "2026-07-31T23:12:37"
     }
   ],
   "skipped": [
     {
-      "script": "update_value_growth_spread.py",
-      "reason": "local_gjdata_unavailable",
+      "script": "update_sentiment_index.py",
+      "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "value_growth_spread.csv": "2026-07-27"
+        "sentiment_index.csv": "2026-07-30"
+      }
+    },
+    {
+      "script": "update_hk_dashboard.py",
+      "reason": "local_wind_unavailable",
+      "fresh": false,
+      "outputs": {
+        "hk_sentiment.csv": "2026-07-30",
+        "hk_rates.csv": "2026-07-30",
+        "hk_fx.csv": "2026-07-30",
+        "hk_ah_premium.csv": "2026-07-30",
+        "hk_hsi_valuation.csv": "2026-07-30",
+        "hk_dividend_yield.csv": "2026-07-30",
+        "southbound_flow.csv": "2026-07-30"
+      }
+    },
+    {
+      "script": "update_value_growth_spread.py",
+      "reason": "fresh",
+      "fresh": true,
+      "outputs": {
+        "value_growth_spread.csv": "2026-07-31"
       }
     },
     {
       "script": "update_citic_pb_dispersion.py",
-      "reason": "local_gjdata_unavailable",
+      "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "citic_pb_dispersion.csv": "2026-07-27"
+        "citic_pb_dispersion.csv": "2026-07-26"
+      }
+    },
+    {
+      "script": "update_style_performance.py",
+      "reason": "fresh",
+      "fresh": true,
+      "outputs": {
+        "style_index_performance.csv": "2026-07-31"
+      }
+    },
+    {
+      "script": "update_wind_index_valuation.py",
+      "reason": "fresh",
+      "fresh": true,
+      "outputs": {
+        "index_pe_ttm_valuation.csv": "2026-07-31"
       }
     },
     {
@@ -90,6 +121,11 @@
       "metadata": "macro_fiscal.metadata.json"
     },
     {
+      "script": "update_macro_pmi.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_pmi.metadata.json"
+    },
+    {
       "script": "update_industrial_profits.py",
       "reason": "recently_attempted",
       "metadata": "industrial_profits.metadata.json"
@@ -100,12 +136,13 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-07-30T23:18:30",
-    "finished_at": "2026-07-30T23:18:43"
+    "started_at": "2026-07-31T23:12:37",
+    "finished_at": "2026-07-31T23:12:54"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
-    "GitHub Actions 环境通常无本地 /gjdata 技能；依赖 /gjdata 的指标在缺少脚本时跳过，避免用旧缓存制造无效提交。",
+    "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
+    "价值成长价差、中信 PB 离散度与风格收益改用本地 Wind 金融能力；GitHub Actions 缺少该能力时跳过。",
     "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。"
   ]
 }
