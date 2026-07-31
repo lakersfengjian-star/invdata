@@ -1,7 +1,7 @@
 {
   "source": "gjdata:AIndexValuation",
   "status": "ok",
-  "latest_date": "2026-07-27",
+  "latest_date": "2026-07-30",
   "unit": "pct",
   "notes": [
     "spread = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)",

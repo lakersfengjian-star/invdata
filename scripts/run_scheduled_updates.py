@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -19,9 +20,15 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+RUN_CWD = Path(os.environ.get("INVDATA_RUN_CWD", ROOT))
 PROCESSED_DIR = ROOT / "data" / "processed"
 AUDIT_PATH = PROCESSED_DIR / "update_audit.json"
-GJDATA_SCRIPT = Path("/Users/jianfeng/.codex/skills/gjdata/scripts/index.py")
+GJDATA_SCRIPT = Path(
+    os.environ.get("GJDATA_SCRIPT", Path.home() / ".codex" / "skills" / "gjdata" / "scripts" / "index.py")
+).expanduser()
+WIND_CLI = Path(
+    os.environ.get("WIND_CLI", Path.home() / ".agents" / "skills" / "wind-mcp-skill" / "scripts" / "cli.mjs")
+).expanduser()
 SHANGHAI_TZ = "Asia/Shanghai"
 
 # script -> outputs whose min(max(date/latest_date)) determines freshness.
@@ -29,6 +36,7 @@ DAILY_DATASETS: dict[str, list[str]] = {
     "update_index_amount_share.py": ["index_amount_share.csv"],
     "update_theme_amount_share.py": ["theme_amount_share.csv"],
     "update_market_turnover.py": ["market_turnover.csv"],
+    "update_sentiment_index.py": ["sentiment_index.csv"],
     "update_hk_dashboard.py": [
         "hk_sentiment.csv",
         "hk_rates.csv",
@@ -40,11 +48,14 @@ DAILY_DATASETS: dict[str, list[str]] = {
     ],
     "update_value_growth_spread.py": ["value_growth_spread.csv"],
     "update_citic_pb_dispersion.py": ["citic_pb_dispersion.csv"],
+    "update_style_performance.py": ["style_index_performance.csv"],
+    "update_wind_index_valuation.py": ["index_pe_ttm_valuation.csv"],
     "update_etf_dashboard.py": [
         "broad_etf_flow.csv",
         "star50_etf_flow.csv",
         "a_share_turnover_concentration.csv",
         "index_close.csv",
+        "index_pe_ttm_valuation.csv",
     ],
     "update_limit_up_tables.py": ["limit_up_tables.metadata.json"],
     "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
@@ -62,7 +73,14 @@ MACRO_MIN_INTERVAL_H = 20
 LOCAL_GJDATA_DATASETS = {
     "update_value_growth_spread.py",
     "update_citic_pb_dispersion.py",
+    "update_style_performance.py",
 }
+LOCAL_WIND_DATASETS = {
+    "update_sentiment_index.py",
+    "update_hk_dashboard.py",
+    "update_wind_index_valuation.py",
+}
+SCRIPT_TIMEOUT_SECONDS = 45 * 60
 
 
 def now_shanghai() -> pd.Timestamp:
@@ -121,14 +139,20 @@ def macro_fresh(metadata_name: str) -> bool:
 def run_script(name: str) -> dict:
     print(f"[run] {name}", flush=True)
     started = datetime.now().isoformat(timespec="seconds")
-    proc = subprocess.run([sys.executable, str(ROOT / "scripts" / name)], cwd=ROOT)
-    status = "ok" if proc.returncode == 0 else "failed"
-    if proc.returncode != 0:
-        print(f"[warn] {name} exited {proc.returncode} (continuing)", flush=True)
+    try:
+        proc = subprocess.run([sys.executable, str(ROOT / "scripts" / name)], cwd=RUN_CWD, timeout=SCRIPT_TIMEOUT_SECONDS)
+        returncode = proc.returncode
+        status = "ok" if returncode == 0 else "failed"
+        if returncode != 0:
+            print(f"[warn] {name} exited {returncode} (continuing)", flush=True)
+    except subprocess.TimeoutExpired:
+        returncode = 124
+        status = "timeout"
+        print(f"[warn] {name} timed out after {SCRIPT_TIMEOUT_SECONDS}s (continuing)", flush=True)
     return {
         "script": name,
         "status": status,
-        "returncode": proc.returncode,
+        "returncode": returncode,
         "started_at": started,
         "finished_at": datetime.now().isoformat(timespec="seconds"),
     }
@@ -168,6 +192,9 @@ def main() -> None:
             if script in LOCAL_GJDATA_DATASETS and not GJDATA_SCRIPT.exists():
                 skipped.append({"script": script, "reason": "local_gjdata_unavailable", **state})
                 continue
+            if script in LOCAL_WIND_DATASETS and not WIND_CLI.exists():
+                skipped.append({"script": script, "reason": "local_wind_unavailable", **state})
+                continue
             ran.append(run_script(script))
 
     if "macro" in modes:
@@ -192,6 +219,7 @@ def main() -> None:
         "build": build_result,
         "notes": [
             "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
+            "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
             "GitHub Actions 环境通常无本地 /gjdata 技能；依赖 /gjdata 的指标在缺少脚本时跳过，避免用旧缓存制造无效提交。",
             "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。",
         ],

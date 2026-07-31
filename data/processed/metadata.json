@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-07-28 14:26:53",
+  "updated_at": "2026-07-31 11:25:19",
   "start_date": "2025-01-01",
-  "latest_common_date": "2026-07-27",
+  "latest_common_date": "2026-07-30",
   "etf_selection": [
     {
       "code": "510300",
@@ -49,35 +49,33 @@
   "notes": [
     "指数收盘价来自腾讯公开行情 K 线接口；ETF规模排序快照来自东方财富公开行情列表。",
     "ETF份额优先来自交易所公开数据：上交所历史ETF规模接口；深交所ETF份额来自深交所基金规模日频接口；ETF单位净值来自 AkShare 封装的东方财富基金净值接口，净值缺失时用ETF二级市场收盘价估算。",
-    "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。",
-    "万得全A PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。",
-    "万得全A（除金融、石油石化） PE_TTM 暂无可用数据，需补充本地 CSV 或接入 Wind/Tushare。"
+    "净流入额 = 当日份额变化 × 估值价格 / 1亿元。首个交易日因缺少上一交易日份额，不计算净流入。"
   ],
   "source_logs": [
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "沪深300 close: 378 rows"
+      "detail": "沪深300 close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "上证指数 close: 378 rows"
+      "detail": "上证指数 close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "科创50 close: 378 rows"
+      "detail": "科创50 close: 381 rows"
     },
     {
       "source": "SSE ETF scale",
       "status": "ok",
-      "detail": "378 trading days, 0 failed days"
+      "detail": "381 trading days, 0 failed days"
     },
     {
       "source": "SZSE ETF scale",
       "status": "ok",
-      "detail": "378 trading days, 0 failed chunks"
+      "detail": "381 trading days, 0 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
@@ -112,77 +110,57 @@
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510300 ETF close: 378 rows"
+      "detail": "510300 ETF close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510310 ETF close: 378 rows"
+      "detail": "510310 ETF close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510330 ETF close: 378 rows"
+      "detail": "510330 ETF close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "159919 ETF close: 378 rows"
+      "detail": "159919 ETF close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510050 ETF close: 378 rows"
+      "detail": "510050 ETF close: 381 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "588000 ETF close: 378 rows"
+      "detail": "588000 ETF close: 381 rows"
     },
     {
-      "source": "AkShare stock_info_a_code_name",
-      "status": "ok",
-      "detail": "A-share stock list: 5532 names"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "failed",
-      "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
-    },
-    {
-      "source": "Sina A-share daily",
-      "status": "ok",
-      "detail": "5531 symbols ok, 1 symbols failed"
+      "source": "Turnover concentration",
+      "status": "fresh",
+      "detail": "data already up to date (2026-07-30)"
     },
     {
       "source": "Index PE_TTM",
       "status": "cache",
-      "detail": "沪深300指数: 1589 rows"
+      "detail": "沪深300指数: 1593 rows"
     },
     {
       "source": "Index PE_TTM",
       "status": "cache",
-      "detail": "上证指数: 80 rows"
+      "detail": "上证指数: 100 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
-      "status": "missing",
-      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
-    },
-    {
-      "source": "Index PE_TTM",
-      "status": "cache-fallback",
-      "detail": "万得全A: using stale cache"
+      "status": "ok",
+      "detail": "万得全A: 1594 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
-      "status": "missing",
-      "detail": "/Users/jianfeng/Documents/投研助手/data/raw/index_pe_ttm_wind.csv"
-    },
-    {
-      "source": "Index PE_TTM",
-      "status": "cache-fallback",
-      "detail": "万得全A（除金融、石油石化）: using stale cache"
+      "status": "ok",
+      "detail": "万得全A（除金融、石油石化）: 1594 rows"
     }
   ]
 }

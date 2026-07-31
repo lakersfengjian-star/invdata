@@ -423,23 +423,38 @@ def draw_hk_sentiment_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
             plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
     latest = plot_df.dropna(subset=["hk_sentiment_z"]).iloc[-1]
     latest_date = latest["date"].strftime("%Y-%m-%d")
-    fig, ax = plt.subplots(figsize=(16, 7.4), dpi=180)
+    component_labels = {
+        "breadth_z": "宽度",
+        "vhsi_z": "波动率",
+        "relative_z": "恒科/恒指",
+        "southbound_z": "南向资金",
+        "short_z": "卖空占比",
+    }
+    component_cols = list(component_labels)
+    component_values = latest[component_cols].dropna()
+
+    fig = plt.figure(figsize=(17.4, 7.4), dpi=180, constrained_layout=True)
     fig.patch.set_facecolor("#fbfbf8")
+    gs = fig.add_gridspec(1, 2, width_ratios=[3.55, 1.35], wspace=0.28)
+    ax = fig.add_subplot(gs[0, 0])
+    ax_bar = fig.add_subplot(gs[0, 1])
     ax.set_facecolor("#fbfbf8")
+    ax_bar.set_facecolor("#fbfbf8")
     ax2 = ax.twinx()
     ax.plot(plot_df["date"], plot_df["hk_sentiment_z"], color="#c5513c", linewidth=2.35, label="港股情绪Z")
     ax.axhline(0, color="#8a93a1", linewidth=0.9, alpha=0.8)
     ax.fill_between(plot_df["date"], plot_df["hk_sentiment_z"], 0, color="#c5513c", alpha=0.12, linewidth=0)
     ax2.plot(plot_df["date"], plot_df["hsi_close"], color="#1f6fb2", linewidth=1.9, alpha=0.82, label="恒生指数")
-    ax.annotate(
-        f"{latest_date}  {latest['hk_sentiment_z']:.2f}",
-        xy=(latest["date"], latest["hk_sentiment_z"]),
-        xytext=(12, 0),
-        textcoords="offset points",
-        va="center",
+    ax.text(
+        0.985,
+        0.03,
+        f"{latest_date}  情绪Z {latest['hk_sentiment_z']:.2f}",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
         fontsize=10,
         color="#c5513c",
-        bbox={"boxstyle": "round,pad=0.25", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
+        bbox={"boxstyle": "round,pad=0.28", "facecolor": "#ffffff", "edgecolor": "#d0d0d0", "alpha": 0.9},
     )
     ax.set_xlabel("日期", fontsize=12)
     ax.set_ylabel("情绪指标Z", fontsize=12)
@@ -453,7 +468,46 @@ def draw_hk_sentiment_chart(df: pd.DataFrame, out_path: Path) -> dict | None:
     ax.legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2, frameon=False, fontsize=10)
     ax.spines[["top", "right"]].set_visible(False)
     ax2.spines[["top", "left"]].set_visible(False)
-    fig.tight_layout()
+    ordered_cols = component_values.abs().sort_values().index.tolist()
+    if ordered_cols:
+        values = component_values.loc[ordered_cols]
+        labels = [component_labels[col] for col in ordered_cols]
+        colors = ["#c5513c" if value >= 0 else "#2a9d55" for value in values]
+        ax_bar.barh(labels, values, color=colors, alpha=0.82, height=0.52)
+        ax_bar.axvline(0, color="#59636e", linewidth=1.0, alpha=0.85)
+        span = max(2.0, float(values.abs().max()) * 1.35)
+        ax_bar.set_xlim(-span, span)
+        for idx, value in enumerate(values):
+            offset = 0.04 * span if value >= 0 else -0.04 * span
+            ax_bar.text(
+                value + offset,
+                idx,
+                f"{value:+.2f}",
+                va="center",
+                ha="left" if value >= 0 else "right",
+                fontsize=10,
+                color="#26323f",
+            )
+        ax_bar.set_title(f"最新分项Z值\n{latest_date}", fontsize=12.5, fontweight="bold", loc="left", pad=10)
+        ax_bar.set_xlabel("Z值", fontsize=10.5)
+        ax_bar.grid(axis="x", color="#d8d8d8", linewidth=0.8, alpha=0.55)
+        missing = [component_labels[col] for col in component_cols if pd.isna(latest.get(col))]
+        if missing:
+            ax_bar.text(
+                0.02,
+                -0.14,
+                "缺失：" + "、".join(missing),
+                transform=ax_bar.transAxes,
+                ha="left",
+                va="top",
+                fontsize=9,
+                color="#7b8794",
+            )
+    else:
+        ax_bar.text(0.5, 0.5, "分项数据缺失", transform=ax_bar.transAxes, ha="center", va="center", fontsize=11, color="#7b8794")
+    ax_bar.spines[["top", "right", "left"]].set_visible(False)
+    ax_bar.tick_params(axis="y", length=0, labelsize=10.5)
+    ax_bar.tick_params(axis="x", labelsize=9.5)
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
@@ -1684,6 +1738,443 @@ def render_market_brief(
       </section>'''
 
 
+def percentile_score(series: pd.Series) -> float | None:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if values.empty:
+        return None
+    latest = values.iloc[-1]
+    return float(values.le(latest).mean() * 100)
+
+
+def clamp_score(value: float | None) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    return float(max(0, min(100, value)))
+
+
+def score_label(score: float | None) -> str:
+    if score is None:
+        return "待补"
+    if score >= 80:
+        return "过热"
+    if score >= 60:
+        return "偏热"
+    if score >= 40:
+        return "中性"
+    if score >= 20:
+        return "偏冷"
+    return "低迷"
+
+
+def trend_text(latest: float | None, prev: float | None, suffix: str = "") -> str:
+    if latest is None or pd.isna(latest):
+        return "暂无"
+    main = f"{latest:.1f}{suffix}"
+    if prev is None or pd.isna(prev):
+        return main
+    diff = latest - prev
+    return f"{main}（较前值{diff:+.1f}{suffix}）"
+
+
+def compute_market_heat(
+    market_turnover: pd.DataFrame | None,
+    breadth: pd.DataFrame | None,
+    turnover_concentration: pd.DataFrame | None,
+    amount_share: pd.DataFrame | None,
+    theme_amount: pd.DataFrame | None,
+    broad_flow: pd.DataFrame | None,
+    limit_up_longest: pd.DataFrame | None,
+    limit_up_amount_top: pd.DataFrame | None,
+    limit_up_meta: dict | None,
+) -> dict:
+    components: list[dict] = []
+    latest_dates: list[str] = []
+    notes: list[str] = []
+
+    def append_component(name: str, score: float | None, value: str, detail: str, direction: str = "higher_hot") -> None:
+        components.append({
+            "name": name,
+            "score": clamp_score(score),
+            "value": value,
+            "detail": detail,
+            "direction": direction,
+        })
+
+    if market_turnover is not None and not market_turnover.empty:
+        mt = market_turnover.copy().sort_values("date")
+        mt["date"] = pd.to_datetime(mt["date"], errors="coerce")
+        mt["market_turnover_100mn"] = pd.to_numeric(mt["market_turnover_100mn"], errors="coerce")
+        mt = mt.dropna(subset=["date", "market_turnover_100mn"])
+        if not mt.empty:
+            latest_dates.append(mt.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            append_component(
+                "量能",
+                percentile_score(mt["market_turnover_100mn"]),
+                f"{mt.iloc[-1]['market_turnover_100mn']:,.0f}亿元",
+                f"样本内分位，起点{mt.iloc[0]['date'].strftime('%Y-%m-%d')}",
+            )
+
+    if breadth is not None and not breadth.empty:
+        br = breadth.copy().sort_values("date")
+        br["date"] = pd.to_datetime(br["date"], errors="coerce")
+        for col in ["up_count", "down_count", "median_pct"]:
+            br[col] = pd.to_numeric(br[col], errors="coerce")
+        br = br.dropna(subset=["date", "up_count", "down_count"])
+        if not br.empty:
+            latest_dates.append(br.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            ratio = br["up_count"] / (br["up_count"] + br["down_count"])
+            append_component(
+                "宽度",
+                percentile_score(ratio),
+                f"{ratio.iloc[-1] * 100:.1f}%",
+                f"上涨家数占比；中位数涨跌幅{br.iloc[-1].get('median_pct', float('nan')):+.2f}%",
+            )
+            if len(br) < 20:
+                notes.append("市场宽度历史样本较短，宽度分位更多反映最近几日相对状态。")
+
+    pool_size = (limit_up_meta or {}).get("pool_size")
+    board_height = None
+    if limit_up_longest is not None and not limit_up_longest.empty and "连续涨停天数" in limit_up_longest:
+        board_height = pd.to_numeric(limit_up_longest["连续涨停天数"], errors="coerce").max()
+    if pool_size is not None or pd.notna(board_height):
+        pool_score = min(float(pool_size or 0), 100.0)
+        height_score = min(float(board_height or 0) / 8 * 100, 100)
+        score = (pool_score + height_score) / 2
+        parts = []
+        if pool_size is not None:
+            parts.append(f"涨停{int(pool_size)}家")
+        if pd.notna(board_height):
+            parts.append(f"最高{int(board_height)}连板")
+        append_component("涨停", score, " / ".join(parts), "涨停家数与连板高度合成，非历史分位")
+
+    if turnover_concentration is not None and not turnover_concentration.empty:
+        tc = turnover_concentration.copy().sort_values("date")
+        tc["date"] = pd.to_datetime(tc["date"], errors="coerce")
+        tc["top10_share_pct"] = pd.to_numeric(tc["top10_share_pct"], errors="coerce")
+        tc["top100_share_pct"] = pd.to_numeric(tc["top100_share_pct"], errors="coerce")
+        tc = tc.dropna(subset=["date", "top10_share_pct"])
+        if not tc.empty:
+            latest_dates.append(tc.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            score = percentile_score(tc["top10_share_pct"])
+            append_component(
+                "集中度",
+                score,
+                f"Top10 {tc.iloc[-1]['top10_share_pct']:.1f}%",
+                f"Top100 {tc.iloc[-1].get('top100_share_pct', float('nan')):.1f}%；越高代表交易越集中",
+            )
+
+    style_scores: list[float] = []
+    style_details: list[str] = []
+    if amount_share is not None and not amount_share.empty:
+        share = amount_share.copy().sort_values("date")
+        share["date"] = pd.to_datetime(share["date"], errors="coerce")
+        for col in ["csi1000_share_pct", "csi2000_share_pct"]:
+            share[col] = pd.to_numeric(share[col], errors="coerce")
+        share["small_mid_share_pct"] = share[["csi1000_share_pct", "csi2000_share_pct"]].sum(axis=1, skipna=False)
+        share = share.dropna(subset=["date", "small_mid_share_pct"])
+        if not share.empty:
+            latest_dates.append(share.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            small_score = percentile_score(share["small_mid_share_pct"])
+            if small_score is not None:
+                style_scores.append(small_score)
+                style_details.append(f"中小盘成交{share.iloc[-1]['small_mid_share_pct']:.1f}%")
+    if theme_amount is not None and not theme_amount.empty:
+        theme = theme_amount.copy().sort_values("date")
+        theme["date"] = pd.to_datetime(theme["date"], errors="coerce")
+        theme["tmt_share_pct"] = pd.to_numeric(theme["tmt_share_pct"], errors="coerce")
+        theme = theme.dropna(subset=["date", "tmt_share_pct"])
+        if not theme.empty:
+            latest_dates.append(theme.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            tmt_score = percentile_score(theme["tmt_share_pct"])
+            if tmt_score is not None:
+                style_scores.append(tmt_score)
+                style_details.append(f"TMT成交{theme.iloc[-1]['tmt_share_pct']:.1f}%")
+    append_component(
+        "风格拥挤",
+        sum(style_scores) / len(style_scores) if style_scores else None,
+        "；".join(style_details) if style_details else "暂无",
+        "中小盘与TMT成交占比的样本内分位",
+    )
+
+    if broad_flow is not None and not broad_flow.empty:
+        flow = broad_flow.copy().sort_values("date")
+        flow["date"] = pd.to_datetime(flow["date"], errors="coerce")
+        flow["rolling_7d_net_inflow_100mn"] = pd.to_numeric(flow["rolling_7d_net_inflow_100mn"], errors="coerce")
+        flow = flow.dropna(subset=["date", "rolling_7d_net_inflow_100mn"])
+        if not flow.empty:
+            latest_dates.append(flow.iloc[-1]["date"].strftime("%Y-%m-%d"))
+            append_component(
+                "ETF资金",
+                percentile_score(flow["rolling_7d_net_inflow_100mn"]),
+                f"7日{flow.iloc[-1]['rolling_7d_net_inflow_100mn']:+.0f}亿元",
+                "大宽基ETF 7日滚动净流入分位",
+            )
+
+    valid_scores = [item["score"] for item in components if item["score"] is not None]
+    heat_score = sum(valid_scores) / len(valid_scores) if valid_scores else None
+    hottest = max((item for item in components if item["score"] is not None), key=lambda x: x["score"], default=None)
+    coldest = min((item for item in components if item["score"] is not None), key=lambda x: x["score"], default=None)
+    latest_date = max(latest_dates) if latest_dates else ""
+    return {
+        "score": clamp_score(heat_score),
+        "label": score_label(heat_score),
+        "components": components,
+        "hottest": hottest,
+        "coldest": coldest,
+        "last_date": latest_date,
+        "notes": notes,
+    }
+
+
+def render_market_heat(heat: dict) -> str:
+    if not heat or heat.get("score") is None:
+        return ""
+    score = heat["score"]
+    status = heat.get("label", "待补")
+    components = heat.get("components", [])
+    hottest = heat.get("hottest") or {}
+    coldest = heat.get("coldest") or {}
+    rows = []
+    for item in components:
+        item_score = item.get("score")
+        score_text = "待补" if item_score is None else f"{item_score:.0f}"
+        width = 0 if item_score is None else max(4, min(100, item_score))
+        rows.append(f'''<div class="heat-row">
+          <div class="heat-row-head"><span>{escape(item["name"])}</span><strong>{escape(score_text)}</strong></div>
+          <div class="heat-track"><span style="width:{width:.1f}%"></span></div>
+          <div class="heat-detail">{escape(str(item.get("value", "")))}｜{escape(str(item.get("detail", "")))}</div>
+        </div>''')
+    note_block = "；".join(str(note) for note in heat.get("notes", [])) or "各分项转为0-100分后等权平均；高分代表交易热度或拥挤度偏高。"
+    return f'''      <section class="chart-section market-heat-section">
+        <h2><span class="chart-num">A-000</span>A股市场热度仪表盘（截至{escape(str(heat.get("last_date") or "待更新"))}）{freq_badge("日频")}</h2>
+        <div class="heat-layout">
+          <div class="heat-score">
+            <div class="heat-score-ring" style="--score-pct:{score:.1f}%">
+              <div><strong>{score:.0f}</strong><span>{escape(status)}</span></div>
+            </div>
+            <div class="heat-summary">
+              <p>当前市场热度处于<strong>{escape(status)}</strong>区间。</p>
+              <p>最热分项：{escape(str(hottest.get("name", "暂无")))} {hottest.get("score", float("nan")):.0f}；最低分项：{escape(str(coldest.get("name", "暂无")))} {coldest.get("score", float("nan")):.0f}。</p>
+            </div>
+          </div>
+          <div class="heat-components">{''.join(rows)}</div>
+        </div>
+        {chart_note_block(
+            "热度仪表盘基于本地已缓存数据合成：全市场成交额、市场宽度、涨停强度、成交集中度、风格成交占比和大宽基ETF资金。除涨停强度外，其余分项优先使用样本内历史分位。",
+            f"热度分数用于识别市场状态，不代表买卖建议；样本起点和字段覆盖差异会影响分位可比性。{note_block}",
+            "market_heat",
+        )}
+      </section>'''
+
+
+def lag_value(series: pd.Series, periods: int) -> float | None:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if len(values) <= periods:
+        return None
+    return float(values.iloc[-1] - values.iloc[-periods - 1])
+
+
+def style_state(pctile: float | None) -> str:
+    if pctile is None or pd.isna(pctile):
+        return "待补"
+    if pctile >= 80:
+        return "拥挤"
+    if pctile >= 60:
+        return "偏热"
+    if pctile >= 40:
+        return "中性"
+    if pctile >= 20:
+        return "偏冷"
+    return "低位"
+
+
+def compute_style_turnover_distribution(amount_share: pd.DataFrame | None, theme_amount: pd.DataFrame | None) -> dict:
+    rows: list[dict] = []
+    latest_dates: list[str] = []
+
+    def add_series(name: str, date: pd.Series, values: pd.Series, group: str) -> None:
+        clean = pd.DataFrame({"date": pd.to_datetime(date, errors="coerce"), "value": pd.to_numeric(values, errors="coerce")})
+        clean = clean.dropna(subset=["date", "value"]).sort_values("date")
+        if clean.empty:
+            return
+        latest = float(clean["value"].iloc[-1])
+        pctile = percentile_score(clean["value"])
+        latest_dates.append(clean["date"].iloc[-1].strftime("%Y-%m-%d"))
+        rows.append({
+            "name": name,
+            "group": group,
+            "share": latest,
+            "pctile": pctile,
+            "change_20d": lag_value(clean["value"], 20),
+            "change_60d": lag_value(clean["value"], 60),
+            "date": clean["date"].iloc[-1].strftime("%Y-%m-%d"),
+            "state": style_state(pctile),
+        })
+
+    if amount_share is not None and not amount_share.empty:
+        share = amount_share.copy().sort_values("date")
+        mappings = [
+            ("沪深300", "hs300_share_pct", "宽基"),
+            ("中证500", "csi500_share_pct", "宽基"),
+            ("中证1000", "csi1000_share_pct", "宽基"),
+            ("中证2000", "csi2000_share_pct", "宽基"),
+        ]
+        for name, col, group in mappings:
+            if col in share:
+                add_series(name, share["date"], share[col], group)
+        if {"hs300_share_pct", "csi500_share_pct", "csi1000_share_pct", "csi2000_share_pct"}.issubset(share.columns):
+            large = pd.to_numeric(share["hs300_share_pct"], errors="coerce") + pd.to_numeric(share["csi500_share_pct"], errors="coerce")
+            small = pd.to_numeric(share["csi1000_share_pct"], errors="coerce") + pd.to_numeric(share["csi2000_share_pct"], errors="coerce")
+            add_series("大盘+中盘", share["date"], large, "聚合")
+            add_series("小盘+微盘", share["date"], small, "聚合")
+
+    if theme_amount is not None and not theme_amount.empty:
+        theme = theme_amount.copy().sort_values("date")
+        mappings = [
+            ("TMT", "tmt_share_pct", "主题"),
+            ("红利低波", "dividend_low_vol_share_pct", "主题"),
+        ]
+        for name, col, group in mappings:
+            if col in theme:
+                add_series(name, theme["date"], theme[col], group)
+
+    rows = sorted(rows, key=lambda item: (-1 if item["pctile"] is None else -item["pctile"], item["name"]))
+    return {"rows": rows, "last_date": max(latest_dates) if latest_dates else ""}
+
+
+def render_style_turnover_distribution(style: dict) -> str:
+    rows = style.get("rows", []) if style else []
+    if not rows:
+        return ""
+    body = []
+    for item in rows:
+        pctile = item.get("pctile")
+        pctile_text = "—" if pctile is None else f"{pctile:.0f}"
+        pctile_width = 0 if pctile is None else max(4, min(100, pctile))
+        change20 = item.get("change_20d")
+        change60 = item.get("change_60d")
+        cls20 = "pos" if change20 and change20 > 0 else "neg" if change20 and change20 < 0 else ""
+        cls60 = "pos" if change60 and change60 > 0 else "neg" if change60 and change60 < 0 else ""
+        body.append(
+            f'''<tr>
+              <td><span class="style-group">{escape(item["group"])}</span>{escape(item["name"])}</td>
+              <td>{item["share"]:.1f}%</td>
+              <td><div class="style-pctile"><span style="width:{pctile_width:.1f}%"></span></div><strong>{pctile_text}</strong></td>
+              <td><span class="{cls20}">{"—" if change20 is None else f"{change20:+.1f}pct"}</span></td>
+              <td><span class="{cls60}">{"—" if change60 is None else f"{change60:+.1f}pct"}</span></td>
+              <td>{escape(item["state"])}</td>
+            </tr>'''
+        )
+    return f'''      <section class="chart-section">
+        <h2><span class="chart-num">F-009</span>风格成交分布仪表盘（截至{escape(str(style.get("last_date") or "待更新"))}）{freq_badge("日频")}</h2>
+        <div class="table-wrap style-table-wrap">
+          <table class="data-table style-table">
+            <thead><tr><th>风格</th><th>成交占比</th><th>历史分位</th><th>20日变化</th><th>60日变化</th><th>状态</th></tr></thead>
+            <tbody>{''.join(body)}</tbody>
+          </table>
+        </div>
+        {chart_note_block(
+            "展示主要宽基、大小盘聚合与主题风格成交额占全A代理成交额的比例；历史分位基于本地缓存样本逐项计算，变化为相对20/60个交易日前的百分点变化。",
+            "成交占比反映交易关注度，不等于收益贡献；中证全指成交金额暂作为全A代理分母，后续可用 Wind 全A精确口径替换。",
+            "style_turnover_distribution",
+        )}
+      </section>'''
+
+
+def compute_style_return_heatmap(style_perf: pd.DataFrame | None) -> dict:
+    if style_perf is None or style_perf.empty:
+        return {"rows": [], "last_date": ""}
+    df = style_perf.copy()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["close"] = pd.to_numeric(df["close"], errors="coerce")
+    df["pct_change"] = pd.to_numeric(df.get("pct_change"), errors="coerce")
+    df = df.dropna(subset=["date", "wind_code", "index_name", "close"]).sort_values(["index_name", "date"])
+    if df.empty:
+        return {"rows": [], "last_date": ""}
+
+    rows: list[dict] = []
+    order = ["沪深300", "中证500", "中证1000", "中证2000", "中证TMT", "红利低波", "中证红利", "科创50"]
+    for name in order:
+        part = df[df["index_name"].eq(name)].sort_values("date").reset_index(drop=True)
+        if part.empty:
+            continue
+        latest = part.iloc[-1]
+
+        def ret_by_lag(lag: int) -> float | None:
+            if len(part) <= lag:
+                return None
+            base = float(part["close"].iloc[-lag - 1])
+            current = float(latest["close"])
+            if not base or pd.isna(base) or pd.isna(current):
+                return None
+            return current / base * 100 - 100
+
+        ytd_part = part[part["date"].dt.year.eq(latest["date"].year)]
+        ytd = None
+        if not ytd_part.empty:
+            base = float(ytd_part["close"].iloc[0])
+            current = float(latest["close"])
+            if base and not pd.isna(base) and not pd.isna(current):
+                ytd = current / base * 100 - 100
+
+        ret_1d = latest.get("pct_change")
+        if pd.isna(ret_1d):
+            ret_1d = ret_by_lag(1)
+        rows.append({
+            "name": name,
+            "date": latest["date"].strftime("%Y-%m-%d"),
+            "close": float(latest["close"]),
+            "ret_1d": None if pd.isna(ret_1d) else float(ret_1d),
+            "ret_5d": ret_by_lag(5),
+            "ret_20d": ret_by_lag(20),
+            "ret_60d": ret_by_lag(60),
+            "ret_ytd": ytd,
+        })
+    return {"rows": rows, "last_date": max((row["date"] for row in rows), default="")}
+
+
+def return_cell(value: float | None) -> str:
+    if value is None or pd.isna(value):
+        return '<td class="return-cell muted">—</td>'
+    cls = "pos" if value > 0 else "neg" if value < 0 else "flat"
+    alpha = min(0.82, max(0.08, abs(value) / 12))
+    return f'<td class="return-cell {cls}" style="--heat-alpha:{alpha:.2f}">{value:+.2f}%</td>'
+
+
+def render_style_return_heatmap(style_return: dict) -> str:
+    rows = style_return.get("rows", []) if style_return else []
+    if not rows:
+        return ""
+    body = []
+    for item in rows:
+        body.append(
+            f'''<tr>
+              <td>{escape(item["name"])}</td>
+              <td>{escape(item["date"])}</td>
+              <td>{item["close"]:,.1f}</td>
+              {return_cell(item.get("ret_1d"))}
+              {return_cell(item.get("ret_5d"))}
+              {return_cell(item.get("ret_20d"))}
+              {return_cell(item.get("ret_60d"))}
+              {return_cell(item.get("ret_ytd"))}
+            </tr>'''
+        )
+    return f'''      <section class="chart-section">
+        <h2><span class="chart-num">F-010</span>风格收益热力图（截至{escape(str(style_return.get("last_date") or "待更新"))}）{freq_badge("日频")}</h2>
+        <div class="table-wrap style-return-wrap">
+          <table class="data-table style-return-table">
+            <thead><tr><th>指数/风格</th><th>日期</th><th>收盘点位</th><th>1日</th><th>5日</th><th>20日</th><th>60日</th><th>年初至今</th></tr></thead>
+            <tbody>{''.join(body)}</tbody>
+          </table>
+        </div>
+        {chart_note_block(
+            "展示主要宽基、主题和红利风格指数的阶段收益；底层收盘价与日涨跌幅来自 /gjdata 的 AIndexEODPrices 表，5/20/60日按交易日收盘价计算，年初至今以当年首个本地样本为起点。",
+            "指数收益只反映对应指数口径，不能替代可投资产品收益；若某指数最新日期滞后或停更，审计状态会提示滞后，热力颜色只用于快速观察强弱。",
+            "style_return_heatmap",
+        )}
+      </section>'''
+
+
 def normalize_date_text(value: object) -> str:
     if value is None:
         return ""
@@ -1718,7 +2209,13 @@ def status_label(status: str) -> str:
     }.get(status, status)
 
 
-def build_chart_audit(chart_dates: dict[str, str], expected_dates: dict[str, str], build_time: str) -> list[dict]:
+def build_chart_audit(
+    chart_dates: dict[str, str],
+    expected_dates: dict[str, str],
+    build_time: str,
+    audit_notes: dict[str, list[str]] | None = None,
+) -> list[dict]:
+    audit_notes = audit_notes or {}
     audit = []
     for item in CHART_REGISTRY:
         key = item["key"]
@@ -1736,6 +2233,7 @@ def build_chart_audit(chart_dates: dict[str, str], expected_dates: dict[str, str
             "status": status,
             "status_label": status_label(status),
             "built_at": build_time,
+            "notes": audit_notes.get(key, []),
         })
     return audit
 
@@ -1758,9 +2256,13 @@ def chart_status_line(chart_key: str | None) -> str:
     actual = escape(str(item.get("actual_date") or "暂无"))
     expected = escape(str(item.get("expected_date") or "不适用"))
     cls = escape(str(item.get("status") or "unknown"))
+    notes = [escape(str(note)) for note in item.get("notes", []) if str(note).strip()]
+    note_html = ""
+    if notes:
+        note_html = f'<br><strong>审计说明：</strong>{"；".join(notes[:6])}'
     return (
         f'<p class="chart-status status-{cls}"><strong>更新状态：</strong>'
-        f'应更新日期 {expected}；实际日期 {actual}；状态 {status}。</p>'
+        f'应更新日期 {expected}；实际日期 {actual}；状态 {status}。{note_html}</p>'
     )
 
 
@@ -1844,6 +2346,9 @@ def build_page(
     market_turnover_data: pd.DataFrame | None = None,
     amount_share_data: pd.DataFrame | None = None,
     theme_amount_data: pd.DataFrame | None = None,
+    style_performance_data: pd.DataFrame | None = None,
+    broad_flow_data: pd.DataFrame | None = None,
+    turnover_concentration_data: pd.DataFrame | None = None,
     industry_pb_roe_chart: dict | None = None,
     industrial_profit_chart: dict | None = None,
     value_growth_spread_chart: dict | None = None,
@@ -1866,9 +2371,23 @@ def build_page(
     asset_version = "".join(ch for ch in build_time if ch.isdigit())
     broad_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
+    market_heat = compute_market_heat(
+        market_turnover_data,
+        monitor_breadth,
+        turnover_concentration_data,
+        amount_share_data,
+        theme_amount_data,
+        broad_flow_data,
+        limit_up_longest,
+        limit_up_amount_top,
+        limit_up_meta,
+    )
+    style_distribution = compute_style_turnover_distribution(amount_share_data, theme_amount_data)
+    style_return = compute_style_return_heatmap(style_performance_data)
     valuation_date_by_key = {chart.get("key", ""): chart.get("last_date", "") for chart in valuation_charts}
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
     chart_dates = {
+        "market_heat": market_heat.get("last_date", ""),
         "market_monitor": metadata.get("latest_common_date", ""),
         "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
         "limit_up_longest": limit_up_date,
@@ -1891,6 +2410,8 @@ def build_page(
         "turnover_top100": (chart3_top100 or chart3 or {}).get("last_date", ""),
         "amount_share": (amount_share_chart or {}).get("last_date", ""),
         "theme_amount_share": (theme_amount_chart or {}).get("last_date", ""),
+        "style_turnover_distribution": style_distribution.get("last_date", ""),
+        "style_return_heatmap": style_return.get("last_date", ""),
         "industry_crowding": (industry_crowding_chart or {}).get("last_date", ""),
         "value_growth_spread": (value_growth_spread_chart or {}).get("last_date", ""),
         "citic_pb_dispersion": (citic_pb_dispersion_chart or {}).get("last_date", ""),
@@ -1910,9 +2431,26 @@ def build_page(
     latest_weekly = max((normalize_date_text(chart_dates[k]) for k in weekly_keys if chart_dates.get(k)), default="")
     latest_macro = max((normalize_date_text(chart_dates[k]) for k in monthly_keys if chart_dates.get(k)), default="")
     expected_dates = {"daily": expected_daily_audit_date(), "weekly": latest_weekly, "monthly": latest_macro, "manual": ""}
-    chart_audit = build_chart_audit(chart_dates, expected_dates, build_time)
+    audit_notes: dict[str, list[str]] = {}
+    hk_meta_path = PROCESSED_DIR / "hk_dashboard.metadata.json"
+    if hk_meta_path.exists():
+        try:
+            hk_meta = json.loads(hk_meta_path.read_text(encoding="utf-8"))
+            hk_notes = [str(note) for note in hk_meta.get("notes", []) if str(note).strip()]
+            sentiment_notes = [note for note in hk_notes if note.startswith("港股情绪-")]
+            southbound_notes = [note for note in hk_notes if note.startswith("南向资金")]
+            if sentiment_notes:
+                audit_notes["hk_sentiment"] = sentiment_notes
+            if southbound_notes:
+                audit_notes["southbound"] = southbound_notes
+        except Exception:
+            audit_notes["hk_sentiment"] = ["港股板块元数据读取失败，需检查 hk_dashboard.metadata.json。"]
+    chart_audit = build_chart_audit(chart_dates, expected_dates, build_time, audit_notes=audit_notes)
     CURRENT_CHART_STATUS = {item["key"]: item for item in chart_audit}
     daily_lagging = sorted(k for k in daily_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") == "lagging")
+    market_heat_html = render_market_heat(market_heat)
+    style_distribution_html = render_style_turnover_distribution(style_distribution)
+    style_return_html = render_style_return_heatmap(style_return)
     market_brief_html = render_market_brief(monitor_indices, monitor_breadth, market_turnover_data, amount_share_data, theme_amount_data)
     market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
     valuation_sections = []
@@ -2106,8 +2644,8 @@ def build_page(
         <h2><span class="chart-num">G-001</span>港股情绪（截至{hk_sentiment_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(hk_sentiment_chart["path"]).name}?v={asset_version}" alt="港股情绪">
         {chart_note_block(
-            "港股情绪Z参考《3_情绪指标_港股》口径，由恒指成份腾落线20日均、恒指波幅、恒生科技/恒指相对强度、南向资金20日均、卖空占比等分项Z值动态平均；当前使用 Wind 金融能力取数并本地缓存。",
-            "情绪指标是历史相对强弱观察，不代表买卖建议；若卖空、南向或宽度分项当日未更新，综合值按已取得分项计算。",
+            "港股情绪Z参考《3_情绪指标_港股》口径，由恒指成份腾落线20日均、恒指波幅、恒生科技/恒指相对强度、南向资金20日均、卖空占比等分项Z值动态平均；当前使用 Wind 金融能力取数并本地缓存。若分项历史覆盖不足，会在本图审计说明中备注。",
+            "情绪指标是历史相对强弱观察，不代表买卖建议；若卖空、南向或宽度分项当日未更新，综合值按已取得分项计算。波动率、卖空占比等压力类指标的方向性解释需结合口径复核。",
             "hk_sentiment",
         )}
       </section>''')
@@ -2116,7 +2654,7 @@ def build_page(
         <h2><span class="chart-num">G-002</span>南向资金每日净流入（截至{southbound_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(southbound_chart["path"]).name}?v={asset_version}" alt="南向资金每日净流入">
         {chart_note_block(
-            "区间自 2026-01-01 起。数据来自 Wind 金融能力；柱状图为南向资金每日净买入合计，折线为15个交易日滚动累计净买入，单位为亿元。",
+            "区间自 2024-01-01 起。数据来自 Wind 金融能力；柱状图为南向资金每日净买入合计，折线为15个交易日滚动累计净买入，单位为亿元。",
             "若最新值长时间为 0、缺失或日期滞后，通常代表 Wind 数据尚未更新或接口字段变化，不应机械解读为真实无净买入。",
             "southbound",
         )}
@@ -2198,6 +2736,7 @@ def build_page(
 
     <section class="category-panel active" id="panel-market" data-category="market">
       <div class="category-head"><span class="sec-num">A</span><h2>行情</h2></div>
+{market_heat_html}
 {market_brief_html}
 {market_monitor_html}
 {market_turnover_html}
@@ -2265,6 +2804,8 @@ def build_page(
       </section>
 {amount_share_html}
 {theme_amount_html}
+{style_distribution_html}
+{style_return_html}
 {industry_crowding_html}
 {value_growth_html}
 {pb_dispersion_html}
@@ -2608,6 +3149,94 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 }
 
 /* ---------- 行情监控面板 ---------- */
+.market-heat-section {
+  padding-bottom: 18px;
+}
+.heat-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, .85fr) 1.45fr;
+  gap: 24px;
+  align-items: center;
+}
+.heat-score {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 18px;
+  align-items: center;
+  min-width: 0;
+}
+.heat-score-ring {
+  width: 148px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at center, #fff 0 58%, transparent 59%),
+    conic-gradient(var(--accent) var(--score-pct), #e7ebf1 0);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.heat-score-ring div {
+  width: 104px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  background: #fff;
+}
+.heat-score-ring strong {
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 800;
+}
+.heat-score-ring span {
+  margin-top: 5px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+.heat-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.heat-summary p + p { margin-top: 6px; }
+.heat-summary strong { color: var(--ink); }
+.heat-components {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+.heat-row { min-width: 0; }
+.heat-row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.heat-row-head strong { color: var(--accent); }
+.heat-track {
+  height: 8px;
+  margin: 8px 0 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7ebf1;
+}
+.heat-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6aa6d8, var(--accent));
+}
+.heat-detail {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
 .market-brief {
   margin: 0 0 16px;
   padding: 14px 16px;
@@ -2651,8 +3280,83 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 .monitor-table th:nth-child(n+2) { text-align: right; }
 .monitor-table .pos { color: #c5513c; font-weight: 700; }
 .monitor-table .neg { color: #2a9d55; font-weight: 700; }
+.style-table { min-width: 820px; }
+.style-table td:nth-child(n+2),
+.style-table th:nth-child(n+2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.style-table td:first-child {
+  font-weight: 700;
+  color: var(--ink);
+}
+.style-group {
+  display: inline-flex;
+  align-items: center;
+  min-width: 42px;
+  margin-right: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.style-pctile {
+  display: inline-block;
+  width: 88px;
+  height: 8px;
+  margin-right: 8px;
+  overflow: hidden;
+  vertical-align: middle;
+  border-radius: 999px;
+  background: #e7ebf1;
+}
+.style-pctile span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6aa6d8, var(--accent));
+}
+.style-table .pos { color: #c5513c; font-weight: 700; }
+.style-table .neg { color: #2a9d55; font-weight: 700; }
+.style-return-table { min-width: 900px; }
+.style-return-table td:nth-child(1) {
+  color: var(--ink);
+  font-weight: 700;
+}
+.style-return-table td:nth-child(n+3),
+.style-return-table th:nth-child(n+3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.return-cell {
+  border-left: 2px solid #fff;
+  font-weight: 800;
+}
+.return-cell.pos {
+  color: #8f2f22;
+  background: rgba(197, 81, 60, var(--heat-alpha));
+}
+.return-cell.neg {
+  color: #146037;
+  background: rgba(42, 157, 85, var(--heat-alpha));
+}
+.return-cell.flat {
+  color: var(--muted);
+  background: #f5f7fa;
+}
+.return-cell.muted {
+  color: var(--muted);
+  background: #fafbfc;
+}
 @media (max-width: 900px) {
   .monitor-grid { grid-template-columns: 1fr; }
+  .heat-layout,
+  .heat-score,
+  .heat-components { grid-template-columns: 1fr; }
+  .heat-score-ring { width: 136px; }
 }
 
 /* ---------- 资料库（个人研究文章与投资资料） ---------- */
@@ -2911,6 +3615,10 @@ def main() -> None:
     if citic_pb_dispersion_path.exists():
         citic_pb_dispersion = pd.read_csv(citic_pb_dispersion_path, parse_dates=["date"])
         citic_pb_dispersion_chart = draw_citic_pb_dispersion_chart(citic_pb_dispersion, CHART_DIR / "fig_015_citic_pb_dispersion.png")
+    style_performance = None
+    style_performance_path = PROCESSED_DIR / "style_index_performance.csv"
+    if style_performance_path.exists():
+        style_performance = pd.read_csv(style_performance_path, parse_dates=["date"])
     industry_crowding_chart = None
     industry_crowding_path = PROCESSED_DIR / "citic_industry_crowding.csv"
     industry_crowding_meta_path = PROCESSED_DIR / "citic_industry_crowding.metadata.json"
@@ -3000,6 +3708,9 @@ def main() -> None:
         market_turnover_data=market_turnover,
         amount_share_data=amount_share,
         theme_amount_data=theme_amount,
+        style_performance_data=style_performance,
+        broad_flow_data=broad,
+        turnover_concentration_data=turnover,
         industry_pb_roe_chart=industry_pb_roe_chart,
         industrial_profit_chart=industrial_profit_chart,
         value_growth_spread_chart=value_growth_spread_chart,

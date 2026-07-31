@@ -1,0 +1,11 @@
+{
+  "source": "gjdata:AIndexEODPrices",
+  "status": "ok",
+  "latest_date": "2026-07-30",
+  "unit": "pct/point",
+  "notes": [
+    "style return heatmap uses close prices from gjdata AIndexEODPrices",
+    "returns are calculated during site build for 1D, 5D, 20D, 60D and YTD windows"
+  ],
+  "rows": 4984
+}

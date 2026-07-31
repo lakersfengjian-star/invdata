@@ -9,6 +9,7 @@ the static site can rebuild without re-parsing workbooks.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -21,13 +22,15 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from common import PROCESSED_DIR, ensure_dirs, previous_bday, write_metadata  # noqa: E402
 
-WIND_SKILL_DIR = Path("/Users/jianfeng/.agents/skills/wind-mcp-skill")
+WIND_SKILL_DIR = Path(
+    os.environ.get("WIND_SKILL_DIR", Path.home() / ".agents" / "skills" / "wind-mcp-skill")
+).expanduser()
 CLI = WIND_SKILL_DIR / "scripts" / "cli.mjs"
 RAW_DIR = ROOT / "data" / "raw"
 
 DAILY_START = "20240101"
 VALUATION_START = "20130101"
-SOUTHBOUND_START = "20260101"
+SOUTHBOUND_START = DAILY_START
 
 OUT_SENTIMENT = PROCESSED_DIR / "hk_sentiment.csv"
 OUT_RATES = PROCESSED_DIR / "hk_rates.csv"
@@ -507,6 +510,27 @@ def write_csv(df: pd.DataFrame, path: Path) -> str:
     return str(out["date"].dropna().max()) if "date" in out and not out.empty else ""
 
 
+def coverage_note(df: pd.DataFrame, label: str, column: str, start: str, end: str) -> str | None:
+    if df.empty or column not in df:
+        return f"{label}：字段 {column} 缺失，未参与相关图表计算。"
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end)
+    sub = df[(df["date"].ge(start_ts)) & (df["date"].le(end_ts))].copy()
+    if sub.empty:
+        return f"{label}：{start_ts:%Y-%m-%d} 至 {end_ts:%Y-%m-%d} 无可用记录。"
+    valid = sub.dropna(subset=[column])
+    missing_count = len(sub) - len(valid)
+    if valid.empty:
+        return f"{label}：{start_ts:%Y-%m-%d} 至 {end_ts:%Y-%m-%d} 字段 {column} 全部缺失。"
+    missing_ratio = missing_count / len(sub)
+    if missing_ratio > 0.05:
+        return (
+            f"{label}：{column} 覆盖 {len(valid)}/{len(sub)} 个交易日，"
+            f"首个有效日 {valid['date'].min():%Y-%m-%d}，最后有效日 {valid['date'].max():%Y-%m-%d}。"
+        )
+    return None
+
+
 def main() -> None:
     ensure_dirs()
     end = ymd(previous_bday())
@@ -517,7 +541,7 @@ def main() -> None:
     if needs_column_backfill(OUT_FX, "usdhkd"):
         daily_start = DAILY_START
     valuation_start = incremental_start(OUT_VALUATION, VALUATION_START, overlap_days=20)
-    southbound_start = SOUTHBOUND_START if needs_column_backfill(OUT_SOUTHBOUND, "h50069_close") else incremental_start(OUT_SOUTHBOUND, SOUTHBOUND_START)
+    southbound_start = SOUTHBOUND_START if needs_column_backfill(OUT_SOUTHBOUND, "southbound_net_buy_100mn") else incremental_start(OUT_SOUTHBOUND, SOUTHBOUND_START)
 
     daily = fetch_hk_daily(daily_start, end)
     southbound = fetch_southbound(southbound_start, end)
@@ -530,7 +554,14 @@ def main() -> None:
     sentiment = daily["hsi"].merge(daily["hstech"], on="date", how="outer").merge(daily["vhsi"], on="date", how="outer")
     sentiment = sentiment.merge(daily["width"], on="date", how="outer").merge(southbound[["date", "southbound_net_buy_100mn"]], on="date", how="left")
     sentiment = sentiment.merge(daily["short"], on="date", how="left")
+    sentiment = merge_existing(sentiment, OUT_SENTIMENT)
+    if "southbound_net_buy_100mn" in southbound:
+        southbound_for_sentiment = southbound[["date", "southbound_net_buy_100mn"]].dropna(subset=["southbound_net_buy_100mn"]).copy()
+        sentiment = sentiment.drop(columns=["southbound_net_buy_100mn"], errors="ignore").merge(southbound_for_sentiment, on="date", how="left")
     sentiment = clean_dates(sentiment)
+    for col in ["hsi_close", "hstech_close", "vhsi_close", "up_count", "down_count", "southbound_net_buy_100mn", "short_ratio"]:
+        if col in sentiment:
+            sentiment[col] = pd.to_numeric(sentiment[col], errors="coerce")
     sentiment["hstech_hsi_ratio"] = sentiment["hstech_close"] / sentiment["hsi_close"]
     sentiment["advance_line"] = sentiment["up_count"] - sentiment["down_count"]
     sentiment["advance_line_ma20"] = sentiment["advance_line"].rolling(20, min_periods=5).mean()
@@ -541,6 +572,19 @@ def main() -> None:
     sentiment["southbound_z"] = rolling_z(sentiment["southbound_ma20"])
     sentiment["short_z"] = rolling_z(sentiment["short_ratio"])
     sentiment["hk_sentiment_z"] = sentiment[["breadth_z", "vhsi_z", "relative_z", "southbound_z", "short_z"]].mean(axis=1, skipna=True)
+    for label, column in [
+        ("港股情绪-宽度分项", "breadth_z"),
+        ("港股情绪-波动率分项", "vhsi_z"),
+        ("港股情绪-恒科/恒指分项", "relative_z"),
+        ("港股情绪-南向资金分项", "southbound_z"),
+        ("港股情绪-卖空占比分项", "short_z"),
+    ]:
+        note = coverage_note(sentiment, label, column, DAILY_START, end)
+        if note:
+            notes.append(note)
+    note = coverage_note(southbound, "南向资金净流入", "southbound_net_buy_100mn", SOUTHBOUND_START, end)
+    if note:
+        notes.append(note)
 
     rates = daily["hibor"].merge(daily["us10y"], on="date", how="outer")
     fx = daily["dxy"].merge(daily["usdhkd"], on="date", how="outer")

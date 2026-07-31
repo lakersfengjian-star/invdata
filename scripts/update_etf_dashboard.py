@@ -166,7 +166,17 @@ def fetch_nav(code: str, start: str, end: str) -> pd.DataFrame:
         return df
     try:
         df = ak.fund_etf_fund_info_em(fund=code, start_date=start, end_date=end)
-        df = df.rename(columns={"净值日期": "date", "单位净值": "nav"})
+        if df.empty:
+            raise ValueError("empty NAV result")
+        date_col = next((col for col in df.columns if str(col) in {"净值日期", "日期", "date"}), None)
+        nav_col = next((col for col in df.columns if str(col) in {"单位净值", "基金单位净值", "nav"}), None)
+        if date_col is None:
+            date_col = next((col for col in df.columns if "日期" in str(col)), None)
+        if nav_col is None:
+            nav_col = next((col for col in df.columns if "单位净值" in str(col) or str(col).lower() == "nav"), None)
+        if date_col is None or nav_col is None:
+            raise ValueError(f"NAV columns not found: {list(df.columns)}")
+        df = df.rename(columns={date_col: "date", nav_col: "nav"})
         df = df[["date", "nav"]].copy()
         df["date"] = pd.to_datetime(df["date"])
         df["nav"] = pd.to_numeric(df["nav"], errors="coerce")

@@ -4,7 +4,7 @@
 
 ## 项目定位
 
-- 工作目录：`/Users/jianfeng/Documents/投研助手`
+- 工作目录：`<本机仓库目录>`
 - 本地预览：`site/index.html`
 - GitHub 仓库：`lakersfengjian-star/invdata`
 - Vercel：由 GitHub 仓库 `main` 分支推送自动触发部署。
@@ -24,6 +24,7 @@
 7. 严格执行 `TOKEN_EFFICIENT_WORKFLOW.md`：禁止通过对话或连接器搬运大型 base64、历史 CSV 或完整快照，优先本地增量、离线构建和正常 git 推送。
 8. GitHub 凭证、网页登录、VS Code 推送由 VS Code/GitHub 本地客户端完成；agent 不再把认证排障作为常规工作。
 9. 仅修改网页展示、样式、图表排版或文档时，默认只本地构建和核验，不立即推送部署；等下一次自动数据更新提交时一并部署，除非用户明确要求“现在推送/部署”。
+10. 本地 6 点日频任务使用 `launch_agents/com.invdata.dashboard.daily.plist` 和 `scripts/local_daily_update.sh`；若 LaunchAgent 手动触发后无日志且 Python 长时间 running，优先排查 macOS “完全磁盘访问”权限，而不是重复改数据脚本。
 
 ## 职责边界
 
@@ -108,7 +109,7 @@ PY
 当前主脚本为：
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_etf_dashboard.py
+PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache python scripts/update_etf_dashboard.py
 ```
 
 后续优化方向：
@@ -125,7 +126,7 @@ PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users
 本地汇总数据齐全后，优先用离线脚本重建网页和发布目录：
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_site_from_processed.py
+PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache python scripts/build_site_from_processed.py
 ```
 
 该脚本只读取 `data/processed` 中的小型汇总表，生成：
@@ -187,7 +188,7 @@ Vercel 只部署静态站点。根目录保留：
 若必须命令行推送，固定命令如下，后续不要展开长时间排障：
 
 ```bash
-cd /Users/jianfeng/Documents/投研助手
+cd <本机仓库目录>
 git status -sb
 git push origin HEAD:main
 ```
@@ -222,6 +223,8 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 - `fig_005_index_amount_share.png`：沪深300、中证500、中证1000、中证2000成交额占全A成交额比例。数据优先来自中证指数官网指数行情接口；中证全指成交金额暂作为 Wind 全A成交额公开代理口径，后续若接入 Wind/Tushare 精确 Wind 全A成交额，可替换分母。
 - `fig_006_citic_industry_crowding.png`：中信一级行业估值与成交拥挤度。数据优先来自 Wind API；若本机没有 WindPy 或授权不可用，读取 `data/raw/citic_industry_crowding_weekly.csv`。
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例。数据来自中证指数官网指数行情接口，分母与图五一致。
+- `F-009 style_turnover_distribution`：风格成交分布仪表盘，复用 `index_amount_share.csv` 和 `theme_amount_share.csv`。展示主要宽基、大小盘聚合、TMT、红利低波的最新成交占比、样本内分位、20/60交易日变化；这是交易关注度和拥挤度观察，不得表述为收益贡献。
+- `F-010 style_return_heatmap`：风格收益热力图，底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 `/gjdata` 的 `AIndexEODPrices` 获取主要宽基、主题和红利风格指数收盘价及日涨跌幅。页面展示1日、5日、20日、60日、年初至今收益；这是风格强弱观察，不得替代组合业绩归因。
 - `fig_008_market_turnover.png`：全市场成交额变化。起始日期为 2024-09-24，当前复用中证全指成交金额作为沪深京全市场成交额公开代理口径。
 - `fig_009_southbound_flow.png`：南向资金每日净流入与15日滚动累计。起始日期为 2026-01-01，数据来自 Wind 金融能力，口径为南向资金每日净买入合计，单位亿元。
 - `fig_010_macro_overview.png`：宏观经济数据概览。横向分面展示最近六个有效数据点，共享 Y 轴，0 值不绘制。
@@ -246,12 +249,12 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 
 网页必须按八个固定区域组织，并通过顶部分类按钮切换展示：
 
-- 行情：指数走势、市场价格、全市场成交额、涨停观察等行情联动图。当前包含行情监控、全市场成交额、涨停观察表。
+- 行情：指数走势、市场价格、全市场成交额、涨停观察等行情联动图。当前包含 A-000 市场热度仪表盘、行情监控、全市场成交额、涨停观察表。A-000 为复合指标，复用本地已缓存的成交额、宽度、涨停、集中度、风格成交占比和 ETF 资金，不单独新增抓数任务；维护时必须保留图下分项说明和审计状态。
 - 宏观：利率、通胀、信用、经济增长、政策等宏观指标。当前包含图十。
 - 估值：PE、PB、ERP、标准差通道、估值分位等指标。当前包含图四系列和中信 PB-ROE。
 - 盈利：ROE、利润增速、收入增速、盈利预测、财报汇总等指标。当前包含工业企业利润同比与全年外推。
 - 流动性：ETF资金流、融资融券、市场流动性指标。当前包含大宽基 ETF 资金流、科创50 ETF 资金流。
-- 情绪：换手、成交集中度、主题成交占比、风险偏好、拥挤度、风格价差、估值离散度、舆情或情绪指标。当前包含情绪指数、成交集中度、宽基/主题成交占比、中信拥挤度、价值成长价差、中信 PB 离散度。
+- 情绪：换手、成交集中度、主题成交占比、风险偏好、拥挤度、风格价差、风格收益、估值离散度、舆情或情绪指标。当前包含情绪指数、成交集中度、宽基/主题成交占比、风格成交分布、风格收益热力图、中信拥挤度、价值成长价差、中信 PB 离散度。
 - 港股：港股情绪、南向资金、分母端利率、汇率、AH溢价、恒生估值、ERP、股息率等港股专属指标。当前使用 `scripts/update_hk_dashboard.py` 调用 Wind 金融能力并本地缓存。
 
 新增指标时，优先判断其所属分类，在 `scripts/build_site_from_processed.py` 和 `scripts/update_etf_dashboard.py` 的对应 `category-panel` 中追加图表，不要重新创建新的一级分类，除非用户明确要求扩展分类体系。
@@ -277,7 +280,7 @@ date,index_name,pe_ttm
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_industry_crowding.py
+python scripts/update_citic_industry_crowding.py
 ```
 
 默认数据源：
@@ -305,7 +308,7 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_limit_up_tables.py
+python scripts/update_limit_up_tables.py
 ```
 
 数据源与口径：
@@ -321,7 +324,7 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_theme_amount_share.py
+python scripts/update_theme_amount_share.py
 ```
 
 数据源与口径：
@@ -337,7 +340,7 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_market_turnover.py
+python scripts/update_market_turnover.py
 ```
 
 数据源与口径：
@@ -352,7 +355,7 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_hk_dashboard.py
+python scripts/update_hk_dashboard.py
 ```
 
 数据源与口径：
@@ -368,7 +371,7 @@ date,wind_code,industry,pe_ttm,pb_lf,amount_100mn
 更新脚本：
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_overview.py
+python scripts/update_macro_overview.py
 ```
 
 数据源与口径：

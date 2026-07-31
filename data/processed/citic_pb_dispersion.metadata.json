@@ -1,7 +1,7 @@
 {
   "source": "gjdata:AIndexValuation+AIndexWindIndustriesEOD",
   "status": "ok",
-  "latest_date": "2026-07-27",
+  "latest_date": "2026-07-30",
   "unit": "index/pctile-std",
   "notes": [
     "PB percentile uses trailing 10-year trading-day window (2520 days, min 1260 observations).",

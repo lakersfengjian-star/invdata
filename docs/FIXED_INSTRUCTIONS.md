@@ -4,25 +4,26 @@
 
 ## 一句话触发
 
-按固定指令更新 `/Users/jianfeng/Documents/投研助手` 的投研数据页，增量抓取数据、生成图表、更新 `site/index.html`，并输出 VS Code 推送清单。
+按固定指令更新 `<本机仓库目录>` 的投研数据页，增量抓取数据、生成图表、更新 `site/index.html`，并输出 VS Code 推送清单。
 
 ## 运行方式
 
 ```bash
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_etf_dashboard.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_index_amount_share.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_theme_amount_share.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_market_turnover.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_hk_dashboard.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_value_growth_spread.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_pb_dispersion.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_wind_index_valuation.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_overview.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_credit_inventory.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_macro_fiscal.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_limit_up_tables.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/update_citic_industry_crowding.py
-/Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_site_from_processed.py
+python scripts/update_etf_dashboard.py
+python scripts/update_index_amount_share.py
+python scripts/update_theme_amount_share.py
+python scripts/update_market_turnover.py
+python scripts/update_hk_dashboard.py
+python scripts/update_value_growth_spread.py
+python scripts/update_citic_pb_dispersion.py
+python scripts/update_style_performance.py
+python scripts/update_wind_index_valuation.py
+python scripts/update_macro_overview.py
+python scripts/update_macro_credit_inventory.py
+python scripts/update_macro_fiscal.py
+python scripts/update_limit_up_tables.py
+python scripts/update_citic_industry_crowding.py
+python scripts/build_site_from_processed.py
 ```
 
 ## 输出
@@ -59,6 +60,7 @@
 - `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频，宏观调度）。指标为规模以上工业企业利润总额累计值/累计同比（国家统计局，每月 27 日左右发布上月数据，归入月末 28–31 日 23:00 宏观发布窗口）。历史底座 `data/raw/industrial_profits_wind.csv`（Wind EDB M0000556/M0000557 一次性铺底），增量由 `scripts/update_industrial_profits.py` 走 AkShare 统计局接口，已覆盖预期月份时零请求。图形以实线展示历史年度同比，2026 年按过去 1/3/5 年同期累计利润占全年比例均值线性外推全年利润总额，再计算隐含全年同比并用三条虚线表示；当年最新累计同比实际值只做点状标签。
 - `fig_014_value_growth_spread.png`：价值成长风格价差（日频）。口径为中证红利指数股息率减双创50盈利收益率（`100 / PE_TTM`），区间自 2021-01-01 起，数据优先来自 `/gjdata` 的 `AIndexValuation` 表。
 - `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度（日频）。左轴万得全A收盘价，右轴为中信一级行业 PB_LF 过去 10 年滚动历史分位的横截面标准差，并取 5 日均值；数据优先来自 `/gjdata` 的 `AIndexValuation` 与 `AIndexWindIndustriesEOD`。
+- `F-010 style_return_heatmap`：风格收益热力图（日频 HTML 表格）。底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 `/gjdata` 的 `AIndexEODPrices` 获取沪深300、中证500、中证1000、中证2000、中证TMT、红利低波、中证红利、科创50收盘价和日涨跌幅；页面展示1日、5日、20日、60日、年初至今收益。
 - `fig_016_hk_sentiment.png`：港股情绪（日频），参考 `3_情绪指标_港股.xlsx` 的分项Z值逻辑，数据来自 Wind 金融能力。
 - `fig_017_hk_rates.png`：HIBOR隔夜与美国10年国债收益率（日频），数据来自 Wind 金融能力。
 - `fig_018_hk_fx.png`：美元指数与美元兑港元（日频），数据来自 Wind 金融能力。
@@ -148,6 +150,14 @@ TMT/红利低波成交额占比：
 - 计算：逐行业按过去 10 年交易日窗口计算 PB_LF 历史分位；对当日全部中信一级行业分位取横截面标准差，再计算 5 个交易日滚动平均。
 - 输出：`data/processed/citic_pb_dispersion.csv`、`data/processed/citic_pb_dispersion.metadata.json`、`fig_015_citic_pb_dispersion.png`。
 
+风格收益热力图：
+
+- 起始日期：2024-01-01。
+- 数据源：优先 `/gjdata`，读取 `AIndexEODPrices` 的 `S_DQ_CLOSE` 和 `S_DQ_PCTCHANGE`。
+- 指数：沪深300 `000300.SH`、中证500 `000905.SH`、中证1000 `000852.SH`、中证2000 `932000.CSI`、中证TMT `000998.CSI`、红利低波 `h30269.CSI`、中证红利 `000922.CSI`、科创50 `000688.SH`。
+- 计算：1日收益优先使用 `S_DQ_PCTCHANGE`，5/20/60日与年初至今收益由收盘价计算。
+- 输出：`data/processed/style_index_performance.csv`、`data/processed/style_index_performance.metadata.json`，页面表格 `F-010` 随 `scripts/build_site_from_processed.py` 生成。
+
 宏观经济数据概览：
 
 - 图表标题：宏观经济数据概览。
@@ -217,11 +227,19 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 | 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
 | 宏观（统计局/央行发布） | 官方常见发布窗口（每月 9–20 日、27–31 日）的次日 06:00 尝试更新 | GitHub Actions 调度器 |
 
+本地日频任务文件：
+
+- 项目内模板：`launch_agents/com.invdata.dashboard.daily.plist`。
+- 启动脚本：`scripts/local_daily_update.sh`。
+- 安装位置：`~/Library/LaunchAgents/com.invdata.dashboard.daily.plist`。
+- 运行日志：`~/Library/Logs/InvDataDashboard/local_daily_update.out.log`、`~/Library/Logs/InvDataDashboard/local_daily_update.err.log`。
+- 重要限制：macOS 后台 LaunchAgent 直接访问 `~/Documents/投研助手` 可能被系统隐私权限卡在 Python `open/getcwd` 阶段；若手动运行脚本正常但 LaunchAgent 无日志、进程长时间 running，需要给 `/bin/zsh`、Codex Python 或 Terminal 授予“系统设置 → 隐私与安全性 → 完全磁盘访问”，或改用 Terminal 桥接执行。
+
 ### 增量取数与新鲜度守卫
 
 - 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `scheduled`/`daily`/`macro`/`all`），它使用 Asia/Shanghai 时间判断上一交易日和宏观发布窗口，对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
 - 编排器在实际运行脚本后写入 `data/processed/update_audit.json`，记录运行模式、期望日频日期、执行脚本、跳过原因、构建结果和 Wind 本地依赖提示。
-- 依赖 `/gjdata` 的脚本在调度器中登记为本地能力依赖；若运行环境没有 `/Users/jianfeng/.codex/skills/gjdata/scripts/index.py`，直接跳过并记录 `local_gjdata_unavailable`，不得用旧缓存冒充更新。
+- 依赖 `/gjdata` 的脚本在调度器中登记为本地能力依赖；若运行环境没有 `~/.codex/skills/gjdata/scripts/index.py`，直接跳过并记录 `local_gjdata_unavailable`，不得用旧缓存冒充更新。
 - 本地 Wind 任务（情绪、拥挤度）的 prompt 同样要求先查日期、已最新则直接结束。
 - Wind 取数一律使用缓存+断点续传，只补缺失区间：情绪用 `data/raw/sentiment_cache/`，拥挤度用 `data/raw/wind_cli_cache/`；拥挤度例行周更必须带 `--refresh-latest`（只失效最近 45 天缓存块，历史块复用）。
 - 新增图表的更新脚本也必须"只取增量"：先读本地 CSV 最大日期，仅请求缺失区间。
@@ -241,6 +259,8 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 4. 在 `scripts/build_site_from_processed.py` 中：新增画图函数（图内无标题）、在对应板块插入 `chart-section`、标题前使用注册表编号、`freq_badge()` 标注更新频率、附数据说明与风险提示，并在 `chart_note_block(..., chart_key)` 中传入注册表 key。
 5. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 或 `/gjdata` 本地能力的日频/周频新建或并入本地定时任务（T+1 时间同上表）。
 6. 重建 `python scripts/build_site_from_processed.py`，确认 `site/meta.json` 包含新图表日期，`site/chart_audit.json` 包含新图表状态后本地提交。
+
+复合指标规则：如 A-000 市场热度仪表盘、F-009 风格成交分布仪表盘这类由多张底层表合成的指标，优先复用 `data/processed/` 本地缓存，不为合成分数新增抓数任务；必须在图下说明列出分项、方向、分位窗口或非分位口径，并在审计备注中说明样本过短或分项缺失。风格成交占比只能解释交易关注度和拥挤度，不能写成收益贡献。
 
 ### 自动更新流程（GitHub Actions）
 

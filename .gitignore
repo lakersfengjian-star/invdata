@@ -8,3 +8,6 @@ outputs/
 __pycache__/
 *.pyc
 .pytest_cache/
+.vscode/
+logs/
+data/raw/sentiment_cache/

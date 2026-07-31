@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -13,7 +14,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = ROOT / "data" / "processed"
-WIND_SKILL_DIR = Path("/Users/jianfeng/.agents/skills/wind-mcp-skill")
+WIND_SKILL_DIR = Path(
+    os.environ.get("WIND_SKILL_DIR", Path.home() / ".agents" / "skills" / "wind-mcp-skill")
+).expanduser()
 CLI = WIND_SKILL_DIR / "scripts" / "cli.mjs"
 
 BEGIN_DATE = "19970101"

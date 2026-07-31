@@ -8,6 +8,7 @@ logic should use these keys instead of scattered hard-coded lists.
 from __future__ import annotations
 
 CHART_REGISTRY: list[dict[str, str]] = [
+    {"key": "market_heat", "id": "A-000", "title": "A股市场热度仪表盘", "category": "行情", "frequency": "daily"},
     {"key": "market_monitor", "id": "A-001", "title": "行情监控面板", "category": "行情", "frequency": "daily"},
     {"key": "market_turnover", "id": "A-002", "title": "全市场成交额变化", "category": "行情", "frequency": "daily"},
     {"key": "limit_up_longest", "id": "A-003", "title": "涨停观察：连续涨停天数前十", "category": "行情", "frequency": "daily"},
@@ -29,6 +30,8 @@ CHART_REGISTRY: list[dict[str, str]] = [
     {"key": "turnover_top100", "id": "F-003", "title": "A股成交额前100大公司交易集中度", "category": "情绪", "frequency": "daily"},
     {"key": "amount_share", "id": "F-004", "title": "主要宽基指数成交额占全A成交额比例", "category": "情绪", "frequency": "daily"},
     {"key": "theme_amount_share", "id": "F-005", "title": "TMT与红利低波成交额占全A成交额比例", "category": "情绪", "frequency": "daily"},
+    {"key": "style_turnover_distribution", "id": "F-009", "title": "风格成交分布仪表盘", "category": "情绪", "frequency": "daily"},
+    {"key": "style_return_heatmap", "id": "F-010", "title": "风格收益热力图", "category": "情绪", "frequency": "daily"},
     {"key": "industry_crowding", "id": "F-006", "title": "中信一级行业估值与成交拥挤度", "category": "情绪", "frequency": "weekly"},
     {"key": "value_growth_spread", "id": "F-007", "title": "价值成长风格价差", "category": "情绪", "frequency": "daily"},
     {"key": "citic_pb_dispersion", "id": "F-008", "title": "中信一级行业估值离散度", "category": "情绪", "frequency": "daily"},

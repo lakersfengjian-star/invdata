@@ -11,6 +11,7 @@ CSV without calling Wind again.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from calendar import monthrange
@@ -24,7 +25,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from common import PROCESSED_DIR, RAW_DIR, VALUATION_START_DATE, ensure_dirs, write_metadata  # noqa: E402
 
-WIND_SKILL_DIR = Path("/Users/jianfeng/.agents/skills/wind-mcp-skill")
+WIND_SKILL_DIR = Path(
+    os.environ.get("WIND_SKILL_DIR", Path.home() / ".agents" / "skills" / "wind-mcp-skill")
+).expanduser()
 CLI = WIND_SKILL_DIR / "scripts" / "cli.mjs"
 OUT_CSV = RAW_DIR / "index_pe_ttm_wind.csv"
 OUT_META = RAW_DIR / "index_pe_ttm_wind.metadata.json"

@@ -14,6 +14,7 @@ Primary source:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -27,7 +28,9 @@ if str(ROOT / "scripts") not in sys.path:
 
 from common import CITIC_LEVEL1, PROCESSED_DIR, write_metadata  # noqa: E402
 
-GJ_INDEX = Path("/Users/jianfeng/.codex/skills/gjdata/scripts/index.py")
+GJ_INDEX = Path(
+    os.environ.get("GJDATA_SCRIPT", Path.home() / ".codex" / "skills" / "gjdata" / "scripts" / "index.py")
+).expanduser()
 OUT_CSV = PROCESSED_DIR / "citic_pb_dispersion.csv"
 OUT_META = PROCESSED_DIR / "citic_pb_dispersion.metadata.json"
 START_DATE = "20050101"
@@ -38,7 +41,7 @@ MIN_PERIODS = 1260
 def run_gjdata_json(args: list[str]) -> list[dict]:
     if not GJ_INDEX.exists():
         raise FileNotFoundError(f"gjdata script not found: {GJ_INDEX}")
-    cmd = ["python3", str(GJ_INDEX), *args, "--format", "json"]
+    cmd = [sys.executable, str(GJ_INDEX), *args, "--format", "json"]
     proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, check=True)
     text = proc.stdout.strip()
     if not text or text == "无数据":

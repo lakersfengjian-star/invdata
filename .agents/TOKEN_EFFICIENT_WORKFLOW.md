@@ -99,7 +99,7 @@ Actions 状态、页面 HTML 和图片链接检查单次不大，但多次轮询
 默认运行：
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_site_from_processed.py
+PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache python scripts/build_site_from_processed.py
 ```
 
 该步骤只依赖 `data/processed` 汇总文件，生成：
@@ -142,7 +142,7 @@ git status --short
 若需要命令行辅助，只给固定命令，不持续排障：
 
 ```bash
-cd /Users/jianfeng/Documents/投研助手
+cd <本机仓库目录>
 git status -sb
 git log --oneline -3
 git push origin HEAD:main

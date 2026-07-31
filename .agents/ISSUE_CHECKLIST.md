@@ -56,7 +56,7 @@ find site/assets/charts -maxdepth 1 -type f -name '*.png' -print | sort
 若图片旧但路径正确，重新运行：
 
 ```bash
-PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache /Users/jianfeng/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/build_site_from_processed.py
+PYTHONPYCACHEPREFIX=/tmp/codex-pycache MPLCONFIGDIR=/tmp/matplotlib-cache python scripts/build_site_from_processed.py
 ```
 
 ## 5. 中文乱码或字体异常

@@ -21,7 +21,7 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-OUT_DIR = Path("/Users/jianfeng/Documents/投研助手/output")
+OUT_DIR = Path(__file__).resolve().parents[1] / "output"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 PDF_PATH = OUT_DIR / "长鑫科技IPO招股说明书精华摘要.pdf"
 CHART_PATH = OUT_DIR / "cxmt_finance_chart.png"
