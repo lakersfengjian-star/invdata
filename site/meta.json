@@ -1,10 +1,10 @@
 {
-  "updated_at": "2026-07-31 21:55:16",
-  "build_time": "2026-07-31 21:55:16",
+  "updated_at": "2026-07-31 22:52:23",
+  "build_time": "2026-07-31 22:52:23",
   "latest_common_date": "2026-07-30",
   "latest_daily_date": "2026-07-31",
   "latest_weekly_date": "2026-07-30",
-  "latest_macro_date": "2026-06-30",
+  "latest_macro_date": "2026-07-31",
   "daily_lagging_charts": [
     "amount_share",
     "broad_etf_flow",
@@ -39,6 +39,9 @@
     "macro_inventory": "2026-06-30",
     "macro_m1_m2": "2026-06-30",
     "macro_fiscal": "2026-06-30",
+    "macro_pmi_headline": "2026-07-31",
+    "macro_pmi_components": "2026-07-31",
+    "macro_pmi_industries": "2026-07-31",
     "valuation_hs300": "2026-07-30",
     "valuation_sse": "2026-07-30",
     "valuation_wind_all_a": "2026-07-31",

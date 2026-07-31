@@ -913,6 +913,113 @@ def draw_macro_fiscal_chart(df: pd.DataFrame | None, out_path: Path) -> dict | N
     return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date}
 
 
+def draw_macro_pmi_headline_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    plot_df = df[df["group"].eq("headline")].copy()
+    plot_df["date"] = pd.to_datetime(plot_df["date"], errors="coerce")
+    for col in ["value", "mom_diff", "yoy_diff"]:
+        plot_df[col] = pd.to_numeric(plot_df[col], errors="coerce")
+    plot_df = plot_df.dropna(subset=["date", "value"])
+    if plot_df.empty:
+        return None
+    latest_date = plot_df["date"].max()
+    latest = plot_df[plot_df["date"].eq(latest_date)].sort_values("indicator")
+    colors = {"制造业PMI": "#c5513c", "服务业PMI": "#2f7cb8", "建筑业PMI": "#d4a51c"}
+    fig, axes = plt.subplots(1, 2, figsize=(17.2, 6.8), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    for ax in axes:
+        ax.set_facecolor("#fbfbf8")
+        ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+        ax.spines[["top", "right"]].set_visible(False)
+    recent = plot_df[plot_df["date"].ge(latest_date - pd.DateOffset(years=5))]
+    for name, sub in recent.groupby("indicator"):
+        axes[0].plot(sub["date"], sub["value"], linewidth=2.2, label=name, color=colors.get(name))
+    axes[0].axhline(50, color="#59636e", linestyle="--", linewidth=1.1, alpha=0.9)
+    axes[0].set_title("PMI景气指数（近5年）", loc="left", fontsize=13, fontweight="bold")
+    axes[0].set_ylabel("指数", fontsize=11)
+    axes[0].legend(loc="lower left", ncol=3, frameon=False, fontsize=9.5)
+    set_time_axis(axes[0], recent["date"], compact=True)
+    width = 0.34
+    x = range(len(latest))
+    axes[1].bar([i - width / 2 for i in x], latest["mom_diff"], width, label="环比点差", color="#2f7cb8")
+    axes[1].bar([i + width / 2 for i in x], latest["yoy_diff"], width, label="同比点差", color="#c5513c")
+    axes[1].axhline(0, color="#59636e", linewidth=1.0)
+    axes[1].set_xticks(list(x), latest["indicator"])
+    axes[1].set_title(f"{latest_date:%Y-%m} 同比与环比变化", loc="left", fontsize=13, fontweight="bold")
+    axes[1].set_ylabel("指数点", fontsize=11)
+    axes[1].legend(loc="best", frameon=False, fontsize=10)
+    for i, row in enumerate(latest.itertuples()):
+        axes[1].text(i, min(axes[1].get_ylim()[0] * 0.2, -0.12), f"{row.value:.1f}", ha="center", va="top", fontsize=9, color="#34404a")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date.strftime("%Y-%m-%d")}
+
+
+def draw_macro_pmi_components_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    sub = df[df["group"].eq("component")].copy()
+    sub["date"] = pd.to_datetime(sub["date"], errors="coerce")
+    sub["value"] = pd.to_numeric(sub["value"], errors="coerce")
+    sub = sub.dropna(subset=["date", "value"])
+    latest_date = sub["date"].max()
+    recent_dates = sorted(sub["date"].unique())[-12:]
+    order = ["生产", "新订单", "新出口订单", "在手订单", "产成品库存", "采购量", "进口", "主要原材料购进价格", "原材料库存", "从业人员", "供应商配送时间"]
+    matrix = sub[sub["date"].isin(recent_dates)].pivot(index="indicator", columns="date", values="value").reindex(order)
+    if matrix.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(16.8, 8.2), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    image = ax.imshow(matrix.to_numpy(dtype=float), cmap="RdYlGn", vmin=44, vmax=56, aspect="auto")
+    ax.set_yticks(range(len(matrix.index)), matrix.index, fontsize=10)
+    ax.set_xticks(range(len(matrix.columns)), [d.strftime("%Y-%m") for d in matrix.columns], rotation=45, ha="right", fontsize=9)
+    for row in range(matrix.shape[0]):
+        for col in range(matrix.shape[1]):
+            value = matrix.iloc[row, col]
+            if pd.notna(value):
+                ax.text(col, row, f"{value:.1f}", ha="center", va="center", fontsize=8, color="#263238")
+    ax.set_title("制造业PMI分项（最近12个月）", loc="left", fontsize=14, fontweight="bold", pad=12)
+    fig.colorbar(image, ax=ax, fraction=0.02, pad=0.02, label="PMI指数")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date.strftime("%Y-%m-%d")}
+
+
+def draw_macro_pmi_industries_chart(df: pd.DataFrame | None, out_path: Path) -> dict | None:
+    setup_fonts()
+    if df is None or df.empty:
+        return None
+    sub = df[df["group"].eq("industry")].copy()
+    sub["date"] = pd.to_datetime(sub["date"], errors="coerce")
+    sub["value"] = pd.to_numeric(sub["value"], errors="coerce")
+    sub = sub.dropna(subset=["date", "value"])
+    if sub.empty:
+        return None
+    latest_date = sub["date"].max()
+    recent = sub[sub["date"].ge(latest_date - pd.DateOffset(years=3))]
+    fig, ax = plt.subplots(figsize=(15.8, 7.0), dpi=180)
+    fig.patch.set_facecolor("#fbfbf8")
+    ax.set_facecolor("#fbfbf8")
+    palette = ["#c5513c", "#2f7cb8", "#d4a51c", "#2a9d55"]
+    for (name, series), color in zip(recent.groupby("indicator"), palette):
+        ax.plot(series["date"], series["value"], linewidth=2.3, marker="o", markersize=2.8, label=name, color=color)
+    ax.axhline(50, color="#59636e", linestyle="--", linewidth=1.1, alpha=0.9)
+    ax.set_ylabel("PMI指数", fontsize=11)
+    ax.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.65)
+    ax.spines[["top", "right"]].set_visible(False)
+    set_time_axis(ax, recent["date"], compact=True)
+    ax.legend(loc="best", ncol=2, frameon=False, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path.relative_to(ROOT)), "last_date": latest_date.strftime("%Y-%m-%d")}
+
+
 def draw_citic_industry_crowding_chart(df: pd.DataFrame | None, metadata: dict, out_path: Path) -> dict | None:
     setup_fonts()
     if df is None or df.empty:
@@ -2334,6 +2441,9 @@ def build_page(
     macro_inventory_chart: dict | None = None,
     macro_m1_m2_chart: dict | None = None,
     macro_fiscal_chart: dict | None = None,
+    macro_pmi_headline_chart: dict | None = None,
+    macro_pmi_components_chart: dict | None = None,
+    macro_pmi_industries_chart: dict | None = None,
     macro_meta: dict | None = None,
     sentiment_chart: dict | None = None,
     sentiment_meta: dict | None = None,
@@ -2396,6 +2506,9 @@ def build_page(
         "macro_inventory": (macro_inventory_chart or {}).get("last_date", ""),
         "macro_m1_m2": (macro_m1_m2_chart or {}).get("last_date", ""),
         "macro_fiscal": (macro_fiscal_chart or {}).get("last_date", ""),
+        "macro_pmi_headline": (macro_pmi_headline_chart or {}).get("last_date", ""),
+        "macro_pmi_components": (macro_pmi_components_chart or {}).get("last_date", ""),
+        "macro_pmi_industries": (macro_pmi_industries_chart or {}).get("last_date", ""),
         "valuation_hs300": valuation_date_by_key.get("valuation_hs300", ""),
         "valuation_sse": valuation_date_by_key.get("valuation_sse", ""),
         "valuation_wind_all_a": valuation_date_by_key.get("valuation_wind_all_a", ""),
@@ -2582,6 +2695,36 @@ def build_page(
             "左图展示一般公共预算收入、支出累计同比；右图展示中央一般公共预算收入和地方一般公共预算本级收入累计同比。数据均来自 Wind EDB 财政部月度指标，单位为%。",
             "财政数据为累计同比，受预算节奏、退税缴税节奏、转移支付和财政口径调整影响，单月变化不宜简单线性外推全年。",
             "macro_fiscal",
+        )}
+      </section>''')
+    if macro_pmi_headline_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-005</span>制造业、服务业与建筑业PMI（截至{macro_pmi_headline_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_pmi_headline_chart["path"]).name}?v={asset_version}" alt="制造业服务业建筑业PMI">
+        {chart_note_block(
+            "左图展示三类PMI指数及50荣枯线；右图展示最新月份环比和同比指数点差。环比=本月指数-上月指数，同比=本月指数-去年同月指数，均不是百分比增速。数据来自Wind EDB国家统计局口径。",
+            "PMI是环比扩散指数，50以上表示较上月扩张、50以下表示收缩；同比点差仅用于比较景气位置，不应解释为同比增长率。",
+            "macro_pmi_headline",
+        )}
+      </section>''')
+    if macro_pmi_components_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-006</span>制造业PMI分项（截至{macro_pmi_components_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_pmi_components_chart["path"]).name}?v={asset_version}" alt="制造业PMI分项热力图">
+        {chart_note_block(
+            "展示最近12个月制造业PMI生产、新订单、新出口订单、在手订单、产成品库存、采购量、进口、主要原材料购进价格、原材料库存、从业人员和供应商配送时间分项。",
+            "各分项均为扩散指数；供应商配送时间的经济含义与一般需求指标不同，极端天气和物流扰动也会影响读数。",
+            "macro_pmi_components",
+        )}
+      </section>''')
+    if macro_pmi_industries_chart:
+        macro_sections.append(f'''      <section class="chart-section">
+        <h2><span class="chart-num">B-007</span>制造业行业PMI（截至{macro_pmi_industries_chart["last_date"]}）{freq_badge("月频")}</h2>
+        <img src="assets/charts/{Path(macro_pmi_industries_chart["path"]).name}?v={asset_version}" alt="制造业行业PMI">
+        {chart_note_block(
+            "展示消费品制造业、高技术制造业、基础原材料行业和装备制造业PMI，虚线为50荣枯线；数据来自Wind EDB中国物流与采购联合会口径。",
+            "行业PMI历史披露存在个别月份缺失，图中仅连接有效观测；行业样本和综合制造业PMI不可直接等权加总。",
+            "macro_pmi_industries",
         )}
       </section>''')
     macro_html = "\n".join(macro_sections) if macro_sections else '<p class="empty-note">暂无图表。</p>'
@@ -3576,6 +3719,9 @@ def main() -> None:
     macro_inventory_chart = None
     macro_m1_m2_chart = None
     macro_fiscal_chart = None
+    macro_pmi_headline_chart = None
+    macro_pmi_components_chart = None
+    macro_pmi_industries_chart = None
     macro_meta = {}
     macro_path = PROCESSED_DIR / "macro_overview.csv"
     macro_meta_path = PROCESSED_DIR / "macro_overview.metadata.json"
@@ -3596,6 +3742,12 @@ def main() -> None:
     if macro_fiscal_path.exists():
         macro_fiscal = pd.read_csv(macro_fiscal_path, parse_dates=["date"])
         macro_fiscal_chart = draw_macro_fiscal_chart(macro_fiscal, CHART_DIR / "fig_025_macro_fiscal.png")
+    macro_pmi_path = PROCESSED_DIR / "macro_pmi.csv"
+    if macro_pmi_path.exists():
+        macro_pmi = pd.read_csv(macro_pmi_path, parse_dates=["date"])
+        macro_pmi_headline_chart = draw_macro_pmi_headline_chart(macro_pmi, CHART_DIR / "fig_026_macro_pmi_headline.png")
+        macro_pmi_components_chart = draw_macro_pmi_components_chart(macro_pmi, CHART_DIR / "fig_027_macro_pmi_components.png")
+        macro_pmi_industries_chart = draw_macro_pmi_industries_chart(macro_pmi, CHART_DIR / "fig_028_macro_pmi_industries.png")
     sentiment_chart = None
     sentiment_meta = {}
     sentiment_path = PROCESSED_DIR / "sentiment_index.csv"
@@ -3696,6 +3848,9 @@ def main() -> None:
         macro_inventory_chart,
         macro_m1_m2_chart,
         macro_fiscal_chart,
+        macro_pmi_headline_chart,
+        macro_pmi_components_chart,
+        macro_pmi_industries_chart,
         macro_meta,
         sentiment_chart,
         sentiment_meta,

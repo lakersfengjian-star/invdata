@@ -1,0 +1,86 @@
+{
+  "source": "wind:economic_data.natural_language_get_edb_data",
+  "status": "ok",
+  "latest_date": "2026-07-31",
+  "unit": "index/percentage-point",
+  "notes": [
+    "PMI is a diffusion index; mom_diff and yoy_diff are index-point differences, not growth rates",
+    "Headline series: manufacturing, services and construction",
+    "Manufacturing components and four industry-group PMI series are included"
+  ],
+  "indicator_codes": {
+    "M0017126": [
+      "制造业PMI",
+      "headline"
+    ],
+    "M5207838": [
+      "服务业PMI",
+      "headline"
+    ],
+    "M5207831": [
+      "建筑业PMI",
+      "headline"
+    ],
+    "M0017127": [
+      "生产",
+      "component"
+    ],
+    "M0017128": [
+      "新订单",
+      "component"
+    ],
+    "M0017129": [
+      "新出口订单",
+      "component"
+    ],
+    "M0017130": [
+      "在手订单",
+      "component"
+    ],
+    "M0017131": [
+      "产成品库存",
+      "component"
+    ],
+    "M0017132": [
+      "采购量",
+      "component"
+    ],
+    "M0017133": [
+      "进口",
+      "component"
+    ],
+    "M0017134": [
+      "主要原材料购进价格",
+      "component"
+    ],
+    "M0017135": [
+      "原材料库存",
+      "component"
+    ],
+    "M0017136": [
+      "从业人员",
+      "component"
+    ],
+    "M0017137": [
+      "供应商配送时间",
+      "component"
+    ],
+    "M6642296": [
+      "消费品制造业",
+      "industry"
+    ],
+    "M6642294": [
+      "高技术制造业",
+      "industry"
+    ],
+    "M6642297": [
+      "基础原材料行业",
+      "industry"
+    ],
+    "M6642295": [
+      "装备制造业",
+      "industry"
+    ]
+  },
+  "rows": 2281
+}

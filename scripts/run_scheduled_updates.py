@@ -62,6 +62,7 @@ MACRO_DATASETS: dict[str, str] = {
     "update_macro_overview.py": "macro_overview.metadata.json",
     "update_macro_credit_inventory.py": "macro_credit_inventory.metadata.json",
     "update_macro_fiscal.py": "macro_fiscal.metadata.json",
+    "update_macro_pmi.py": "macro_pmi.metadata.json",
     "update_industrial_profits.py": "industrial_profits.metadata.json",
 }
 
@@ -74,6 +75,7 @@ LOCAL_WIND_DATASETS = {
     "update_citic_pb_dispersion.py",
     "update_style_performance.py",
     "update_wind_index_valuation.py",
+    "update_macro_pmi.py",
 }
 SCRIPT_TIMEOUT_SECONDS = 45 * 60
 

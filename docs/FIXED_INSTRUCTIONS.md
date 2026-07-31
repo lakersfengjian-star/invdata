@@ -15,6 +15,7 @@ python scripts/update_theme_amount_share.py
 python scripts/update_market_turnover.py
 python scripts/update_hk_dashboard.py
 python scripts/update_value_growth_spread.py
+python scripts/update_macro_pmi.py
 python scripts/update_citic_pb_dispersion.py
 python scripts/update_style_performance.py
 python scripts/update_wind_index_valuation.py

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-31 21:55:16",
+  "generated_at": "2026-07-31 22:52:23",
   "expected_dates": {
     "daily": "2026-07-31",
     "weekly": "2026-07-30",
-    "monthly": "2026-06-30",
+    "monthly": "2026-07-31",
     "manual": ""
   },
   "charts": [
@@ -17,7 +17,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -30,7 +30,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -43,7 +43,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -56,7 +56,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -69,7 +69,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -78,11 +78,11 @@
       "title": "宏观经济数据概览",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-06-30",
+      "expected_date": "2026-07-31",
       "actual_date": "2026-06-01",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -91,11 +91,11 @@
       "title": "规模以上工业企业名义和实际库存同比",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-06-30",
+      "expected_date": "2026-07-31",
       "actual_date": "2026-06-30",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -104,11 +104,11 @@
       "title": "M1-M2剪刀差",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-06-30",
+      "expected_date": "2026-07-31",
       "actual_date": "2026-06-30",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -117,11 +117,50 @@
       "title": "一般公共预算收支与央地收入分化",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-06-30",
+      "expected_date": "2026-07-31",
       "actual_date": "2026-06-30",
+      "status": "lagging",
+      "status_label": "滞后",
+      "built_at": "2026-07-31 22:52:23",
+      "notes": []
+    },
+    {
+      "key": "macro_pmi_headline",
+      "id": "B-005",
+      "title": "制造业、服务业与建筑业PMI",
+      "category": "宏观",
+      "frequency": "monthly",
+      "expected_date": "2026-07-31",
+      "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
+      "notes": []
+    },
+    {
+      "key": "macro_pmi_components",
+      "id": "B-006",
+      "title": "制造业PMI分项",
+      "category": "宏观",
+      "frequency": "monthly",
+      "expected_date": "2026-07-31",
+      "actual_date": "2026-07-31",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-31 22:52:23",
+      "notes": []
+    },
+    {
+      "key": "macro_pmi_industries",
+      "id": "B-007",
+      "title": "制造业行业PMI",
+      "category": "宏观",
+      "frequency": "monthly",
+      "expected_date": "2026-07-31",
+      "actual_date": "2026-07-31",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -134,7 +173,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -147,7 +186,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -160,7 +199,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -173,7 +212,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -186,7 +225,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -195,11 +234,11 @@
       "title": "工业企业利润同比与全年外推",
       "category": "盈利",
       "frequency": "monthly",
-      "expected_date": "2026-06-30",
+      "expected_date": "2026-07-31",
       "actual_date": "2026-05-01",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -212,7 +251,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -225,7 +264,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -238,7 +277,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -251,7 +290,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -264,7 +303,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -277,7 +316,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -290,7 +329,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -303,7 +342,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -316,7 +355,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -329,7 +368,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -342,7 +381,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -355,7 +394,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -368,7 +407,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": [
         "港股情绪-宽度分项：breadth_z 覆盖 570/633 个交易日，首个有效日 2024-04-05，最后有效日 2026-07-30。",
         "港股情绪-波动率分项：vhsi_z 覆盖 574/633 个交易日，首个有效日 2024-03-27，最后有效日 2026-07-30。",
@@ -387,7 +426,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -400,7 +439,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -413,7 +452,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -426,7 +465,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -439,7 +478,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -452,7 +491,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -465,7 +504,7 @@
       "actual_date": "2026-07-30",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     },
     {
@@ -478,7 +517,7 @@
       "actual_date": "",
       "status": "manual",
       "status_label": "不定期",
-      "built_at": "2026-07-31 21:55:16",
+      "built_at": "2026-07-31 22:52:23",
       "notes": []
     }
   ]
