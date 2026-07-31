@@ -12,7 +12,8 @@ fi
 
 cd "$PROJECT_ROOT"
 
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+WIND_NODE_DIR="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin"
+export PATH="$WIND_NODE_DIR:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export PYTHONUNBUFFERED=1
 export PYTHONPYCACHEPREFIX=/tmp/codex-pycache
 export MPLCONFIGDIR="$PROJECT_ROOT/.work/cache/matplotlib"

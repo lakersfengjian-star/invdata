@@ -2168,7 +2168,7 @@ def render_style_return_heatmap(style_return: dict) -> str:
           </table>
         </div>
         {chart_note_block(
-            "展示主要宽基、主题和红利风格指数的阶段收益；底层收盘价与日涨跌幅来自 /gjdata 的 AIndexEODPrices 表，5/20/60日按交易日收盘价计算，年初至今以当年首个本地样本为起点。",
+            "展示主要宽基、主题和红利风格指数的阶段收益；底层收盘价来自 Wind 金融能力的指数日 K 线，5/20/60日按交易日收盘价计算，年初至今以当年首个本地样本为起点。",
             "指数收益只反映对应指数口径，不能替代可投资产品收益；若某指数最新日期滞后或停更，审计状态会提示滞后，热力颜色只用于快速观察强弱。",
             "style_return_heatmap",
         )}
@@ -2607,7 +2607,7 @@ def build_page(
         <h2><span class="chart-num">F-007</span>价值成长风格价差（截至{value_growth_spread_chart["last_date"]}）{freq_badge("日频")}</h2>
         <img src="assets/charts/{Path(value_growth_spread_chart["path"]).name}?v={asset_version}" alt="价值成长风格价差">
         {chart_note_block(
-            "价差 = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)，区间自 2021-01-01 起；虚线和阴影标注样本期历史上限/下限区间。数据优先来自 /gjdata 的 AIndexValuation 表。",
+            "价差 = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)，区间自 2021-01-01 起；虚线和阴影标注样本期历史上限/下限区间。估值序列来自 Wind 金融能力。",
             "股息率和 PE_TTM 是指数估值口径，可能因成分调整、盈利口径修订和亏损样本处理而变化；极值区间只代表历史样本观察，不构成风格配置建议。",
             "value_growth_spread",
         )}
@@ -2615,10 +2615,10 @@ def build_page(
     pb_dispersion_html = ""
     if citic_pb_dispersion_chart:
         pb_dispersion_html = f'''      <section class="chart-section">
-        <h2><span class="chart-num">F-008</span>中信一级行业估值离散度（截至{citic_pb_dispersion_chart["last_date"]}）{freq_badge("日频")}</h2>
+        <h2><span class="chart-num">F-008</span>中信一级行业估值离散度（截至{citic_pb_dispersion_chart["last_date"]}）{freq_badge("周频")}</h2>
         <img src="assets/charts/{Path(citic_pb_dispersion_chart["path"]).name}?v={asset_version}" alt="中信一级行业估值离散度">
         {chart_note_block(
-            "左轴为万得全A收盘价(881001.WI)，右轴为中信一级行业 PB_LF 历史分位的横截面标准差，并取 5 个交易日滚动平均(MA5)。PB 分位采用过去 10 年交易日滚动窗口计算，数据自 2005 年起从 /gjdata 读取。",
+            "左轴为万得全A周末对应的最近收盘价(881001.WI)，右轴为中信一级行业 PB_LF 过去 10 年周频滚动分位的横截面标准差，并取 5 周滚动平均(MA5)。行业估值与指数行情均来自 Wind 金融能力。",
             "PB 分位标准差衡量行业估值分布离散程度，受行业样本、指数口径和 10 年滚动窗口影响；早期窗口未满时不会绘制离散度。",
             "citic_pb_dispersion",
         )}

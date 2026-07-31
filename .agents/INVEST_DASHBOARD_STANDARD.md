@@ -70,12 +70,11 @@
 
 ## 数据源优先级
 
-1. `/gjdata` 技能数据库：股票、债券、基金、指数、基准、衍生品、商品等数据库覆盖范围内的指标，优先从 `financedata` 库读取；若数据库已有可用时间序列，不再重复联网抓取历史数据。使用前按技能要求先查 `数据字典分类.xlsx`，再单表取数，禁止跨表 JOIN。
-2. 官方数据源：交易所、国家统计局、人民银行等公开接口或下载文件。宏观数据、分钟级/高频/实时行情不在 `/gjdata` 覆盖范围内，应直接进入本层或后续 fallback；包括上交所 ETF 历史规模、深交所基金规模日频数据、公开行情 K 线、统计局宏观数据、央行金融数据等。
-3. AkShare 封装接口：当 `/gjdata` 和官方接口缺失或不可用时使用，包括 ETF 单位净值、A股代码表、公开估值封装接口等。
-4. Tushare/Wind/本地 CSV：作为最后 fallback；Wind 授权数据优先由本地脚本读取，不通过对话搬运。万得全A PE_TTM 可走此层。
+1. Wind 万得金融能力：股票、债券、基金、指数、行业与宏观等金融数据优先使用 Wind；已有本地历史序列时只补最新缺口。
+2. 官方数据源：交易所、国家统计局、人民银行等公开接口或下载文件。
+3. AkShare 封装接口：当 Wind 和官方接口缺失或不可用时使用。
 
-执行要求：新增或更新任何非宏观、非高频指标时，先检查 `/gjdata` 是否可用并记录查询口径；只有数据库缺少该指标、缺少最新日期或字段口径不满足要求时，才进入下一层数据源。宏观指标按国家统计局、人民银行等官方源优先。更新完成后应将可复用时间序列落盘到 `data/processed/`，后续只增量补最新日期。
+执行要求：新增或更新指标时记录 Wind 查询口径和可用性；只有 Wind 缺少指标、日期或字段口径不满足时，才进入下一层数据源。更新完成后将可复用时间序列落盘到 `data/processed/`，后续只增量补最新日期。
 
 ## 标准更新流程
 
@@ -198,7 +197,7 @@ git push origin HEAD:main
 发布后检查：
 
 ```bash
-VERCEL_SITE_URL="https://<your-vercel-domain>"
+VERCEL_SITE_URL="https://invdata-v3va.vercel.app"
 curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' "$VERCEL_SITE_URL/"
 rg -n "assets/charts|截至|区间" /tmp/invdata-page.html
 curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE_URL/assets/charts/fig_001_broad_etf_flow.png"
@@ -224,7 +223,7 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 - `fig_006_citic_industry_crowding.png`：中信一级行业估值与成交拥挤度。数据优先来自 Wind API；若本机没有 WindPy 或授权不可用，读取 `data/raw/citic_industry_crowding_weekly.csv`。
 - `fig_007_theme_amount_share.png`：中证TMT、红利低波成交额占全A成交额比例。数据来自中证指数官网指数行情接口，分母与图五一致。
 - `F-009 style_turnover_distribution`：风格成交分布仪表盘，复用 `index_amount_share.csv` 和 `theme_amount_share.csv`。展示主要宽基、大小盘聚合、TMT、红利低波的最新成交占比、样本内分位、20/60交易日变化；这是交易关注度和拥挤度观察，不得表述为收益贡献。
-- `F-010 style_return_heatmap`：风格收益热力图，底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 `/gjdata` 的 `AIndexEODPrices` 获取主要宽基、主题和红利风格指数收盘价及日涨跌幅。页面展示1日、5日、20日、60日、年初至今收益；这是风格强弱观察，不得替代组合业绩归因。
+- `F-010 style_return_heatmap`：风格收益热力图，底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 Wind 指数日 K 线获取主要宽基、主题和红利风格指数收盘价。页面展示1日、5日、20日、60日、年初至今收益；这是风格强弱观察，不得替代组合业绩归因。
 - `fig_008_market_turnover.png`：全市场成交额变化。起始日期为 2024-09-24，当前复用中证全指成交金额作为沪深京全市场成交额公开代理口径。
 - `fig_009_southbound_flow.png`：南向资金每日净流入与15日滚动累计。起始日期为 2026-01-01，数据来自 Wind 金融能力，口径为南向资金每日净买入合计，单位亿元。
 - `fig_010_macro_overview.png`：宏观经济数据概览。横向分面展示最近六个有效数据点，共享 Y 轴，0 值不绘制。
@@ -234,8 +233,8 @@ curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）。
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图。随中信拥挤度周频数据衍生更新。
 - `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频）。实线为历史年度同比，当前年份用近1/3/5年同期进度外推并以虚线表示。
-- `fig_014_value_growth_spread.png`：价值成长风格价差。中证红利股息率 - 双创50盈利收益率，日频，优先 `/gjdata`。
-- `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度。万得全A收盘价 vs 中信一级行业 PB 历史分位标准差 MA5，日频，优先 `/gjdata`。
+- `fig_014_value_growth_spread.png`：价值成长风格价差。中证红利股息率 - 双创50盈利收益率，日频，使用 Wind 指数估值。
+- `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度。万得全A收盘价 vs 中信一级行业 PB 历史分位标准差 MA5，周频，使用 Wind。
 - `fig_016_hk_sentiment.png`：港股情绪。参考 `3_情绪指标_港股.xlsx` 的分项Z值逻辑，数据来自 Wind 金融能力。
 - `fig_017_hk_rates.png`：HIBOR隔夜与美国10年国债收益率，数据来自 Wind 金融能力。
 - `fig_018_hk_fx.png`：美元指数与美元兑港元，数据来自 Wind 金融能力。

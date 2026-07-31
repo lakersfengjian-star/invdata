@@ -23,9 +23,6 @@ ROOT = Path(__file__).resolve().parents[1]
 RUN_CWD = Path(os.environ.get("INVDATA_RUN_CWD", ROOT))
 PROCESSED_DIR = ROOT / "data" / "processed"
 AUDIT_PATH = PROCESSED_DIR / "update_audit.json"
-GJDATA_SCRIPT = Path(
-    os.environ.get("GJDATA_SCRIPT", Path.home() / ".codex" / "skills" / "gjdata" / "scripts" / "index.py")
-).expanduser()
 WIND_CLI = Path(
     os.environ.get("WIND_CLI", Path.home() / ".agents" / "skills" / "wind-mcp-skill" / "scripts" / "cli.mjs")
 ).expanduser()
@@ -70,14 +67,12 @@ MACRO_DATASETS: dict[str, str] = {
 
 MACRO_RELEASE_DAYS = set(range(9, 21)) | set(range(27, 32))
 MACRO_MIN_INTERVAL_H = 20
-LOCAL_GJDATA_DATASETS = {
-    "update_value_growth_spread.py",
-    "update_citic_pb_dispersion.py",
-    "update_style_performance.py",
-}
 LOCAL_WIND_DATASETS = {
     "update_sentiment_index.py",
     "update_hk_dashboard.py",
+    "update_value_growth_spread.py",
+    "update_citic_pb_dispersion.py",
+    "update_style_performance.py",
     "update_wind_index_valuation.py",
 }
 SCRIPT_TIMEOUT_SECONDS = 45 * 60
@@ -189,9 +184,6 @@ def main() -> None:
             if args.mode not in {"all"} and state["fresh"]:
                 skipped.append({"script": script, "reason": "fresh", **state})
                 continue
-            if script in LOCAL_GJDATA_DATASETS and not GJDATA_SCRIPT.exists():
-                skipped.append({"script": script, "reason": "local_gjdata_unavailable", **state})
-                continue
             if script in LOCAL_WIND_DATASETS and not WIND_CLI.exists():
                 skipped.append({"script": script, "reason": "local_wind_unavailable", **state})
                 continue
@@ -220,7 +212,7 @@ def main() -> None:
         "notes": [
             "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
             "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
-            "GitHub Actions 环境通常无本地 /gjdata 技能；依赖 /gjdata 的指标在缺少脚本时跳过，避免用旧缓存制造无效提交。",
+            "价值成长价差、中信 PB 离散度与风格收益改用本地 Wind 金融能力；GitHub Actions 缺少该能力时跳过。",
             "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。",
         ],
     }

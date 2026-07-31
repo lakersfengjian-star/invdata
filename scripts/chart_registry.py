@@ -34,7 +34,7 @@ CHART_REGISTRY: list[dict[str, str]] = [
     {"key": "style_return_heatmap", "id": "F-010", "title": "风格收益热力图", "category": "情绪", "frequency": "daily"},
     {"key": "industry_crowding", "id": "F-006", "title": "中信一级行业估值与成交拥挤度", "category": "情绪", "frequency": "weekly"},
     {"key": "value_growth_spread", "id": "F-007", "title": "价值成长风格价差", "category": "情绪", "frequency": "daily"},
-    {"key": "citic_pb_dispersion", "id": "F-008", "title": "中信一级行业估值离散度", "category": "情绪", "frequency": "daily"},
+    {"key": "citic_pb_dispersion", "id": "F-008", "title": "中信一级行业估值离散度", "category": "情绪", "frequency": "weekly"},
     {"key": "hk_sentiment", "id": "G-001", "title": "港股情绪", "category": "港股", "frequency": "daily"},
     {"key": "southbound", "id": "G-002", "title": "南向资金每日净流入", "category": "港股", "frequency": "daily"},
     {"key": "hk_rates", "id": "G-003", "title": "港股分母端：HIBOR隔夜与美国10年国债收益率", "category": "港股", "frequency": "daily"},

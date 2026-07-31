@@ -1,11 +1,12 @@
 {
-  "source": "gjdata:AIndexValuation+AIndexWindIndustriesEOD",
+  "source": "wind:citic-weekly-pb+index_data.get_index_kline",
   "status": "ok",
-  "latest_date": "2026-07-30",
+  "latest_date": "2026-07-26",
   "unit": "index/pctile-std",
   "notes": [
-    "PB percentile uses trailing 10-year trading-day window (2520 days, min 1260 observations).",
-    "PB dispersion MA5 is the 5-trading-day moving average of cross-industry PB percentile standard deviation.",
-    "left axis uses Wind All A close, code 881001.WI, table AIndexWindIndustriesEOD."
+    "CITIC PB(LF) comes from the Wind weekly crowding cache for 30 level-1 industries.",
+    "PB percentile uses a trailing 10-year weekly window (520 weeks, minimum 260).",
+    "PB dispersion MA5 is the 5-week moving average of cross-industry PB percentile standard deviation.",
+    "left axis uses Wind All A weekly close from Wind index K-lines, code 881001.WI."
   ]
 }

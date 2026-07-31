@@ -58,9 +58,9 @@ python scripts/build_site_from_processed.py
 - `fig_011_sentiment_index.png`：上证等权情绪指数（六指标 3 年分位等权，右侧含分项分位小图）
 - `fig_012_citic_industry_pb_roe.png`：中信一级行业 PB-ROE 散点图（周频）。构建时衍生图：由 `data/raw/citic_industry_crowding_weekly.csv` 最新周 PB_LF/PE_TTM 推导 ROE（ROE≈PB/PE 恒等式，同一价格口径下成立，零新增取数），叠加 `data/processed/citic_industry_crowding.csv` 的 PB 十年分位上色；随拥挤度周度数据自动更新，无需注册新取数脚本。
 - `fig_013_industrial_profits.png`：工业企业利润年度同比与全年外推（月频，宏观调度）。指标为规模以上工业企业利润总额累计值/累计同比（国家统计局，每月 27 日左右发布上月数据，归入月末 28–31 日 23:00 宏观发布窗口）。历史底座 `data/raw/industrial_profits_wind.csv`（Wind EDB M0000556/M0000557 一次性铺底），增量由 `scripts/update_industrial_profits.py` 走 AkShare 统计局接口，已覆盖预期月份时零请求。图形以实线展示历史年度同比，2026 年按过去 1/3/5 年同期累计利润占全年比例均值线性外推全年利润总额，再计算隐含全年同比并用三条虚线表示；当年最新累计同比实际值只做点状标签。
-- `fig_014_value_growth_spread.png`：价值成长风格价差（日频）。口径为中证红利指数股息率减双创50盈利收益率（`100 / PE_TTM`），区间自 2021-01-01 起，数据优先来自 `/gjdata` 的 `AIndexValuation` 表。
-- `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度（日频）。左轴万得全A收盘价，右轴为中信一级行业 PB_LF 过去 10 年滚动历史分位的横截面标准差，并取 5 日均值；数据优先来自 `/gjdata` 的 `AIndexValuation` 与 `AIndexWindIndustriesEOD`。
-- `F-010 style_return_heatmap`：风格收益热力图（日频 HTML 表格）。底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 `/gjdata` 的 `AIndexEODPrices` 获取沪深300、中证500、中证1000、中证2000、中证TMT、红利低波、中证红利、科创50收盘价和日涨跌幅；页面展示1日、5日、20日、60日、年初至今收益。
+- `fig_014_value_growth_spread.png`：价值成长风格价差（日频）。口径为中证红利指数股息率减双创50盈利收益率（`100 / PE_TTM`），区间自 2021-01-01 起，数据来自 Wind 指数估值能力。
+- `fig_015_citic_pb_dispersion.png`：中信一级行业估值离散度（周频）。左轴万得全A周末对应的最近收盘价，右轴为中信一级行业 PB_LF 过去 10 年周频滚动历史分位的横截面标准差，并取 5 周均值；数据来自 Wind。
+- `F-010 style_return_heatmap`：风格收益热力图（日频 HTML 表格）。底层数据为 `data/processed/style_index_performance.csv`，由 `scripts/update_style_performance.py` 从 Wind 指数日 K 线获取沪深300、中证500、中证1000、中证2000、中证TMT、红利低波、中证红利、科创50收盘价；页面展示1日、5日、20日、60日、年初至今收益。
 - `fig_016_hk_sentiment.png`：港股情绪（日频），参考 `3_情绪指标_港股.xlsx` 的分项Z值逻辑，数据来自 Wind 金融能力。
 - `fig_017_hk_rates.png`：HIBOR隔夜与美国10年国债收益率（日频），数据来自 Wind 金融能力。
 - `fig_018_hk_fx.png`：美元指数与美元兑港元（日频），数据来自 Wind 金融能力。
@@ -72,12 +72,12 @@ python scripts/build_site_from_processed.py
 
 ## 数据源优先级
 
-1. `/gjdata` 技能数据库。股票、债券、基金、指数、基准、衍生品、商品等数据库覆盖范围内的数据先查 `financedata`；若已有历史序列，只补最新缺口，避免重复联网抓取。使用时先查 `数据字典分类.xlsx`，再按单表取数。
-2. 官方数据源：交易所、国家统计局、人民银行等公开接口或下载文件。宏观数据、分钟级/高频/实时行情不在 `/gjdata` 覆盖范围内，直接从本层开始。
+1. Wind 万得金融能力。股票、债券、基金、指数、行业、宏观等金融数据优先使用 Wind；若已有本地历史序列，只补最新缺口，避免重复联网抓取。
+2. 官方数据源：交易所、国家统计局、人民银行等公开接口或下载文件。
 3. AkShare 封装接口。
 4. Wind API、Tushare 或本地 CSV fallback。Wind 授权数据优先在本地脚本中读取，不通过对话搬运。
 
-后续新增非宏观、非高频指标必须先写明 `/gjdata` 查询口径和可用性；仅当数据库无数据、日期未更新或口径不满足时，才使用下一层数据源。宏观指标优先写明统计局、人民银行等官方口径。
+后续新增指标必须写明 Wind 查询口径和可用性；仅当 Wind 无数据、日期未更新或口径不满足时，才使用下一层数据源。宏观指标可优先采用统计局、人民银行等官方口径。
 
 ## 本地 CSV fallback
 
@@ -139,21 +139,21 @@ TMT/红利低波成交额占比：
 价值成长风格价差：
 
 - 起始日期：2021-01-01。
-- 数据源：优先 `/gjdata`，读取 `AIndexValuation` 中证红利 `000922.CSI` 的 `DIVIDEND_YIELD` 与双创50 `931643.CSI` 的 `PE_TTM`。
+- 数据源：Wind 指数估值，中证红利 `000922.CSI` 的股息率与双创50 `931643.CSI` 的 PE(TTM)。
 - 计算：双创50盈利收益率 = `100 / PE_TTM`；价值成长价差 = 中证红利股息率 - 双创50盈利收益率，单位为百分点。
 - 输出：`data/processed/value_growth_spread.csv`、`data/processed/value_growth_spread.metadata.json`、`fig_014_value_growth_spread.png`。
 
 中信一级行业估值离散度：
 
 - 起始日期：2005-01-01。
-- 数据源：优先 `/gjdata`，中信一级行业 PB_LF 来自 `AIndexValuation`，万得全A `881001.WI` 收盘价来自 `AIndexWindIndustriesEOD`。
+- 数据源：Wind；中信一级行业 PB_LF 使用周频缓存，万得全A `881001.WI` 使用指数日 K 线并转换为周频。
 - 计算：逐行业按过去 10 年交易日窗口计算 PB_LF 历史分位；对当日全部中信一级行业分位取横截面标准差，再计算 5 个交易日滚动平均。
 - 输出：`data/processed/citic_pb_dispersion.csv`、`data/processed/citic_pb_dispersion.metadata.json`、`fig_015_citic_pb_dispersion.png`。
 
 风格收益热力图：
 
 - 起始日期：2024-01-01。
-- 数据源：优先 `/gjdata`，读取 `AIndexEODPrices` 的 `S_DQ_CLOSE` 和 `S_DQ_PCTCHANGE`。
+- 数据源：Wind 指数日 K 线收盘价，阶段收益由本地计算。
 - 指数：沪深300 `000300.SH`、中证500 `000905.SH`、中证1000 `000852.SH`、中证2000 `932000.CSI`、中证TMT `000998.CSI`、红利低波 `h30269.CSI`、中证红利 `000922.CSI`、科创50 `000688.SH`。
 - 计算：1日收益优先使用 `S_DQ_PCTCHANGE`，5/20/60日与年初至今收益由收盘价计算。
 - 输出：`data/processed/style_index_performance.csv`、`data/processed/style_index_performance.metadata.json`，页面表格 `F-010` 随 `scripts/build_site_from_processed.py` 生成。
@@ -222,7 +222,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 | --- | --- | --- |
 | 公开源总调度 | 每天 06:00 | GitHub Actions（cron `0 22 * * *` UTC），由 `scripts/run_scheduled_updates.py --mode scheduled` 判断日频/宏观是否需要运行 |
 | 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | T+1 06:00（覆盖上一交易日收盘，节假日用工作日近似，已最新则跳过） | GitHub Actions 调度器 |
-| 日频（依赖 `/gjdata` 的指数/行业底层库指标） | T+1 06:00（覆盖上一交易日收盘，已最新则跳过） | 本地或具备 `/gjdata` 的调度环境；GitHub Actions 无该能力时自动跳过 |
+| 日频/周频（依赖 Wind 的指数/行业指标） | T+1 06:00（日频）或周日 10:00（周频） | 具备 Wind 金融能力的本地调度环境；GitHub Actions 无该能力时自动跳过 |
 | 情绪指数（依赖 Wind 能力） | 周二至周六 06:00 | 本地定时任务（cron `0 6 * * 2-6` Asia/Shanghai） |
 | 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
 | 宏观（统计局/央行发布） | 官方常见发布窗口（每月 9–20 日、27–31 日）的次日 06:00 尝试更新 | GitHub Actions 调度器 |
@@ -239,7 +239,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 
 - 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `scheduled`/`daily`/`macro`/`all`），它使用 Asia/Shanghai 时间判断上一交易日和宏观发布窗口，对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
 - 编排器在实际运行脚本后写入 `data/processed/update_audit.json`，记录运行模式、期望日频日期、执行脚本、跳过原因、构建结果和 Wind 本地依赖提示。
-- 依赖 `/gjdata` 的脚本在调度器中登记为本地能力依赖；若运行环境没有 `~/.codex/skills/gjdata/scripts/index.py`，直接跳过并记录 `local_gjdata_unavailable`，不得用旧缓存冒充更新。
+- 依赖 Wind 的脚本在调度器中登记为本地能力依赖；若运行环境没有 Wind CLI 或授权，直接跳过并记录能力不可用，不得用旧缓存冒充更新。
 - 本地 Wind 任务（情绪、拥挤度）的 prompt 同样要求先查日期、已最新则直接结束。
 - Wind 取数一律使用缓存+断点续传，只补缺失区间：情绪用 `data/raw/sentiment_cache/`，拥挤度用 `data/raw/wind_cli_cache/`；拥挤度例行周更必须带 `--refresh-latest`（只失效最近 45 天缓存块，历史块复用）。
 - 新增图表的更新脚本也必须"只取增量"：先读本地 CSV 最大日期，仅请求缺失区间。
@@ -257,7 +257,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 2. 在 `scripts/run_scheduled_updates.py` 的 `DAILY_DATASETS`（或周频/宏观相应位置）注册脚本与产出文件，新鲜度守卫自动生效。
 3. 先在 `scripts/chart_registry.py` 注册图表 `key/id/title/category/frequency`。板块用字母编号，板块内图表用 `A-001`、`A-002` 这类稳定编号；拆图时在所属板块内新增下一个编号，避免大面积顺移。
 4. 在 `scripts/build_site_from_processed.py` 中：新增画图函数（图内无标题）、在对应板块插入 `chart-section`、标题前使用注册表编号、`freq_badge()` 标注更新频率、附数据说明与风险提示，并在 `chart_note_block(..., chart_key)` 中传入注册表 key。
-5. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 或 `/gjdata` 本地能力的日频/周频新建或并入本地定时任务（T+1 时间同上表）。
+5. 更新频率决定调度：日频/宏观自动纳入 GitHub Actions；依赖 Wind 本地能力的日频/周频新建或并入本地定时任务（时间同上表）。
 6. 重建 `python scripts/build_site_from_processed.py`，确认 `site/meta.json` 包含新图表日期，`site/chart_audit.json` 包含新图表状态后本地提交。
 
 复合指标规则：如 A-000 市场热度仪表盘、F-009 风格成交分布仪表盘这类由多张底层表合成的指标，优先复用 `data/processed/` 本地缓存，不为合成分数新增抓数任务；必须在图下说明列出分项、方向、分位窗口或非分位口径，并在审计备注中说明样本过短或分项缺失。风格成交占比只能解释交易关注度和拥挤度，不能写成收益贡献。

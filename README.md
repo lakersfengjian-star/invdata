@@ -2,6 +2,8 @@
 
 可分享的静态投研数据站点：本地 Python 脚本增量抓数、生成图表与 `site/` 页面，推送 GitHub 后由 Vercel 自动部署。
 
+线上地址：<https://invdata-v3va.vercel.app/>
+
 > 项目固定规则（T+1 更新时间、增量取数、防重复刷新、新增图表接入清单）见 [`docs/FIXED_INSTRUCTIONS.md`](docs/FIXED_INSTRUCTIONS.md)，所有维护者和 AI 工具以此为准。
 
 ## 双机接力与本地环境
@@ -43,7 +45,7 @@
 | 情绪 | F-010 | 风格收益热力图（主要宽基/主题/红利风格阶段收益） | 日频 |
 | 情绪 | F-006 | 中信一级行业估值与成交拥挤度（含综合拥挤度排序） | 周频 |
 | 情绪 | F-007 | 价值成长风格价差（中证红利股息率 - 双创50盈利收益率） | 日频 |
-| 情绪 | F-008 | 中信一级行业估值离散度（万得全A vs PB分位标准差MA5） | 日频 |
+| 情绪 | F-008 | 中信一级行业估值离散度（万得全A vs PB分位标准差MA5） | 周频 |
 | 港股 | G-001 | 港股情绪 | 日频 |
 | 港股 | G-002 | 南向资金每日净流入（含15日滚动累计） | 日频 |
 | 港股 | G-003 | 港股分母端：HIBOR隔夜与美国10年国债收益率 | 日频 |
@@ -67,7 +69,7 @@
 - 宏观公开源：在统计局/央行常见发布窗口的次日 06:00 尝试更新；
 - 情绪指数（Wind）：本地定时任务周二至周六 06:00；
 - 中信拥挤度（Wind）：本地定时任务每周一 06:00；
-- 价值成长风格价差、中信 PB 离散度、风格收益热力图：优先走 `/gjdata`，由本地或具备 `/gjdata` 的调度环境日频补最新交易日；
+- 价值成长风格价差、中信 PB 离散度、风格收益热力图：使用 Wind 金融能力，由本地调度环境补充最新数据；其中中信 PB 离散度为周频，其余为日频；
 
 本地日频定时任务模板为 `launch_agents/com.invdata.dashboard.daily.plist`，启动脚本为 `scripts/local_daily_update.sh`。若手动运行脚本正常但 LaunchAgent 无日志且长时间 running，通常是 macOS 隐私权限阻止后台任务访问 `~/Documents/投研助手`，需给 `/bin/zsh`、Codex Python 或 Terminal 授予“完全磁盘访问”。
 
@@ -88,7 +90,7 @@ python scripts/fetch_citic_crowding_wind_cli.py --refresh-latest  # 拥挤度周
 python scripts/update_citic_industry_crowding.py
 python scripts/update_wind_index_valuation.py                 # 万得全A/除金融石化 PE_TTM 本地铺底或补数
 python scripts/update_hk_dashboard.py                         # 港股板块与南向资金，Wind 金融能力
-python scripts/update_style_performance.py                    # 风格指数阶段收益底层行情，/gjdata
+python scripts/update_style_performance.py                    # 风格指数阶段收益底层行情，Wind
 python scripts/update_macro_credit_inventory.py               # 宏观库存、PPI、M1、M2，Wind EDB
 python scripts/update_macro_fiscal.py                         # 财政收支和央地收入，Wind EDB
 python scripts/build_site_from_processed.py                   # 重建图表与站点
@@ -114,15 +116,15 @@ python scripts/build_site_from_processed.py                   # 重建图表与�
 - 价值成长风格价差：中证红利指数股息率减双创50盈利收益率（`100 / PE_TTM`），自 2021-01-01 起，标注样本历史上限和下限。
 - 中信 PB 离散度：中信一级行业 PB_LF 计算过去 10 年滚动历史分位，再取行业横截面标准差和 5 日均值；左轴同步展示万得全A收盘价。
 - 风格成交分布：复用 `index_amount_share.csv` 与 `theme_amount_share.csv`，展示沪深300、中证500、中证1000、中证2000、大盘+中盘、小盘+微盘、TMT、红利低波的成交占比、样本内分位以及20/60交易日变化；用于观察交易关注度和风格拥挤，不等同于收益贡献。
-- 风格收益热力图：底层行情来自 `/gjdata` 的 `AIndexEODPrices`，覆盖沪深300、中证500、中证1000、中证2000、中证TMT、红利低波、中证红利、科创50；展示1日、5日、20日、60日、年初至今收益，作为风格强弱观察。
+- 风格收益热力图：底层行情来自 Wind 指数日 K 线，覆盖沪深300、中证500、中证1000、中证2000、中证TMT、红利低波、中证红利、科创50；展示1日、5日、20日、60日、年初至今收益，作为风格强弱观察。
 - 宏观库存与货币：库存图使用 Wind EDB 规模以上工业企业产成品存货同比与 PPI 同比，实际库存同比 = 名义库存同比 - PPI同比；M1-M2 图使用 Wind EDB 的 M1/M2 同比差值。
 - 财政图：一般公共预算收入、支出、中央收入、地方本级收入累计同比均来自 Wind EDB 财政部月度指标。
 - 港股板块：数据来自 Wind 金融能力并本地缓存。港股情绪参考 `3_情绪指标_港股.xlsx` 的分项Z值逻辑；南向资金使用 Wind 南向净买入合计并补15日滚动累计；恒生 PE/ERP 的均值、标准差和分位基于当前本地缓存样本计算，后续可单独回填更长历史。
 
 ## 数据源顺序
 
-1. `/gjdata` 金融底层数据库：优先覆盖指数估值、指数行情、行业估值等已入库数据；后续只补本地最大日期后的缺口。
-2. Wind 万得金融能力（本地，AIFin Market CLI / WindPy）：情绪指数、中信拥挤度等 `/gjdata` 暂缺或口径不足的数据。
+1. Wind 万得金融能力（本地，AIFin Market CLI / WindPy）：指数估值、指数行情、行业估值、情绪指数和中信拥挤度等金融数据；可复用时间序列落盘后只补最新缺口。
+2. 官方数据源：交易所、国家统计局、人民银行等公开接口或下载文件。
 3. 交易所及公开行情接口：上交所 ETF 历史规模、腾讯公开 K 线、东方财富（涨停池、沪深港通）、中证指数官网。
 4. AkShare：ETF 单位净值、中债收益率等封装接口。
 5. Tushare：脚本已预留 `TUSHARE_TOKEN` fallback；配置后可补深交所 ETF 历史份额。

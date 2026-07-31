@@ -159,7 +159,7 @@ git push origin HEAD:main
 固定检查：
 
 ```bash
-VERCEL_SITE_URL="https://<your-vercel-domain>"
+VERCEL_SITE_URL="https://invdata-v3va.vercel.app"
 curl -L -sS -o /tmp/invdata-page.html -w '%{http_code} %{url_effective}\n' "$VERCEL_SITE_URL/"
 rg -n "assets/charts|截至|区间" /tmp/invdata-page.html
 curl -L -sS -o /tmp/chart.png -w '%{http_code} %{size_download}\n' "$VERCEL_SITE_URL/assets/charts/fig_001_broad_etf_flow.png"

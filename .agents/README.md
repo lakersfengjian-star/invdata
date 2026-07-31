@@ -8,7 +8,7 @@
 
 后续接手任务时，先读以上三份文档，再执行数据更新或发布。若任务涉及 Vercel、数据快照、图表生成或线上核验，必须同时遵守 token 节省规范。
 
-全项目数据源顺序固定为：数据库覆盖范围内的数据先用 `/gjdata` 技能从 `financedata` 取数；数据库不可用或口径/日期不满足时，再依次使用交易所、国家统计局、人民银行等官方数据源，AkShare，最后才使用 Wind API、Tushare 或本地 CSV fallback。`/gjdata` 不包含宏观数据、分钟级/高频或实时行情；宏观指标直接从统计局、人民银行等官方源开始。时间序列必须优先本地落盘，后续只补最新缺口。
+全项目金融数据优先使用 Wind 万得金融能力；Wind 不可用或口径/日期不满足时，再依次使用交易所、国家统计局、人民银行等官方数据源和 AkShare。时间序列必须优先本地落盘，后续只补最新缺口。
 
 新增图表需优先独立成 `scripts/update_<metric>.py`，本地落盘到 `data/processed/` 后再由 `scripts/build_site_from_processed.py` 统一生成页面。当前新增行业拥挤度图为 `fig_006_citic_industry_crowding.png`，Wind 不可用时读取 `data/raw/citic_industry_crowding_weekly.csv`。
 

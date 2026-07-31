@@ -1,170 +1,101 @@
 #!/usr/bin/env python3
-"""Update CITIC level-1 industry PB percentile dispersion.
-
-Metric:
-  right axis = stddev of CITIC level-1 industry PB historical percentiles,
-  smoothed by 5 trading days (MA5). Historical percentile uses a trailing
-  10-year trading-day window.
-
-Primary source:
-  - gjdata AIndexValuation for CITIC industry PB_LF
-  - gjdata AIndexWindIndustriesEOD for Wind All A close (881001.WI)
-"""
+"""Build weekly CITIC PB dispersion from Wind-cached industry inputs."""
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT / "scripts") not in sys.path:
-    sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts"))
 
-from common import CITIC_LEVEL1, PROCESSED_DIR, write_metadata  # noqa: E402
+from common import PROCESSED_DIR, RAW_DIR, write_metadata  # noqa: E402
+from common.wind_cli import cached_call, parse_kline, year_chunks  # noqa: E402
 
-GJ_INDEX = Path(
-    os.environ.get("GJDATA_SCRIPT", Path.home() / ".codex" / "skills" / "gjdata" / "scripts" / "index.py")
-).expanduser()
+INPUT_CSV = RAW_DIR / "citic_industry_crowding_weekly.csv"
 OUT_CSV = PROCESSED_DIR / "citic_pb_dispersion.csv"
 OUT_META = PROCESSED_DIR / "citic_pb_dispersion.metadata.json"
-START_DATE = "20050101"
-WINDOW_DAYS = 2520
-MIN_PERIODS = 1260
+START_DATE = "20160101"
+WINDOW_WEEKS = 520
+MIN_WEEKS = 260
 
 
-def run_gjdata_json(args: list[str]) -> list[dict]:
-    if not GJ_INDEX.exists():
-        raise FileNotFoundError(f"gjdata script not found: {GJ_INDEX}")
-    cmd = [sys.executable, str(GJ_INDEX), *args, "--format", "json"]
-    proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, check=True)
-    text = proc.stdout.strip()
-    if not text or text == "无数据":
-        return []
-    return json.loads(text)
+def week_ending_sunday(values: pd.Series) -> pd.Series:
+    dates = pd.to_datetime(values, errors="coerce").dt.normalize()
+    return dates + pd.to_timedelta((6 - dates.dt.weekday) % 7, unit="D")
 
 
-def fetch_citic_pb() -> pd.DataFrame:
-    codes = ",".join(CITIC_LEVEL1.keys())
-    rows = run_gjdata_json([
-        "get",
-        "--table",
-        "AIndexValuation",
-        "--code",
-        codes,
-        "--start",
-        START_DATE,
-        "--end",
-        datetime.now().strftime("%Y%m%d"),
-        "--cols",
-        "S_INFO_WINDCODE,TRADE_DT,PB_LF",
-        "--limit",
-        "400000",
-    ])
-    if not rows:
-        return pd.DataFrame()
-    df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["TRADE_DT"])
-    df["wind_code"] = df["S_INFO_WINDCODE"]
-    df["industry"] = df["wind_code"].map(CITIC_LEVEL1)
-    df["pb_lf"] = pd.to_numeric(df["PB_LF"], errors="coerce")
-    return df[["date", "wind_code", "industry", "pb_lf"]].dropna(subset=["industry", "pb_lf"])
-
-
-def fetch_wind_all_a_close() -> pd.DataFrame:
-    rows = run_gjdata_json([
-        "get",
-        "--table",
-        "AIndexWindIndustriesEOD",
-        "--code",
-        "881001.WI",
-        "--start",
-        START_DATE,
-        "--end",
-        datetime.now().strftime("%Y%m%d"),
-        "--cols",
-        "S_INFO_WINDCODE,TRADE_DT,S_DQ_CLOSE",
-        "--limit",
-        "20000",
-    ])
-    if not rows:
-        return pd.DataFrame()
-    df = pd.DataFrame(rows)
-    df["date"] = pd.to_datetime(df["TRADE_DT"])
-    df["wind_all_a_close"] = pd.to_numeric(df["S_DQ_CLOSE"], errors="coerce")
-    return df[["date", "wind_all_a_close"]].dropna()
+def fetch_wind_all_a_weekly() -> pd.DataFrame:
+    records: list[dict] = []
+    for begin, end in year_chunks(START_DATE):
+        payload = cached_call(
+            f"citic_dispersion_wind_all_a_{begin}_{end}",
+            "index_data",
+            "get_index_kline",
+            {"windcode": "881001.WI", "begin_date": begin, "end_date": end, "period": "10"},
+        )
+        records.extend(parse_kline(payload))
+    frame = pd.DataFrame(records)
+    if frame.empty:
+        return frame
+    frame["date"] = pd.to_datetime(frame["date"], errors="coerce", utc=True).dt.tz_convert("Asia/Shanghai").dt.tz_localize(None).dt.normalize()
+    frame["wind_all_a_close"] = pd.to_numeric(frame["close"], errors="coerce")
+    frame = frame.dropna(subset=["date", "wind_all_a_close"]).sort_values("date")
+    frame["week"] = week_ending_sunday(frame["date"])
+    return frame.groupby("week", as_index=False).tail(1)[["week", "wind_all_a_close"]].rename(columns={"week": "date"})
 
 
 def percentile_last(values: pd.Series) -> float:
-    last = values.iloc[-1]
-    return float(values.rank(pct=True).iloc[-1]) if pd.notna(last) else float("nan")
+    return float(values.rank(pct=True).iloc[-1])
 
 
-def build_dispersion(pb: pd.DataFrame, close: pd.DataFrame) -> pd.DataFrame:
-    frames = []
+def main() -> None:
+    if not INPUT_CSV.exists():
+        raise FileNotFoundError(f"Wind CITIC weekly input not found: {INPUT_CSV}")
+    pb = pd.read_csv(INPUT_CSV)
+    pb["date"] = week_ending_sunday(pb["date"])
+    pb["pb_lf"] = pd.to_numeric(pb["pb_lf"], errors="coerce")
+    pb = pb.dropna(subset=["date", "wind_code", "pb_lf"]).drop_duplicates(["date", "wind_code"], keep="last")
+
+    frames: list[pd.DataFrame] = []
     for _, part in pb.sort_values("date").groupby("wind_code"):
         tmp = part.copy()
-        tmp["pb_percentile_10y"] = tmp["pb_lf"].rolling(WINDOW_DAYS, min_periods=MIN_PERIODS).apply(percentile_last, raw=False)
+        tmp["pb_percentile_10y"] = tmp["pb_lf"].rolling(WINDOW_WEEKS, min_periods=MIN_WEEKS).apply(percentile_last, raw=False)
         frames.append(tmp)
     pct = pd.concat(frames, ignore_index=True)
     dispersion = (
         pct.groupby("date")["pb_percentile_10y"]
-        .agg(lambda s: s.dropna().std(ddof=1) if s.dropna().size >= 10 else pd.NA)
+        .agg(lambda values: values.dropna().std(ddof=1) if values.dropna().size >= 10 else pd.NA)
         .reset_index(name="pb_dispersion_raw")
     )
     dispersion["pb_dispersion_raw"] = pd.to_numeric(dispersion["pb_dispersion_raw"], errors="coerce")
     dispersion = dispersion.dropna(subset=["pb_dispersion_raw"]).sort_values("date")
     dispersion["pb_dispersion_ma5"] = dispersion["pb_dispersion_raw"].rolling(5, min_periods=3).mean()
+
+    close = fetch_wind_all_a_weekly()
     out = dispersion.merge(close, on="date", how="left")
-    return out[["date", "wind_all_a_close", "pb_dispersion_raw", "pb_dispersion_ma5"]]
-
-
-def main() -> None:
-    source = "gjdata:AIndexValuation+AIndexWindIndustriesEOD"
-    status = "ok"
-    notes: list[str] = []
-    try:
-        pb = fetch_citic_pb()
-        close = fetch_wind_all_a_close()
-        if pb.empty:
-            raise RuntimeError("empty CITIC PB data")
-        if close.empty:
-            notes.append("Wind All A close unavailable; chart will show PB dispersion only")
-        df = build_dispersion(pb, close)
-    except Exception as exc:  # noqa: BLE001
-        notes.append(f"gjdata failed: {type(exc).__name__}: {str(exc)[:180]}")
-        if OUT_CSV.exists():
-            df = pd.read_csv(OUT_CSV, parse_dates=["date"])
-            source = "local-cache:citic_pb_dispersion.csv"
-            status = "cache-fallback"
-        else:
-            raise
-    if df.empty:
-        raise RuntimeError("CITIC PB dispersion has no available rows")
-    df = df.drop_duplicates("date").sort_values("date")
-    latest_date = df["date"].max().strftime("%Y-%m-%d")
-    out = df.copy()
+    if out.empty:
+        raise RuntimeError("Wind CITIC PB dispersion has no available rows")
+    latest_date = out["date"].max().strftime("%Y-%m-%d")
     out["date"] = out["date"].dt.strftime("%Y-%m-%d")
     out.to_csv(OUT_CSV, index=False)
     write_metadata(
         OUT_META,
-        source=source,
-        status=status,
+        source="wind:citic-weekly-pb+index_data.get_index_kline",
+        status="ok",
         latest_date=latest_date,
         unit="index/pctile-std",
         notes=[
-            "PB percentile uses trailing 10-year trading-day window (2520 days, min 1260 observations).",
-            "PB dispersion MA5 is the 5-trading-day moving average of cross-industry PB percentile standard deviation.",
-            "left axis uses Wind All A close, code 881001.WI, table AIndexWindIndustriesEOD.",
-            *notes,
+            "CITIC PB(LF) comes from the Wind weekly crowding cache for 30 level-1 industries.",
+            "PB percentile uses a trailing 10-year weekly window (520 weeks, minimum 260).",
+            "PB dispersion MA5 is the 5-week moving average of cross-industry PB percentile standard deviation.",
+            "left axis uses Wind All A weekly close from Wind index K-lines, code 881001.WI.",
         ],
     )
-    print(json.dumps({"latest_date": latest_date, "rows": len(out), "status": status}, ensure_ascii=False))
+    print(json.dumps({"latest_date": latest_date, "rows": len(out), "source": "Wind"}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
