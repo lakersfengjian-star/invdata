@@ -6,21 +6,21 @@
     "rates": "2026-07-31"
   },
   "run": {
-    "expected": "2026-07-30",
+    "expected": "2026-07-31",
     "indices": {
       "added": 3,
-      "notes": [
-        "fetch_em_indices: JSONDecodeError"
-      ]
+      "notes": []
     },
     "breadth": {
-      "added": 1,
+      "added": 0,
       "notes": [
-        "em_clist failed: JSONDecodeError"
+        "em_clist failed: JSONDecodeError",
+        "akshare fallback failed: ConnectionError",
+        "all breadth sources empty"
       ]
     },
     "rates": {
-      "added": 5,
+      "added": 0,
       "notes": []
     }
   }
