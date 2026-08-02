@@ -8,8 +8,10 @@
   "run": {
     "expected": "2026-07-31",
     "indices": {
-      "added": 3,
-      "notes": []
+      "added": 0,
+      "notes": [
+        "fetch_em_indices: JSONDecodeError"
+      ]
     },
     "breadth": {
       "added": 0,
