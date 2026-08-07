@@ -1,8 +1,8 @@
 {
   "source": "Eastmoney limit-up pool via AkShare; company profile from CNINFO via AkShare",
   "status": "ok",
-  "latest_date": "2026-08-06",
-  "pool_size": 79,
+  "latest_date": "2026-08-07",
+  "pool_size": 74,
   "notes": [
     "东方财富涨停股池不含ST股票及科创板股票，且未披露逐股涨停原因；原因字段为行业与连板特征归纳，后续可替换为同花顺/财联社原因源。"
   ]
