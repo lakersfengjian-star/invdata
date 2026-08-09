@@ -1,24 +1,18 @@
 {
   "mode": "scheduled",
   "effective_modes": [
-    "daily"
+    "daily",
+    "macro"
   ],
-  "checked_at": "2026-08-09 06:16:30 CST",
+  "checked_at": "2026-08-10 06:18:13 CST",
   "expected_latest_daily": "2026-08-07",
   "ran": [
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-08-08T22:16:30",
-      "finished_at": "2026-08-08T22:38:38"
-    },
-    {
-      "script": "update_market_monitor.py",
-      "status": "ok",
-      "returncode": 0,
-      "started_at": "2026-08-08T22:38:38",
-      "finished_at": "2026-08-08T22:39:11"
+      "started_at": "2026-08-09T22:18:13",
+      "finished_at": "2026-08-09T22:37:48"
     }
   ],
   "skipped": [
@@ -107,6 +101,40 @@
       "outputs": {
         "limit_up_tables.metadata.json": "2026-08-07"
       }
+    },
+    {
+      "script": "update_market_monitor.py",
+      "reason": "fresh",
+      "fresh": true,
+      "outputs": {
+        "market_monitor_breadth.csv": "2026-08-07",
+        "market_monitor_indices.csv": "2026-08-07"
+      }
+    },
+    {
+      "script": "update_macro_overview.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_overview.metadata.json"
+    },
+    {
+      "script": "update_macro_credit_inventory.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_credit_inventory.metadata.json"
+    },
+    {
+      "script": "update_macro_fiscal.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_fiscal.metadata.json"
+    },
+    {
+      "script": "update_macro_pmi.py",
+      "reason": "recently_attempted",
+      "metadata": "macro_pmi.metadata.json"
+    },
+    {
+      "script": "update_industrial_profits.py",
+      "reason": "recently_attempted",
+      "metadata": "industrial_profits.metadata.json"
     }
   ],
   "rebuilt": true,
@@ -114,8 +142,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-08-08T22:39:11",
-    "finished_at": "2026-08-08T22:39:27"
+    "started_at": "2026-08-09T22:37:48",
+    "finished_at": "2026-08-09T22:38:05"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
