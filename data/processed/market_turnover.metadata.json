@@ -1,7 +1,7 @@
 {
   "source": "CSI All Share trading value from index_amount_share.csv",
   "status": "ok",
-  "latest_date": "2026-08-10",
+  "latest_date": "2026-08-11",
   "unit": "100mn CNY",
   "notes": [
     "当前使用中证全指成交金额作为沪深京全市场成交额公开代理口径；若后续接入交易所逐日汇总或 Wind 全A 精确口径，可替换本序列。"
