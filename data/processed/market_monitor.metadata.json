@@ -1,16 +1,16 @@
 {
-  "latest_date": "2026-08-11",
+  "latest_date": "2026-08-12",
   "sections": {
-    "indices": "2026-08-11",
+    "indices": "2026-08-12",
     "breadth": "2026-08-07",
-    "rates": "2026-08-11"
+    "rates": "2026-08-12"
   },
   "run": {
-    "expected": "2026-08-10",
+    "expected": "2026-08-11",
     "indices": {
-      "added": 3,
+      "added": 5,
       "notes": [
-        "fetch_em_indices: JSONDecodeError"
+        "fetch_csindex_h00300: RuntimeError"
       ]
     },
     "breadth": {
