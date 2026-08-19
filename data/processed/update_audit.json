@@ -4,50 +4,50 @@
     "daily",
     "macro"
   ],
-  "checked_at": "2026-08-19 06:10:30 CST",
-  "expected_latest_daily": "2026-08-18",
+  "checked_at": "2026-08-20 06:12:40 CST",
+  "expected_latest_daily": "2026-08-19",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-08-18T22:10:30",
-      "finished_at": "2026-08-18T22:10:36"
+      "started_at": "2026-08-19T22:12:40",
+      "finished_at": "2026-08-19T22:12:46"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-08-18T22:10:36",
-      "finished_at": "2026-08-18T22:10:38"
+      "started_at": "2026-08-19T22:12:46",
+      "finished_at": "2026-08-19T22:12:49"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-08-18T22:10:38",
-      "finished_at": "2026-08-18T22:10:39"
+      "started_at": "2026-08-19T22:12:49",
+      "finished_at": "2026-08-19T22:12:49"
     },
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-08-18T22:10:39",
-      "finished_at": "2026-08-18T22:30:06"
+      "started_at": "2026-08-19T22:12:49",
+      "finished_at": "2026-08-19T22:18:06"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-08-18T22:30:06",
-      "finished_at": "2026-08-18T22:31:46"
+      "started_at": "2026-08-19T22:18:06",
+      "finished_at": "2026-08-19T22:18:45"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-08-18T22:31:46",
-      "finished_at": "2026-08-18T22:32:18"
+      "started_at": "2026-08-19T22:18:45",
+      "finished_at": "2026-08-19T22:19:09"
     }
   ],
   "skipped": [
@@ -136,8 +136,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-08-18T22:32:18",
-    "finished_at": "2026-08-18T22:32:35"
+    "started_at": "2026-08-19T22:19:09",
+    "finished_at": "2026-08-19T22:19:25"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
