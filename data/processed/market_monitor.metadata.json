@@ -6,12 +6,10 @@
     "rates": "2026-08-21"
   },
   "run": {
-    "expected": "2026-08-20",
+    "expected": "2026-08-21",
     "indices": {
       "added": 3,
-      "notes": [
-        "fetch_em_indices: JSONDecodeError"
-      ]
+      "notes": []
     },
     "breadth": {
       "added": 0,
@@ -22,7 +20,7 @@
       ]
     },
     "rates": {
-      "added": 5,
+      "added": 0,
       "notes": []
     }
   }
