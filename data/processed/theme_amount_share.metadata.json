@@ -1,7 +1,10 @@
 {
   "source": "CSI official index performance API",
   "start_date": "2024-01-01",
-  "latest_date": "2026-08-21",
+  "latest_date": NaN,
   "denominator": "中证全指成交金额，作为 Wind 全A 成交额公开代理口径",
-  "notes": []
+  "notes": [
+    "中证TMT：获取失败：ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))",
+    "红利低波：获取失败：ConnectionError: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))"
+  ]
 }
