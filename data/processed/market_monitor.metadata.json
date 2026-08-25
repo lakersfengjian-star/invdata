@@ -1,17 +1,15 @@
 {
-  "latest_date": "2026-08-24",
+  "latest_date": "2026-08-25",
   "sections": {
-    "indices": "2026-08-24",
-    "breadth": "2026-08-21",
-    "rates": "2026-08-24"
+    "indices": "2026-08-25",
+    "breadth": "2026-08-24",
+    "rates": "2026-08-25"
   },
   "run": {
-    "expected": "2026-08-21",
+    "expected": "2026-08-24",
     "indices": {
-      "added": 2,
-      "notes": [
-        "fetch_csindex_h00300: RuntimeError"
-      ]
+      "added": 6,
+      "notes": []
     },
     "breadth": {
       "added": 1,
