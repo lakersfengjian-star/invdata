@@ -1,26 +1,27 @@
 {
-  "latest_date": "2026-08-27",
+  "latest_date": "2026-08-28",
   "sections": {
-    "indices": "2026-08-27",
+    "indices": "2026-08-28",
     "breadth": "2026-08-26",
-    "rates": "2026-08-25"
+    "rates": "2026-08-28"
   },
   "run": {
-    "expected": "2026-08-26",
+    "expected": "2026-08-27",
     "indices": {
       "added": 6,
       "notes": []
     },
     "breadth": {
-      "added": 1,
-      "notes": []
-    },
-    "rates": {
       "added": 0,
       "notes": [
-        "chinamoney: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
-        "fdr007: JSONDecodeError"
+        "em_clist failed: JSONDecodeError",
+        "akshare fallback failed: ConnectionError",
+        "all breadth sources empty"
       ]
+    },
+    "rates": {
+      "added": 11,
+      "notes": []
     }
   }
 }
