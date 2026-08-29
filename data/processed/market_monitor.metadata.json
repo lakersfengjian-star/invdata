@@ -6,9 +6,9 @@
     "rates": "2026-08-28"
   },
   "run": {
-    "expected": "2026-08-27",
+    "expected": "2026-08-28",
     "indices": {
-      "added": 6,
+      "added": 4,
       "notes": []
     },
     "breadth": {
@@ -20,7 +20,7 @@
       ]
     },
     "rates": {
-      "added": 11,
+      "added": 4,
       "notes": []
     }
   }
