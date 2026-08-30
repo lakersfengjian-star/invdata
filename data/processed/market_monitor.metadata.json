@@ -8,7 +8,7 @@
   "run": {
     "expected": "2026-08-28",
     "indices": {
-      "added": 4,
+      "added": 0,
       "notes": []
     },
     "breadth": {
@@ -20,7 +20,7 @@
       ]
     },
     "rates": {
-      "added": 4,
+      "added": 0,
       "notes": []
     }
   }
