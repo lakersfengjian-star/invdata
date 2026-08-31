@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-30 00:03:03",
+  "generated_at": "2026-08-31 00:22:16",
   "expected_dates": {
     "daily": "2026-08-28",
     "weekly": "2026-07-30",
@@ -17,7 +17,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -30,7 +30,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -43,7 +43,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -56,7 +56,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -69,7 +69,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -82,7 +82,7 @@
       "actual_date": "2026-06-01",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -95,7 +95,7 @@
       "actual_date": "2026-06-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -108,7 +108,7 @@
       "actual_date": "2026-06-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -121,7 +121,7 @@
       "actual_date": "2026-06-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -134,7 +134,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -147,7 +147,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -160,7 +160,7 @@
       "actual_date": "2026-07-31",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -173,7 +173,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -186,7 +186,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -199,7 +199,7 @@
       "actual_date": "2026-07-31",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -212,7 +212,7 @@
       "actual_date": "2026-07-31",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -225,7 +225,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -238,7 +238,7 @@
       "actual_date": "2026-05-01",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -251,7 +251,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -264,7 +264,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -277,7 +277,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -290,7 +290,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -303,7 +303,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -316,7 +316,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -329,7 +329,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -342,7 +342,7 @@
       "actual_date": "2026-08-28",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -355,7 +355,7 @@
       "actual_date": "2026-07-31",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -368,7 +368,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -381,7 +381,7 @@
       "actual_date": "2026-07-31",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -394,7 +394,7 @@
       "actual_date": "2026-07-26",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -407,7 +407,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": [
         "港股情绪-宽度分项：breadth_z 覆盖 570/633 个交易日，首个有效日 2024-04-05，最后有效日 2026-07-30。",
         "港股情绪-波动率分项：vhsi_z 覆盖 574/633 个交易日，首个有效日 2024-03-27，最后有效日 2026-07-30。",
@@ -426,7 +426,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -439,7 +439,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -452,7 +452,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -465,7 +465,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -478,7 +478,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -491,7 +491,7 @@
       "actual_date": "2026-07-30",
       "status": "lagging",
       "status_label": "滞后",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -504,7 +504,7 @@
       "actual_date": "2026-07-30",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     },
     {
@@ -517,7 +517,7 @@
       "actual_date": "",
       "status": "manual",
       "status_label": "不定期",
-      "built_at": "2026-08-30 00:03:03",
+      "built_at": "2026-08-31 00:22:16",
       "notes": []
     }
   ]
