@@ -1,15 +1,17 @@
 {
-  "latest_date": "2026-08-28",
+  "latest_date": "2026-09-01",
   "sections": {
-    "indices": "2026-08-28",
+    "indices": "2026-09-01",
     "breadth": "2026-08-26",
-    "rates": "2026-08-28"
+    "rates": "2026-08-31"
   },
   "run": {
-    "expected": "2026-08-28",
+    "expected": "2026-08-31",
     "indices": {
-      "added": 0,
-      "notes": []
+      "added": 3,
+      "notes": [
+        "fetch_em_indices: JSONDecodeError"
+      ]
     },
     "breadth": {
       "added": 0,
@@ -20,7 +22,7 @@
       ]
     },
     "rates": {
-      "added": 0,
+      "added": 5,
       "notes": []
     }
   }
