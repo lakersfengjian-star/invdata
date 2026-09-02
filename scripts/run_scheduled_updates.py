@@ -44,7 +44,6 @@ DAILY_DATASETS: dict[str, list[str]] = {
         "southbound_flow.csv",
     ],
     "update_value_growth_spread.py": ["value_growth_spread.csv"],
-    "update_citic_pb_dispersion.py": ["citic_pb_dispersion.csv"],
     "update_style_performance.py": ["style_index_performance.csv"],
     "update_wind_index_valuation.py": ["index_pe_ttm_valuation.csv"],
     "update_etf_dashboard.py": [
@@ -57,6 +56,13 @@ DAILY_DATASETS: dict[str, list[str]] = {
     "update_limit_up_tables.py": ["limit_up_tables.metadata.json"],
     "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
 }
+
+WEEKLY_CITIC_INPUT = ROOT / "data" / "raw" / "citic_industry_crowding_weekly.csv"
+WEEKLY_CITIC_PIPELINE = [
+    ("fetch_citic_crowding_wind_cli.py", ["--refresh-latest"]),
+    ("update_citic_industry_crowding.py", []),
+    ("update_citic_pb_dispersion.py", []),
+]
 
 MACRO_DATASETS: dict[str, str] = {
     "update_macro_overview.py": "macro_overview.metadata.json",
@@ -90,6 +96,12 @@ def previous_bday(now: pd.Timestamp | None = None) -> pd.Timestamp:
     while base.weekday() >= 5:
         base -= pd.Timedelta(days=1)
     return base
+
+
+def previous_completed_week(now: pd.Timestamp | None = None) -> pd.Timestamp:
+    """Previous Sunday, used as the label for the latest completed trading week."""
+    today = (now or now_shanghai()).tz_localize(None).normalize()
+    return today - pd.Timedelta(days=today.weekday() + 1)
 
 
 def macro_release_window_due(now: pd.Timestamp | None = None) -> bool:
@@ -133,11 +145,16 @@ def macro_fresh(metadata_name: str) -> bool:
     return age_h < MACRO_MIN_INTERVAL_H
 
 
-def run_script(name: str) -> dict:
-    print(f"[run] {name}", flush=True)
+def run_script(name: str, extra_args: list[str] | None = None) -> dict:
+    extra_args = extra_args or []
+    print(f"[run] {name} {' '.join(extra_args)}".rstrip(), flush=True)
     started = datetime.now().isoformat(timespec="seconds")
     try:
-        proc = subprocess.run([sys.executable, str(ROOT / "scripts" / name)], cwd=RUN_CWD, timeout=SCRIPT_TIMEOUT_SECONDS)
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / name), *extra_args],
+            cwd=RUN_CWD,
+            timeout=SCRIPT_TIMEOUT_SECONDS,
+        )
         returncode = proc.returncode
         status = "ok" if returncode == 0 else "failed"
         if returncode != 0:
@@ -162,18 +179,19 @@ def write_audit(summary: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["scheduled", "daily", "macro", "all"], required=True)
+    parser.add_argument("--mode", choices=["scheduled", "daily", "weekly", "macro", "all"], required=True)
     args = parser.parse_args()
 
     local_now = now_shanghai()
     expected = previous_bday(local_now)
+    expected_weekly = previous_completed_week(local_now)
     modes: set[str]
     if args.mode == "scheduled":
-        modes = {"daily"}
+        modes = {"daily", "weekly"}
         if macro_release_window_due(local_now):
             modes.add("macro")
     elif args.mode == "all":
-        modes = {"daily", "macro"}
+        modes = {"daily", "weekly", "macro"}
     else:
         modes = {args.mode}
 
@@ -191,6 +209,32 @@ def main() -> None:
                 continue
             ran.append(run_script(script))
 
+    if "weekly" in modes:
+        weekly_latest = csv_max_date(WEEKLY_CITIC_INPUT)
+        weekly_fresh = bool(
+            weekly_latest is not None
+            and not pd.isna(weekly_latest)
+            and weekly_latest >= expected_weekly
+        )
+        weekly_state = {
+            "fresh": weekly_fresh,
+            "outputs": {
+                str(WEEKLY_CITIC_INPUT.relative_to(ROOT)): (
+                    None if weekly_latest is None or pd.isna(weekly_latest) else weekly_latest.strftime("%Y-%m-%d")
+                )
+            },
+        }
+        if args.mode != "all" and weekly_fresh:
+            skipped.append({"script": "weekly_citic_pipeline", "reason": "fresh", **weekly_state})
+        elif not WIND_CLI.exists():
+            skipped.append({"script": "weekly_citic_pipeline", "reason": "local_wind_unavailable", **weekly_state})
+        else:
+            for script, extra_args in WEEKLY_CITIC_PIPELINE:
+                result = run_script(script, extra_args)
+                ran.append(result)
+                if result["status"] != "ok":
+                    break
+
     if "macro" in modes:
         for script, metadata_name in MACRO_DATASETS.items():
             if args.mode != "all" and macro_fresh(metadata_name):
@@ -207,6 +251,7 @@ def main() -> None:
         "effective_modes": sorted(modes),
         "checked_at": local_now.strftime("%Y-%m-%d %H:%M:%S %Z"),
         "expected_latest_daily": expected.strftime("%Y-%m-%d"),
+        "expected_latest_weekly": expected_weekly.strftime("%Y-%m-%d"),
         "ran": ran,
         "skipped": skipped,
         "rebuilt": bool(build_result),
@@ -215,6 +260,7 @@ def main() -> None:
             "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
             "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
             "价值成长价差、中信 PB 离散度与风格收益改用本地 Wind 金融能力；GitHub Actions 缺少该能力时跳过。",
+            "中信行业周频底表按最近完整周的周日标签判断新鲜度；缺失时依次刷新底表、拥挤度与 PB 离散度。",
             "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。",
         ],
     }

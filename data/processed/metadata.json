@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-07-31 11:25:19",
+  "updated_at": "2026-09-01 06:23:16",
   "start_date": "2025-01-01",
-  "latest_common_date": "2026-07-30",
+  "latest_common_date": "2026-08-31",
   "etf_selection": [
     {
       "code": "510300",
@@ -55,27 +55,27 @@
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "沪深300 close: 381 rows"
+      "detail": "沪深300 close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "上证指数 close: 381 rows"
+      "detail": "上证指数 close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "科创50 close: 381 rows"
+      "detail": "科创50 close: 403 rows"
     },
     {
       "source": "SSE ETF scale",
       "status": "ok",
-      "detail": "381 trading days, 0 failed days"
+      "detail": "403 trading days, 0 failed days"
     },
     {
       "source": "SZSE ETF scale",
       "status": "ok",
-      "detail": "381 trading days, 0 failed chunks"
+      "detail": "403 trading days, 0 failed chunks"
     },
     {
       "source": "AkShare fund_etf_fund_info_em",
@@ -110,57 +110,97 @@
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510300 ETF close: 381 rows"
+      "detail": "510300 ETF close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510310 ETF close: 381 rows"
+      "detail": "510310 ETF close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510330 ETF close: 381 rows"
+      "detail": "510330 ETF close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "159919 ETF close: 381 rows"
+      "detail": "159919 ETF close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "510050 ETF close: 381 rows"
+      "detail": "510050 ETF close: 403 rows"
     },
     {
       "source": "Tencent public kline",
       "status": "ok",
-      "detail": "588000 ETF close: 381 rows"
+      "detail": "588000 ETF close: 403 rows"
     },
     {
-      "source": "Turnover concentration",
-      "status": "fresh",
-      "detail": "data already up to date (2026-07-30)"
+      "source": "AkShare stock_info_a_code_name",
+      "status": "ok",
+      "detail": "A-share stock list: 5552 names"
     },
     {
-      "source": "Index PE_TTM",
-      "status": "cache",
-      "detail": "沪深300指数: 1593 rows"
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh601123: KeyError('date')"
     },
     {
-      "source": "Index PE_TTM",
-      "status": "cache",
-      "detail": "上证指数: 100 rows"
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh689009: JSONDecodeError('No value to decode', position=position_marker(offset=0,line=1,column=0,text_after=True), severity='error')"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688651: ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688638: ConnectionError(ProtocolError('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')))"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "failed",
+      "detail": "sh688636: SSLError(MaxRetryError(\"HTTPSConnectionPool(host='stock.finance.sina.com.cn', port=443): Max retries exceeded with url: /stock/api/jsonp.php/var%20KKE_ShareAmount_sh688636=/StockSe"
+    },
+    {
+      "source": "Sina A-share daily",
+      "status": "ok",
+      "detail": "5547 symbols ok, 5 symbols failed"
+    },
+    {
+      "source": "Legulegu index PE",
+      "status": "ok",
+      "detail": "沪深300指数: 80 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "ok",
-      "detail": "万得全A: 1594 rows"
+      "detail": "沪深300指数: 44 rows"
+    },
+    {
+      "source": "Legulegu market PE",
+      "status": "ok",
+      "detail": "上证指数: 81 rows"
     },
     {
       "source": "Local Wind PE_TTM CSV",
       "status": "ok",
-      "detail": "万得全A（除金融、石油石化）: 1594 rows"
+      "detail": "上证指数: 44 rows"
+    },
+    {
+      "source": "Local Wind PE_TTM CSV",
+      "status": "ok",
+      "detail": "万得全A: 1615 rows"
+    },
+    {
+      "source": "Local Wind PE_TTM CSV",
+      "status": "ok",
+      "detail": "万得全A（除金融、石油石化）: 1615 rows"
     }
   ]
 }

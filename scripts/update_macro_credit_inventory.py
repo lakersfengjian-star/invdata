@@ -13,6 +13,9 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from common.ifind_client import find_column, get_edb_table  # noqa: E402
+
 PROCESSED_DIR = ROOT / "data" / "processed"
 WIND_SKILL_DIR = Path(
     os.environ.get("WIND_SKILL_DIR", Path.home() / ".agents" / "skills" / "wind-mcp-skill")
@@ -78,6 +81,29 @@ def block_to_series(block: dict) -> pd.Series:
     return series.dropna().sort_index()
 
 
+def call_ifind_edb() -> pd.DataFrame:
+    requests = [
+        ("中国规模以上工业企业产成品存货同比（199701-至今）", ("产成品存货", "同比"), "inventory_yoy"),
+        ("中国PPI当月同比（199701-至今）", ("PPI", "同比"), "ppi_yoy"),
+        ("中国M1同比（199701-至今）", ("M1", "同比"), "m1_yoy"),
+        ("中国M2同比（199701-至今）", ("M2", "同比"), "m2_yoy"),
+    ]
+
+    def normalize(frame: pd.DataFrame, needles: tuple[str, ...], target: str) -> pd.DataFrame:
+        date_col = find_column(frame.columns, "日期")
+        value_col = find_column(frame.columns, *needles)
+        out = frame.rename(columns={value_col: target})
+        out["date"] = pd.to_datetime(out[date_col], errors="coerce")
+        out[target] = pd.to_numeric(out[target], errors="coerce")
+        return out.set_index("date")[[target]].dropna(how="all")
+
+    parts = []
+    for query, needles, target in requests:
+        frame, _ = get_edb_table(query)
+        parts.append(normalize(frame, needles, target))
+    return pd.concat(parts, axis=1).sort_index()
+
+
 def write_csv(df: pd.DataFrame, path: Path) -> str:
     out = df.copy().sort_values("date")
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.strftime("%Y-%m-%d")
@@ -87,30 +113,39 @@ def write_csv(df: pd.DataFrame, path: Path) -> str:
 
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    blocks = call_wind_edb()
-    series_map = {series.name: series for series in (block_to_series(block) for block in blocks) if series.name}
-    data = pd.DataFrame(series_map).sort_index()
+    source = "Wind EDB economic_data.natural_language_get_edb_data"
+    notes = []
+    try:
+        blocks = call_wind_edb()
+        series_map = {series.name: series for series in (block_to_series(block) for block in blocks) if series.name}
+        data = pd.DataFrame(series_map).sort_index()
+        if data.empty:
+            raise RuntimeError("Wind returned no macro rows")
+    except Exception as wind_error:  # noqa: BLE001
+        data = call_ifind_edb()
+        source = "iFinD MCP edb.get_edb_data (Wind fallback)"
+        notes.append(f"Wind failed; iFinD fallback used: {type(wind_error).__name__}")
     data.index.name = "date"
 
-    inventory = data[["inventory_yoy", "ppi_yoy"]].dropna(how="all").copy()
+    inventory = data[["inventory_yoy", "ppi_yoy"]].dropna(subset=["inventory_yoy", "ppi_yoy"]).copy()
     inventory["real_inventory_yoy"] = inventory["inventory_yoy"] - inventory["ppi_yoy"]
     inventory = inventory.reset_index()
 
-    money = data[["m1_yoy", "m2_yoy"]].dropna(how="all").copy()
+    money = data[["m1_yoy", "m2_yoy"]].dropna(subset=["m1_yoy", "m2_yoy"]).copy()
     money["m1_minus_m2"] = money["m1_yoy"] - money["m2_yoy"]
     money = money.reset_index()
 
     latest_inventory = write_csv(inventory, OUT_INVENTORY)
     latest_money = write_csv(money, OUT_MONEY)
     meta = {
-        "source": "Wind EDB economic_data.natural_language_get_edb_data",
+        "source": source,
         "status": "ok",
         "latest_date": max(latest_inventory, latest_money),
         "latest_by_dataset": {"macro_inventory": latest_inventory, "macro_m1_m2": latest_money},
         "unit": "%",
         "edb_codes": EDB_CODES,
         "edb_names": EDB_NAMES,
-        "notes": [
+        "notes": notes + [
             "实际库存同比 = 规模以上工业企业产成品存货同比 - PPI当月同比。",
             "M1-M2 = M1同比 - M2同比。",
         ],

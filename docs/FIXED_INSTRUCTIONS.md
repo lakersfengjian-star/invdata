@@ -225,7 +225,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 | 日频（成交额/涨停/南向/ETF/集中度/估值/成交额占比等公开源） | T+1 06:00（覆盖上一交易日收盘，节假日用工作日近似，已最新则跳过） | GitHub Actions 调度器 |
 | 日频/周频（依赖 Wind 的指数/行业指标） | T+1 06:00（日频）或周日 10:00（周频） | 具备 Wind 金融能力的本地调度环境；GitHub Actions 无该能力时自动跳过 |
 | 情绪指数（依赖 Wind 能力） | 周二至周六 06:00 | 本地定时任务（cron `0 6 * * 2-6` Asia/Shanghai） |
-| 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（覆盖上周末收盘） | 本地定时任务（cron `0 6 * * 1` Asia/Shanghai） |
+| 周频（中信行业拥挤度，依赖 Wind 能力） | 每周一 06:00（若电脑离线，之后每日 06:00 自动补跑） | 本地统一调度器；按最近完整周周日标签判断新鲜度 |
 | 宏观（统计局/央行发布） | 官方常见发布窗口（每月 9–20 日、27–31 日）的次日 06:00 尝试更新 | GitHub Actions 调度器 |
 
 本地日频任务文件：
@@ -238,7 +238,7 @@ GitHub Actions 使用 `.github/workflows/auto-update-dashboard.yml` 自动运行
 
 ### 增量取数与新鲜度守卫
 
-- 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `scheduled`/`daily`/`macro`/`all`），它使用 Asia/Shanghai 时间判断上一交易日和宏观发布窗口，对每个数据集先比较 `data/processed/*.csv` 最大日期与上一交易日：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
+- 所有定时入口必须经过 `scripts/run_scheduled_updates.py` 编排器（模式 `scheduled`/`daily`/`weekly`/`macro`/`all`），它使用 Asia/Shanghai 时间判断上一交易日、最近完整周和宏观发布窗口，对每个数据集先比较输出文件最大日期：**已新鲜则完全跳过，不发任何 API 请求**；只有真正运行过更新脚本才重建站点，全新鲜时零消耗、零提交噪音。
 - 编排器在实际运行脚本后写入 `data/processed/update_audit.json`，记录运行模式、期望日频日期、执行脚本、跳过原因、构建结果和 Wind 本地依赖提示。
 - 依赖 Wind 的脚本在调度器中登记为本地能力依赖；若运行环境没有 Wind CLI 或授权，直接跳过并记录能力不可用，不得用旧缓存冒充更新。
 - 本地 Wind 任务（情绪、拥挤度）的 prompt 同样要求先查日期、已最新则直接结束。

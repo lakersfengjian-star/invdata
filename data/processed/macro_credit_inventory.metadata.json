@@ -1,10 +1,10 @@
 {
   "source": "Wind EDB economic_data.natural_language_get_edb_data",
   "status": "ok",
-  "latest_date": "2026-06-30",
+  "latest_date": "2026-07-31",
   "latest_by_dataset": {
-    "macro_inventory": "2026-06-30",
-    "macro_m1_m2": "2026-06-30"
+    "macro_inventory": "2026-07-31",
+    "macro_m1_m2": "2026-07-31"
   },
   "unit": "%",
   "edb_codes": {
@@ -23,5 +23,5 @@
     "实际库存同比 = 规模以上工业企业产成品存货同比 - PPI当月同比。",
     "M1-M2 = M1同比 - M2同比。"
   ],
-  "built_at": "2026-07-28 18:26:58"
+  "built_at": "2026-09-01 06:24:36"
 }

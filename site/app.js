@@ -20,6 +20,17 @@ tabs.forEach((tab) => {
   tab.addEventListener("click", () => activateCategory(tab.dataset.target));
 });
 
+const etfButtons = Array.from(document.querySelectorAll("[data-etf-group]"));
+const etfRows = Array.from(document.querySelectorAll("[data-etf-row]"));
+function filterEtfRows(group) {
+  etfButtons.forEach((button) => button.classList.toggle("active", button.dataset.etfGroup === group));
+  etfRows.forEach((row) => {
+    row.hidden = group !== "总览" && row.dataset.etfRow !== group;
+  });
+}
+etfButtons.forEach((button) => button.addEventListener("click", () => filterEtfRows(button.dataset.etfGroup)));
+if (etfButtons.length) filterEtfRows("总览");
+
 if (refreshButton && refreshStatus) {
   function expectedLatestTradingDay() {
     const d = new Date();

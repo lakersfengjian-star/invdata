@@ -1,13 +1,18 @@
 {
   "source": "Wind AIFin Market CLI index_data.get_index_fundamentals",
-  "status": "ok",
-  "latest_date": "2026-07-31",
+  "status": "partial",
+  "latest_date": "2026-08-31",
   "unit": "",
-  "notes": [],
+  "notes": [
+    "沪深300指数 2026-09 failed: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "上证指数 2026-09 failed: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "万得全A 2026-09 failed: JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+    "万得全A（除金融、石油石化） 2026-09 failed: JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+  ],
   "latest_by_index": {
-    "万得全A": "2026-07-31",
-    "万得全A（除金融、石油石化）": "2026-07-31",
-    "上证指数": "2026-07-31",
-    "沪深300指数": "2026-07-31"
+    "万得全A": "2026-08-31",
+    "万得全A（除金融、石油石化）": "2026-08-31",
+    "上证指数": "2026-08-31",
+    "沪深300指数": "2026-08-31"
   }
 }

@@ -2353,6 +2353,13 @@ def expected_daily_audit_date() -> str:
     return target.strftime("%Y-%m-%d")
 
 
+def expected_weekly_audit_date() -> str:
+    """Return the Sunday ending the most recently completed calendar week."""
+    today = pd.Timestamp.now().normalize()
+    target = today - pd.Timedelta(days=today.weekday() + 1)
+    return target.strftime("%Y-%m-%d")
+
+
 def chart_status_line(chart_key: str | None) -> str:
     if not chart_key:
         return ""
@@ -2424,6 +2431,122 @@ def render_library() -> str:
       </section>'''
 
 
+def _liquidity_latest(df: pd.DataFrame | None, column: str) -> tuple[float | None, float | None, str]:
+    if df is None or df.empty or column not in df:
+        return None, None, ""
+    work = df.copy()
+    work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work[column] = pd.to_numeric(work[column], errors="coerce")
+    work = work.dropna(subset=["date", column]).sort_values("date")
+    if work.empty:
+        return None, None, ""
+    return float(work[column].iloc[-1]), (float(work[column].iloc[-2]) if len(work) > 1 else None), work["date"].iloc[-1].strftime("%Y-%m-%d")
+
+
+def _flow_text(value: float | None) -> str:
+    return "待接入" if value is None or pd.isna(value) else f"{value:+,.1f}亿元"
+
+
+def build_liquidity_view(
+    market_turnover: pd.DataFrame | None,
+    etf_detail: pd.DataFrame | None,
+    monitor_rates: pd.DataFrame | None,
+    turnover_concentration: pd.DataFrame | None,
+) -> str:
+    """Render only source-backed liquidity metrics; unavailable sources stay explicit."""
+    turnover, turnover_prev, turnover_date = _liquidity_latest(market_turnover, "market_turnover_100mn")
+    turnover_change = None if turnover is None or not turnover_prev else (turnover / turnover_prev - 1) * 100
+    rates = None if monitor_rates is None else monitor_rates[monitor_rates["rate"].astype(str).str.contains("DR007", na=False)]
+    dr007, dr007_prev, dr007_date = _liquidity_latest(rates, "value")
+    concentration, concentration_prev, concentration_date = _liquidity_latest(turnover_concentration, "top10_share_pct")
+
+    groups = {"宽基": {"510300", "510310", "510330", "159919", "510050"}, "风格": {"588000"}}
+    detail_rows: list[dict] = []
+    windows: dict[str, dict[int, float | None]] = {}
+    etf_date = ""
+    daily_total = pd.Series(dtype=float)
+    if etf_detail is not None and not etf_detail.empty:
+        detail = etf_detail.copy()
+        detail["date"] = pd.to_datetime(detail["date"], errors="coerce")
+        detail["code"] = detail["code"].astype(str).str.replace(r"\.0$", "", regex=True).str.zfill(6)
+        detail["net_inflow_100mn"] = pd.to_numeric(detail["net_inflow_100mn"], errors="coerce")
+        detail = detail.dropna(subset=["date"]).sort_values("date")
+        valid = detail.dropna(subset=["net_inflow_100mn"])
+        etf_date = "" if valid.empty else valid["date"].max().strftime("%Y-%m-%d")
+        daily_total = detail.groupby("date")["net_inflow_100mn"].sum(min_count=1).sort_index()
+        for group, codes in groups.items():
+            part = detail[detail["code"].isin(codes)]
+            daily = part.groupby("date")["net_inflow_100mn"].sum(min_count=1).sort_index()
+            windows[group] = {n: (float(daily.tail(n).sum(min_count=1)) if not daily.empty else None) for n in (1, 5, 20)}
+            for code, code_part in part.groupby("code"):
+                name = str(code_part["name"].dropna().iloc[-1]) if code_part["name"].notna().any() else code
+                detail_rows.append({"group": group, "code": code, "name": name, **{f"d{n}": float(code_part.tail(n)["net_inflow_100mn"].sum(min_count=1)) for n in (1, 5, 20)}})
+    total = {n: (float(daily_total.tail(n).sum(min_count=1)) if not daily_total.empty else None) for n in (1, 5, 20)}
+    windows["总览"] = total
+
+    heat_parts = []
+    if market_turnover is not None and not market_turnover.empty:
+        heat_parts.append(percentile_score(market_turnover["market_turnover_100mn"]))
+    if not daily_total.empty:
+        heat_parts.append(percentile_score(daily_total.rolling(5).sum()))
+    if rates is not None and not rates.empty:
+        rate_pct = percentile_score(rates["value"])
+        heat_parts.append(None if rate_pct is None else 100 - rate_pct)
+    heat_parts = [x for x in heat_parts if x is not None]
+    heat = sum(heat_parts) / len(heat_parts) if heat_parts else None
+    heat_state = score_label(heat)
+    summary = []
+    if turnover_change is not None:
+        summary.append(f"全A成交额较前日{'增加' if turnover_change >= 0 else '减少'}{abs(turnover_change):.1f}%")
+    if total[5] is not None:
+        summary.append(f"跟踪ETF近5日{'净流入' if total[5] >= 0 else '净流出'}{abs(total[5]):.1f}亿元")
+    if dr007 is not None and dr007_prev is not None:
+        summary.append(f"DR007较前值{(dr007-dr007_prev)*100:+.1f}bp")
+
+    cards = [
+        ("全A成交额", "待接入" if turnover is None else f"{turnover:,.0f}亿元", "" if turnover_change is None else f"较前日 {turnover_change:+.1f}%", turnover_date),
+        ("股票ETF净流入", _flow_text(total[1]), f"5日 {_flow_text(total[5])}", etf_date),
+        ("北向成交活跃度", "待接入", "成交额/成交占比新口径", ""),
+        ("融资净买入", "待接入", "需接入两融余额变化", ""),
+        ("DR007", "待接入" if dr007 is None else f"{dr007:.3f}%", "" if dr007 is None or dr007_prev is None else f"较前值 {(dr007-dr007_prev)*100:+.1f}bp", dr007_date),
+        ("流动性温度", "待接入" if heat is None else f"{heat:.0f} / 100", f"{heat_state} · 当前{len(heat_parts)}项", max([x for x in [turnover_date, etf_date, dr007_date] if x], default="")),
+    ]
+    cards_html = "".join(f'''<div class="liquidity-kpi{' is-pending' if value == '待接入' else ''}"><span>{escape(label)}</span><strong>{escape(value)}</strong><small>{escape(note)}</small><em>{escape(date)}</em></div>''' for label, value, note, date in cards)
+    filter_html = "".join(f'<button type="button" data-etf-group="{group}" class="{"active" if group == "总览" else ""}">{group}</button>' for group in ["总览", "宽基", "风格", "行业", "主题", "跨资产"])
+    rows_html = []
+    for row in sorted(detail_rows, key=lambda x: abs(x["d5"]), reverse=True):
+        rows_html.append(f'''<tr data-etf-row="{row['group']}"><td>{row['group']}</td><td>{row['code']}</td><td>{escape(row['name'])}</td><td>{_flow_text(row['d1'])}</td><td>{_flow_text(row['d5'])}</td><td>{_flow_text(row['d20'])}</td></tr>''')
+    for group in ["行业", "主题", "跨资产"]:
+        rows_html.append(f'''<tr data-etf-row="{group}" class="pending-row"><td>{group}</td><td>—</td><td>待接入对应ETF样本池</td><td colspan="3">不展示示意数字</td></tr>''')
+    heat_rows = "".join(f'''<tr><td>{group}</td><td>{_flow_text(windows.get(group, {}).get(1))}</td><td>{_flow_text(windows.get(group, {}).get(5))}</td><td>{_flow_text(windows.get(group, {}).get(20))}</td></tr>''' for group in ["总览", "宽基", "风格", "行业", "主题", "跨资产"])
+
+    current_week = previous_week = None
+    if market_turnover is not None:
+        vals = pd.to_numeric(market_turnover.sort_values("date")["market_turnover_100mn"], errors="coerce").dropna()
+        if len(vals) >= 10:
+            current_week, previous_week = float(vals.tail(5).mean()), float(vals.iloc[-10:-5].mean())
+    weekly = [
+        ("市场量能", "待接入" if current_week is None else f"日均{current_week:,.0f}亿", "—" if current_week is None or not previous_week else f"{(current_week/previous_week-1)*100:+.1f}%", "最近5个交易日均值"),
+        ("ETF配置", _flow_text(total[5]), "—" if total[5] is None else ("流入" if total[5] >= 0 else "流出"), "一级市场申赎估算"),
+        ("交易集中度", "待接入" if concentration is None else f"Top10 {concentration:.1f}%", "—" if concentration is None or concentration_prev is None else f"{concentration-concentration_prev:+.1f}pct", "集中/扩散代理"),
+        ("资金价格", "待接入" if dr007 is None else f"DR007 {dr007:.3f}%", "—" if dr007 is None or dr007_prev is None else f"{(dr007-dr007_prev)*100:+.1f}bp", "银行间资金价格"),
+        ("北向/融资", "待接入", "—", "源数据缺失，不作判断"),
+    ]
+    weekly_html = "".join(f"<tr><td>{escape(a)}</td><td>{escape(b)}</td><td>{escape(c)}</td><td>{escape(d)}</td></tr>" for a,b,c,d in weekly)
+    max_flow = max([abs(v[5]) for k,v in windows.items() if k != "总览" and v.get(5) is not None] or [1])
+    config_html = "".join(f'''<div class="weekly-config-row"><span>{g}</span><div><i class="{'negative' if windows.get(g, {}).get(5) is not None and windows[g][5] < 0 else ''}" style="width:{(0 if windows.get(g, {}).get(5) is None else max(4, abs(windows[g][5])/max_flow*100)):.1f}%"></i></div><b>{_flow_text(windows.get(g, {}).get(5))}</b></div>''' for g in ["宽基", "风格", "行业", "主题", "跨资产"])
+
+    return f'''<div class="liquidity-shell"><section class="liquidity-overview"><div class="liquidity-signal"><b>流动性判断 · {heat_state}</b><span>{escape('；'.join(summary) + '。' if summary else '核心数据尚待更新。')}</span></div><div class="liquidity-kpis">{cards_html}</div><p class="liquidity-scope">温度仅由已接入的成交额、ETF申赎与DR007分项合成；北向与融资未接入前不参与评分。</p></section>
+    <div class="liquidity-tier"><span>日频</span><h3>资金流向与交易结构</h3></div><nav class="liquidity-subnav">市场量能 · ETF资金 · 北向与外资 · 融资融券 · 交易结构 · 资金价格</nav>
+    <section class="chart-section"><h2><span class="chart-num">E-D01</span>市场量能{freq_badge('日频')}</h2><img src="assets/charts/fig_008_market_turnover.png" alt="全市场成交额变化">{chart_note_block('全A代理成交额及5日均值，用于观察市场可交易流动性。','成交额反映交易活跃度，不等于增量资金净流入。','market_turnover')}</section>
+    <section class="chart-section etf-layer"><div class="liquidity-panel-head"><div><h2><span class="chart-num">E-D02</span>ETF资金分层</h2><p>一级市场申赎估算；当日/5日/20日</p></div><div class="etf-filter">{filter_html}</div></div><div class="liquidity-table-wrap"><table class="liquidity-table"><thead><tr><th>层级</th><th>代码</th><th>名称</th><th>当日</th><th>5日</th><th>20日</th></tr></thead><tbody>{''.join(rows_html)}</tbody></table></div><div class="liquidity-table-wrap compact"><table class="liquidity-table"><thead><tr><th>资金层级</th><th>当日</th><th>5日</th><th>20日</th></tr></thead><tbody>{heat_rows}</tbody></table></div>{chart_note_block('净流入按ETF份额变化×估值价格计算；宽基样本为510300/510310/510330/159919/510050，风格首批以588000科创50ETF代理。','ETF二级市场成交额是换手活跃度，与一级市场净申赎不是同一指标；行业、主题、跨资产样本池尚未接入。','broad_etf_flow')}</section>
+    <section class="liquidity-two-col"><div class="liquidity-card pending-card"><h3>北向与外资</h3><strong>待接入合规新口径</strong><p>计划展示北向成交额、占A股成交比、持仓变化与风格代理，不沿用旧每日净流入口径。</p></div><div class="liquidity-card pending-card"><h3>融资融券</h3><strong>待接入两融数据</strong><p>需要融资余额、余额日变动及行业映射，接入后再计算融资净买入和连续性。</p></div></section>
+    <section class="chart-section"><h2><span class="chart-num">E-D03</span>ETF资金 × 融资资金共振{freq_badge('日频')}</h2><div class="quadrant-grid"><div><b>双向流入</b><span>趋势强化</span></div><div><b>ETF流入 / 融资流出</b><span>配置承接</span></div><div><b>ETF流出 / 融资流入</b><span>杠杆博弈</span></div><div><b>双向流出</b><span>风险偏好下降</span></div></div><p class="pending-explain">融资分项尚未接入，暂不放置资产标签；ETF使用一级市场申赎，未来融资使用余额变化，避免与ETF二级市场成交混淆。</p></section>
+    <section class="chart-section"><h2><span class="chart-num">E-D04</span>交易结构{freq_badge('日频')}</h2><div class="liquidity-mini-grid"><div><h3>成交集中度</h3><img src="assets/charts/fig_003a_turnover_top10_concentration.png" alt="成交额前10集中度"></div><div><h3>宽基成交结构</h3><img src="assets/charts/fig_005_index_amount_share.png" alt="宽基成交额占比"></div></div>{chart_note_block('集中度判断交易集中/扩散；宽基成交占比观察市场交易结构。','本模块从情绪页迁移，仅保留一处展示；涨跌停与赚钱效应仍留在情绪页。','turnover_top10')}</section>
+    <section class="liquidity-two-col"><div class="liquidity-card"><h3>风格成交结构</h3><p>{'截至 '+concentration_date if concentration_date else '待更新'}：宽基与主题成交占比用于观察大小盘、成长和红利偏好。</p></div><div class="liquidity-card"><h3>资金价格</h3><strong>{'DR007 '+format(dr007,'.3f')+'%' if dr007 is not None else '待接入'}</strong><p>FDR007定盘利率用于判断银行间资金松紧，不与权益资金流混为一谈。</p></div></section>
+    <div class="liquidity-tier weekly"><span>周频</span><h3>趋势确认，不复制日频图</h3></div><section class="liquidity-two-col weekly"><div class="liquidity-card"><h3>周度配置图谱</h3><div class="weekly-config">{config_html}</div><p class="liquidity-scope">最近5个交易日一级市场申赎；行业、主题与跨资产待接入。</p></div><div class="liquidity-card"><h3>流动性周报</h3><div class="liquidity-table-wrap"><table class="liquidity-table"><thead><tr><th>维度</th><th>本周</th><th>变化</th><th>证据</th></tr></thead><tbody>{weekly_html}</tbody></table></div></div></section></div>'''
+
+
 def build_page(
     metadata: dict,
     broad_chart: dict,
@@ -2458,6 +2581,7 @@ def build_page(
     theme_amount_data: pd.DataFrame | None = None,
     style_performance_data: pd.DataFrame | None = None,
     broad_flow_data: pd.DataFrame | None = None,
+    etf_flow_detail_data: pd.DataFrame | None = None,
     turnover_concentration_data: pd.DataFrame | None = None,
     industry_pb_roe_chart: dict | None = None,
     industrial_profit_chart: dict | None = None,
@@ -2543,7 +2667,12 @@ def build_page(
     latest_daily = max((normalize_date_text(chart_dates[k]) for k in daily_keys if chart_dates.get(k)), default=latest)
     latest_weekly = max((normalize_date_text(chart_dates[k]) for k in weekly_keys if chart_dates.get(k)), default="")
     latest_macro = max((normalize_date_text(chart_dates[k]) for k in monthly_keys if chart_dates.get(k)), default="")
-    expected_dates = {"daily": expected_daily_audit_date(), "weekly": latest_weekly, "monthly": latest_macro, "manual": ""}
+    expected_dates = {
+        "daily": expected_daily_audit_date(),
+        "weekly": expected_weekly_audit_date(),
+        "monthly": latest_macro,
+        "manual": "",
+    }
     audit_notes: dict[str, list[str]] = {}
     hk_meta_path = PROCESSED_DIR / "hk_dashboard.metadata.json"
     if hk_meta_path.exists():
@@ -2566,6 +2695,12 @@ def build_page(
     style_return_html = render_style_return_heatmap(style_return)
     market_brief_html = render_market_brief(monitor_indices, monitor_breadth, market_turnover_data, amount_share_data, theme_amount_data)
     market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
+    liquidity_html = build_liquidity_view(
+        market_turnover_data,
+        etf_flow_detail_data,
+        monitor_rates,
+        turnover_concentration_data,
+    )
     valuation_sections = []
     for idx, chart in enumerate(valuation_charts):
         media = (
@@ -2882,7 +3017,6 @@ def build_page(
 {market_heat_html}
 {market_brief_html}
 {market_monitor_html}
-{market_turnover_html}
 {limit_up_html}
     </section>
 
@@ -2904,50 +3038,12 @@ def build_page(
 
     <section class="category-panel" id="panel-liquidity" data-category="liquidity" hidden>
       <div class="category-head"><span class="sec-num">E</span><h2>流动性</h2></div>
-      <section class="chart-section">
-        <h2><span class="chart-num">E-001</span>沪深300/上证指数 vs. 大宽基ETF资金流{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_001_broad_etf_flow.png?v={asset_version}" alt="沪深300与上证指数走势及大宽基ETF资金流">
-        {chart_note_block(
-            "样本：510300、510310、510330、159919、510050。上交所 ETF 份额来自上交所历史规模接口；159919 份额来自深交所基金规模日频接口。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
-            broad_etf_risk,
-            "broad_etf_flow",
-        )}
-      </section>
-      <section class="chart-section">
-        <h2><span class="chart-num">E-002</span>科创50指数 vs. 科创50ETF资金流{freq_badge("日频")}</h2>
-        <img src="assets/charts/fig_002_star50_etf_flow.png?v={asset_version}" alt="科创50指数走势及科创50ETF资金流">
-        {chart_note_block(
-            "样本：588000 华夏科创50ETF。净流入口径为份额变化乘以单位净值；7日滚动合计按交易日滚动计算。",
-            star_etf_risk,
-            "star50_etf_flow",
-        )}
-      </section>
+{liquidity_html}
     </section>
 
     <section class="category-panel" id="panel-sentiment" data-category="sentiment" hidden>
       <div class="category-head"><span class="sec-num">F</span><h2>情绪</h2></div>
 {sentiment_html}
-      <section class="chart-section">
-        <h2><span class="chart-num">F-002</span>A股成交额前10大公司交易集中度变化（截至{chart3_top10["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(chart3_top10["path"]).name}?v={asset_version}" alt="A股成交额前10大公司交易集中度变化">
-        {chart_note_block(
-            "样本覆盖当前沪深京A股清单；逐日计算成交额前10股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
-            "个股成交额排名依赖公开行情接口完整性；停牌、新股、北交所覆盖和接口延迟都可能影响集中度读数。",
-            "turnover_top10",
-        )}
-      </section>
-      <section class="chart-section">
-        <h2><span class="chart-num">F-003</span>A股成交额前100大公司交易集中度变化（截至{chart3_top100["last_date"]}）{freq_badge("日频")}</h2>
-        <img src="assets/charts/{Path(chart3_top100["path"]).name}?v={asset_version}" alt="A股成交额前100大公司交易集中度变化">
-        {chart_note_block(
-            "样本覆盖当前沪深京A股清单；逐日计算成交额前100股票合计成交额占全市场成交额比例。右轴为上证指数收盘价。",
-            "前100集中度用于观察交易扩散程度，仍依赖公开逐股成交额接口完整性；接口延迟会影响最新交易日读数。",
-            "turnover_top100",
-        )}
-      </section>
-{amount_share_html}
-{theme_amount_html}
-{style_distribution_html}
 {style_return_html}
 {industry_crowding_html}
 {value_growth_html}
@@ -2964,6 +3060,10 @@ def build_page(
 {library_html}
     </section>
   </main>
+  <footer class="site-footer">
+    <span>© 2026 投研助手</span><span aria-hidden="true">·</span>
+    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">沪ICP备2026038011号-1</a>
+  </footer>
   <script src="app.js"></script>
 </body>
 </html>
@@ -2994,6 +3094,19 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
+
+.site-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 20px 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.site-footer a { color: inherit; text-decoration: none; }
+.site-footer a:hover,
+.site-footer a:focus-visible { color: var(--accent); text-decoration: underline; }
 
 main {
   max-width: 1200px;
@@ -3551,6 +3664,57 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
   font-variant-numeric: tabular-nums;
 }
 .doc-open { color: var(--accent); font-weight: 700; }
+
+/* ---------- 流动性：总览 / 日频 / 周频 ---------- */
+.liquidity-shell { --liq: #174b47; }
+.liquidity-overview { margin-bottom: 24px; }
+.liquidity-signal { display:flex; gap:12px; align-items:flex-start; padding:14px 16px; border-left:4px solid var(--accent); border-radius:8px; background:#fff8f1; font-size:14px; line-height:1.6; }
+.liquidity-signal b { color:#9b542d; white-space:nowrap; }
+.liquidity-kpis { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.liquidity-kpi { min-width:0; padding:15px 14px; border:1px solid var(--line); border-radius:12px; background:var(--card); box-shadow:var(--shadow); }
+.liquidity-kpi span,.liquidity-kpi small,.liquidity-kpi em { display:block; }
+.liquidity-kpi span { color:var(--muted); font-size:12px; }
+.liquidity-kpi strong { display:block; margin:9px 0 6px; color:var(--liq); font-size:20px; white-space:nowrap; }
+.liquidity-kpi small { min-height:32px; color:var(--muted); font-size:11px; line-height:1.4; }
+.liquidity-kpi em { margin-top:5px; color:var(--faint); font-size:10px; font-style:normal; }
+.liquidity-kpi.is-pending { background:#f7f8fa; border-style:dashed; }
+.liquidity-scope,.pending-explain { color:var(--muted); font-size:12px; line-height:1.65; }
+.liquidity-tier { display:flex; align-items:center; gap:10px; margin:28px 2px 12px; }
+.liquidity-tier span { padding:4px 10px; border-radius:999px; background:var(--liq); color:#fff; font-size:12px; font-weight:700; }
+.liquidity-tier h3 { margin:0; font-size:17px; }
+.liquidity-tier.weekly { margin-top:34px; padding-top:24px; border-top:1px solid var(--line); }
+.liquidity-subnav { margin-bottom:16px; padding:11px 14px; overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:#e7ecef; color:#53616c; font-size:12px; white-space:nowrap; }
+.liquidity-panel-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.liquidity-panel-head h2 { margin:0; font-size:17.5px; }
+.liquidity-panel-head p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+.etf-filter { display:flex; gap:4px; padding:3px; overflow-x:auto; border-radius:9px; background:#eef1f4; }
+.etf-filter button { border:0; border-radius:7px; padding:7px 10px; background:transparent; color:var(--muted); font:inherit; font-size:12px; cursor:pointer; white-space:nowrap; }
+.etf-filter button.active { background:#fff; color:var(--liq); box-shadow:0 1px 4px rgba(0,0,0,.1); font-weight:700; }
+.liquidity-table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+.liquidity-table-wrap.compact { margin-top:14px; }
+.liquidity-table { width:100%; min-width:650px; border-collapse:collapse; font-size:12px; }
+.liquidity-table th,.liquidity-table td { padding:10px 11px; border-bottom:1px solid #edf0f3; text-align:left; white-space:nowrap; }
+.liquidity-table th { background:#f4f6f8; color:var(--navy); }
+.liquidity-table td:nth-last-child(-n+3) { text-align:right; font-variant-numeric:tabular-nums; }
+.liquidity-table .pending-row td { color:var(--faint); background:#fafbfc; }
+.liquidity-two-col,.liquidity-mini-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-bottom:22px; }
+.liquidity-card { min-width:0; padding:20px; border:1px solid var(--line); border-radius:var(--radius); background:var(--card); box-shadow:var(--shadow); }
+.liquidity-card h3,.liquidity-mini-grid h3 { margin:0 0 10px; font-size:15px; }
+.liquidity-card strong { color:var(--liq); font-size:18px; }
+.liquidity-card p { margin:10px 0 0; color:var(--muted); font-size:13px; line-height:1.65; }
+.pending-card { border-style:dashed; background:#f8f9fa; }
+.quadrant-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.quadrant-grid div { min-height:92px; padding:15px; border:1px solid var(--line); border-radius:10px; background:#fafbfc; }
+.quadrant-grid b,.quadrant-grid span { display:block; }
+.quadrant-grid b { font-size:13px; }.quadrant-grid span { margin-top:7px; color:var(--muted); font-size:12px; }
+.liquidity-mini-grid { margin:0; }.liquidity-mini-grid img { margin-top:8px; }
+.weekly-config { display:grid; gap:12px; }
+.weekly-config-row { display:grid; grid-template-columns:62px 1fr 86px; gap:10px; align-items:center; font-size:12px; }
+.weekly-config-row > div { height:8px; overflow:hidden; border-radius:99px; background:#e8ecef; }
+.weekly-config-row i { display:block; height:100%; background:var(--accent); }.weekly-config-row i.negative { background:var(--green); }
+.weekly-config-row b { text-align:right; font-size:11px; }
+@media (max-width: 980px) { .liquidity-kpis { grid-template-columns:repeat(3,1fr); } }
+@media (max-width: 720px) { .liquidity-kpis,.liquidity-two-col,.liquidity-mini-grid,.quadrant-grid { grid-template-columns:1fr; } .liquidity-panel-head,.liquidity-signal { flex-direction:column; } .liquidity-kpi strong { font-size:18px; } }
 '''
     js = '''const tabs = Array.from(document.querySelectorAll(".category-tab"));
 const panels = Array.from(document.querySelectorAll(".category-panel"));
@@ -3573,6 +3737,17 @@ function activateCategory(target) {
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => activateCategory(tab.dataset.target));
 });
+
+const etfButtons = Array.from(document.querySelectorAll("[data-etf-group]"));
+const etfRows = Array.from(document.querySelectorAll("[data-etf-row]"));
+function filterEtfRows(group) {
+  etfButtons.forEach((button) => button.classList.toggle("active", button.dataset.etfGroup === group));
+  etfRows.forEach((row) => {
+    row.hidden = group !== "总览" && row.dataset.etfRow !== group;
+  });
+}
+etfButtons.forEach((button) => button.addEventListener("click", () => filterEtfRows(button.dataset.etfGroup)));
+if (etfButtons.length) filterEtfRows("总览");
 
 if (refreshButton && refreshStatus) {
   function expectedLatestTradingDay() {
@@ -3653,6 +3828,10 @@ def main() -> None:
     indices = pd.read_csv(PROCESSED_DIR / "index_close.csv", parse_dates=["date"])
     broad = pd.read_csv(PROCESSED_DIR / "broad_etf_flow.csv", parse_dates=["date"])
     star = pd.read_csv(PROCESSED_DIR / "star50_etf_flow.csv", parse_dates=["date"])
+    etf_flow_detail = None
+    etf_flow_detail_path = PROCESSED_DIR / "etf_daily_flow_detail.csv"
+    if etf_flow_detail_path.exists():
+        etf_flow_detail = pd.read_csv(etf_flow_detail_path, parse_dates=["date"], dtype={"code": str})
     turnover = pd.read_csv(PROCESSED_DIR / "a_share_turnover_concentration.csv", parse_dates=["date"])
     valuation = pd.read_csv(PROCESSED_DIR / "index_pe_ttm_valuation.csv", parse_dates=["date"])
     broad_chart = draw_combo_chart(indices[["date", "沪深300", "上证指数"]].merge(broad, on="date", how="left"), [("沪深300", "沪深300", "#1f77b4"), ("上证指数", "上证指数", "#2a9d55")], "沪深300与上证指数走势及大宽基ETF资金流", CHART_DIR / "fig_001_broad_etf_flow.png")
@@ -3865,6 +4044,7 @@ def main() -> None:
         theme_amount_data=theme_amount,
         style_performance_data=style_performance,
         broad_flow_data=broad,
+        etf_flow_detail_data=etf_flow_detail,
         turnover_concentration_data=turnover,
         industry_pb_roe_chart=industry_pb_roe_chart,
         industrial_profit_chart=industrial_profit_chart,

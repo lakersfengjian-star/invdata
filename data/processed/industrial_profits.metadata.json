@@ -3,9 +3,9 @@
   "indicator": "规模以上工业企业利润总额 累计值/累计同比",
   "status": "partial",
   "latest_date": "2026-05-31",
-  "expected_latest_month": "2026-06",
+  "expected_latest_month": "2026-07",
   "unit": "亿元 / %",
   "notes": [
-    "NBS 累计值获取失败, 保留本地底座:工业 > 工业企业主要经济指标 > 利润总额_累计值: ValueError: Please check if the data path or indicator is correct. | 工业 > 规模以上工业企业主要经济指标 > 利润总额_累计值: ValueError: Please check if the data path or indicator is correct. | 工业 > 工业企业主要经济指标 > 利润总额(累计值): ValueError: Please check if the data path or indicator is correct."
+    "NBS 累计值获取失败, 保留本地底座:工业 > 工业企业主要经济指标 > 利润总额_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 工业 > 规模以上工业企业主要经济指标 > 利润总额_累计值: JSONDecodeError: Expecting value: line 1 column 1 (char 0) | 工业 > 工业企业主要经济指标 > 利润总额(累计值): JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
   ]
 }

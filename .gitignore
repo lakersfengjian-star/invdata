@@ -10,4 +10,5 @@ __pycache__/
 .pytest_cache/
 .vscode/
 logs/
+data/raw/wind_cli_cache/
 data/raw/sentiment_cache/

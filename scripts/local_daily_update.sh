@@ -20,4 +20,5 @@ export MPLCONFIGDIR="$PROJECT_ROOT/.work/cache/matplotlib"
 export INVDATA_RUN_CWD="$PROJECT_ROOT"
 
 mkdir -p "$MPLCONFIGDIR"
-exec "$PYTHON_BIN" -u scripts/run_scheduled_updates.py --mode daily
+"$PYTHON_BIN" -u scripts/run_scheduled_updates.py --mode scheduled
+"$SCRIPT_DIR/deploy_mainland_site.sh"

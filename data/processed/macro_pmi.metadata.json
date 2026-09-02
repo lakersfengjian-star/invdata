@@ -1,7 +1,7 @@
 {
   "source": "wind:economic_data.natural_language_get_edb_data",
   "status": "ok",
-  "latest_date": "2026-07-31",
+  "latest_date": "2026-08-31",
   "unit": "index/percentage-point",
   "notes": [
     "PMI is a diffusion index; mom_diff and yoy_diff are index-point differences, not growth rates",
@@ -82,5 +82,5 @@
       "industry"
     ]
   },
-  "rows": 2281
+  "rows": 2299
 }

@@ -1,11 +1,11 @@
 {
   "source": "wind:index_data.get_index_fundamentals",
   "status": "ok",
-  "latest_date": "2026-07-31",
+  "latest_date": "2026-08-31",
   "unit": "pct",
   "notes": [
     "spread = 中证红利指数股息率 - 双创50盈利收益率(100/PE_TTM)",
     "Wind codes: 000922.CSI dividend yield and 931643.CSI PE(TTM)",
-    "updated via cached 120-day chunks through 2026-07-31"
+    "updated via cached 120-day chunks through 2026-09-01"
   ]
 }

@@ -1,11 +1,11 @@
 {
   "source": "wind:index_data.get_index_kline",
   "status": "ok",
-  "latest_date": "2026-07-31",
+  "latest_date": "2026-08-31",
   "unit": "pct/point",
   "notes": [
     "style return heatmap uses Wind daily index K-line closes",
     "returns are calculated for 1D, 5D, 20D, 60D and YTD windows"
   ],
-  "rows": 4992
+  "rows": 5160
 }
