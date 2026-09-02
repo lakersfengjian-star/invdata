@@ -1,52 +1,54 @@
 {
   "mode": "scheduled",
   "effective_modes": [
-    "daily"
+    "daily",
+    "weekly"
   ],
-  "checked_at": "2026-09-02 07:38:21 CST",
-  "expected_latest_daily": "2026-09-01",
+  "checked_at": "2026-09-03 07:40:03 CST",
+  "expected_latest_daily": "2026-09-02",
+  "expected_latest_weekly": "2026-08-30",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-01T23:38:21",
-      "finished_at": "2026-09-01T23:38:28"
+      "started_at": "2026-09-02T23:40:03",
+      "finished_at": "2026-09-02T23:40:09"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-01T23:38:28",
-      "finished_at": "2026-09-01T23:38:31"
+      "started_at": "2026-09-02T23:40:09",
+      "finished_at": "2026-09-02T23:40:12"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-01T23:38:31",
-      "finished_at": "2026-09-01T23:38:31"
+      "started_at": "2026-09-02T23:40:12",
+      "finished_at": "2026-09-02T23:40:12"
     },
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-09-01T23:38:31",
-      "finished_at": "2026-09-01T23:40:02"
+      "started_at": "2026-09-02T23:40:12",
+      "finished_at": "2026-09-02T23:45:54"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-01T23:40:02",
-      "finished_at": "2026-09-01T23:41:32"
+      "started_at": "2026-09-02T23:45:54",
+      "finished_at": "2026-09-02T23:47:00"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-01T23:41:32",
-      "finished_at": "2026-09-01T23:41:58"
+      "started_at": "2026-09-02T23:47:00",
+      "finished_at": "2026-09-02T23:47:27"
     }
   ],
   "skipped": [
@@ -55,7 +57,7 @@
       "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "sentiment_index.csv": "2026-07-30"
+        "sentiment_index.csv": "2026-08-07"
       }
     },
     {
@@ -63,13 +65,13 @@
       "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "hk_sentiment.csv": "2026-07-30",
-        "hk_rates.csv": "2026-07-30",
-        "hk_fx.csv": "2026-07-30",
-        "hk_ah_premium.csv": "2026-07-30",
-        "hk_hsi_valuation.csv": "2026-07-30",
-        "hk_dividend_yield.csv": "2026-07-30",
-        "southbound_flow.csv": "2026-07-30"
+        "hk_sentiment.csv": "2026-08-31",
+        "hk_rates.csv": "2026-08-31",
+        "hk_fx.csv": "2026-08-28",
+        "hk_ah_premium.csv": "2026-08-31",
+        "hk_hsi_valuation.csv": "2026-08-31",
+        "hk_dividend_yield.csv": "2026-08-31",
+        "southbound_flow.csv": "2026-08-31"
       }
     },
     {
@@ -77,15 +79,7 @@
       "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "value_growth_spread.csv": "2026-07-31"
-      }
-    },
-    {
-      "script": "update_citic_pb_dispersion.py",
-      "reason": "local_wind_unavailable",
-      "fresh": false,
-      "outputs": {
-        "citic_pb_dispersion.csv": "2026-07-26"
+        "value_growth_spread.csv": "2026-08-31"
       }
     },
     {
@@ -93,7 +87,7 @@
       "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "style_index_performance.csv": "2026-07-31"
+        "style_index_performance.csv": "2026-08-31"
       }
     },
     {
@@ -101,7 +95,15 @@
       "reason": "local_wind_unavailable",
       "fresh": false,
       "outputs": {
-        "index_pe_ttm_valuation.csv": "2026-07-31"
+        "index_pe_ttm_valuation.csv": "2026-08-31"
+      }
+    },
+    {
+      "script": "weekly_citic_pipeline",
+      "reason": "local_wind_unavailable",
+      "fresh": false,
+      "outputs": {
+        "data/raw/citic_industry_crowding_weekly.csv": "2026-08-09"
       }
     }
   ],
@@ -110,13 +112,14 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-09-01T23:41:58",
-    "finished_at": "2026-09-01T23:42:14"
+    "started_at": "2026-09-02T23:47:27",
+    "finished_at": "2026-09-02T23:47:44"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
     "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
     "价值成长价差、中信 PB 离散度与风格收益改用本地 Wind 金融能力；GitHub Actions 缺少该能力时跳过。",
+    "中信行业周频底表按最近完整周的周日标签判断新鲜度；缺失时依次刷新底表、拥挤度与 PB 离散度。",
     "宏观数据在统计局/央行常见发布窗口的次日 06:00 尝试更新；若官方未发布或接口延迟，会保留上一期数据。"
   ]
 }
