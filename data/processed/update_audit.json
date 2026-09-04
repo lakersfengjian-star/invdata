@@ -4,51 +4,51 @@
     "daily",
     "weekly"
   ],
-  "checked_at": "2026-09-04 07:38:00 CST",
-  "expected_latest_daily": "2026-09-03",
+  "checked_at": "2026-09-05 07:30:30 CST",
+  "expected_latest_daily": "2026-09-04",
   "expected_latest_weekly": "2026-08-30",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-03T23:38:00",
-      "finished_at": "2026-09-03T23:38:13"
+      "started_at": "2026-09-04T23:30:30",
+      "finished_at": "2026-09-04T23:30:36"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-03T23:38:13",
-      "finished_at": "2026-09-03T23:38:19"
+      "started_at": "2026-09-04T23:30:36",
+      "finished_at": "2026-09-04T23:30:39"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-03T23:38:19",
-      "finished_at": "2026-09-03T23:38:19"
+      "started_at": "2026-09-04T23:30:39",
+      "finished_at": "2026-09-04T23:30:40"
     },
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-09-03T23:38:19",
-      "finished_at": "2026-09-03T23:45:17"
+      "started_at": "2026-09-04T23:30:40",
+      "finished_at": "2026-09-04T23:50:06"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-03T23:45:17",
-      "finished_at": "2026-09-03T23:46:29"
+      "started_at": "2026-09-04T23:50:06",
+      "finished_at": "2026-09-04T23:50:53"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-03T23:46:29",
-      "finished_at": "2026-09-03T23:47:00"
+      "started_at": "2026-09-04T23:50:53",
+      "finished_at": "2026-09-04T23:51:29"
     }
   ],
   "skipped": [
@@ -99,6 +99,22 @@
       }
     },
     {
+      "script": "update_fixed_income_rates_wind.py",
+      "reason": "local_wind_unavailable",
+      "fresh": false,
+      "outputs": {
+        "fixed_income_rates_wind.csv": "2026-09-01"
+      }
+    },
+    {
+      "script": "update_us_rates_wind.py",
+      "reason": "local_wind_unavailable",
+      "fresh": false,
+      "outputs": {
+        "us_rates_wind.csv": "2026-09-01"
+      }
+    },
+    {
       "script": "weekly_citic_pipeline",
       "reason": "local_wind_unavailable",
       "fresh": false,
@@ -112,8 +128,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-09-03T23:47:00",
-    "finished_at": "2026-09-03T23:47:15"
+    "started_at": "2026-09-04T23:51:29",
+    "finished_at": "2026-09-04T23:51:46"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
