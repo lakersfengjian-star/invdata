@@ -10,6 +10,8 @@ from __future__ import annotations
 CHART_REGISTRY: list[dict[str, str]] = [
     {"key": "market_heat", "id": "A-000", "title": "A股市场热度仪表盘", "category": "行情", "frequency": "daily"},
     {"key": "market_monitor", "id": "A-001", "title": "行情监控面板", "category": "行情", "frequency": "daily"},
+    {"key": "fixed_income_rates", "id": "A-005", "title": "固收收益率月末观察", "category": "行情", "frequency": "daily"},
+    {"key": "us_rates", "id": "A-006", "title": "美国利率月末观察", "category": "行情", "frequency": "daily"},
     {"key": "market_turnover", "id": "A-002", "title": "全市场成交额变化", "category": "行情", "frequency": "daily"},
     {"key": "limit_up_longest", "id": "A-003", "title": "涨停观察：连续涨停天数前十", "category": "行情", "frequency": "daily"},
     {"key": "limit_up_amount_top", "id": "A-004", "title": "涨停观察：当日涨停成交额前十", "category": "行情", "frequency": "daily"},

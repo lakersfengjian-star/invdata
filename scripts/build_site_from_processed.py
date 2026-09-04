@@ -271,8 +271,13 @@ def draw_theme_amount_share_chart(df: pd.DataFrame, out_path: Path) -> dict:
     setup_fonts()
     plot_df = df.copy().sort_values("date")
     plot_df["date"] = pd.to_datetime(plot_df["date"])
-    latest = plot_df.dropna(subset=["tmt_share_pct", "dividend_low_vol_share_pct"], how="all").iloc[-1]
-    latest_date = latest["date"].strftime("%Y-%m-%d")
+    valid = plot_df.dropna(subset=["tmt_share_pct", "dividend_low_vol_share_pct"], how="all")
+    if valid.empty:
+        latest = plot_df.iloc[-1]
+        latest_date = latest["date"].strftime("%Y-%m-%d")
+    else:
+        latest = valid.iloc[-1]
+        latest_date = latest["date"].strftime("%Y-%m-%d")
     fig, ax = plt.subplots(figsize=(16, 7.2), dpi=180)
     fig.patch.set_facecolor("#fbfbf8")
     ax.set_facecolor("#fbfbf8")
@@ -1658,109 +1663,278 @@ RATE_ORDER = ["7天逆回购利率", "DR007(FDR007定盘)", "10年期国债", "3
 
 def render_market_monitor(indices: pd.DataFrame | None, breadth: pd.DataFrame | None, rates: pd.DataFrame | None) -> str:
     note_html = chart_note_block(
-        "权益指数来自东方财富、中证指数官网、新浪财经与 Wind(万得全A);市场宽度按东方财富全A快照统计;利率来自中国货币网与 Wind(7天逆回购)。DR007 用银银间回购定盘利率 FDR007 展示;5年期AAA企业债用中短期票据(AAA)收益率曲线;二级资本债取 AAA- 5年期。",
-        "不同数据源口径存在细微差异;公开接口若临时不可用,对应指标会显示上一可得交易日数据或待更新。",
+        "七个指数的日频收盘序列来自 Wind 金融数据服务。当日涨跌幅按相邻交易日收盘计算；本年度涨跌幅按“最新收盘 / 上年最后一个交易日收盘 - 1”计算。",
+        "各市场交易日可能不同，因此每个指数单独展示最新交易日。若本地缓存缺少上年末基准，本年度涨跌幅显示为待补齐。",
         "market_monitor",
     )
-    sections: list[str] = []
-    latest_dates: list[str] = []
-
-    # ---------- 权益 ----------
     eq_rows = []
+    latest_dates: list[str] = []
     if indices is not None and not indices.empty:
         indices = indices.copy()
-        latest_dates.append(str(indices["date"].max()))
+        indices["date"] = pd.to_datetime(indices["date"], errors="coerce")
+        indices["close"] = pd.to_numeric(indices["close"], errors="coerce")
+        indices["change_pct"] = pd.to_numeric(indices.get("change_pct"), errors="coerce")
+        indices = indices.dropna(subset=["date", "index", "close"])
+        indices = indices[indices["date"].le(pd.Timestamp(expected_daily_audit_date()))]
         for name in EQUITY_ORDER:
             sub = indices[indices["index"].eq(name)].sort_values("date")
             if sub.empty:
-                eq_rows.append(f"<tr><td>{name}</td><td>—</td><td>—</td></tr>")
+                eq_rows.append(
+                    f'<tr><td data-label="指数">{name}</td><td data-label="最新交易日">—</td>'
+                    '<td data-label="点位">—</td><td data-label="当日涨跌">—</td>'
+                    '<td data-label="本年涨跌" class="muted">待补齐</td></tr>'
+                )
                 continue
             last = sub.iloc[-1]
+            latest_dates.append(last["date"].strftime("%Y-%m-%d"))
             pct = last.get("change_pct")
             pct_text = "—" if pd.isna(pct) else f"{float(pct):+.2f}%"
             pct_class = "" if pd.isna(pct) else ("pos" if pct > 0 else "neg" if pct < 0 else "")
+            year_start = pd.Timestamp(year=int(last["date"].year), month=1, day=1)
+            prior = sub[sub["date"].lt(year_start)]
+            if prior.empty:
+                ytd_text = "待补齐"
+                ytd_class = "muted"
+            else:
+                ytd = float(last["close"]) / float(prior.iloc[-1]["close"]) * 100 - 100
+                ytd_text = f"{ytd:+.2f}%"
+                ytd_class = "pos" if ytd > 0 else "neg" if ytd < 0 else ""
             eq_rows.append(
-                f'<tr><td>{name}</td><td>{float(last["close"]):,.2f}</td>'
-                f'<td class="{pct_class}">{pct_text}</td></tr>'
+                f'<tr><td data-label="指数">{name}</td>'
+                f'<td data-label="最新交易日">{last["date"].strftime("%Y-%m-%d")}</td>'
+                f'<td data-label="点位">{float(last["close"]):,.2f}</td>'
+                f'<td data-label="当日涨跌" class="{pct_class}">{pct_text}</td>'
+                f'<td data-label="本年涨跌" class="{ytd_class}">{ytd_text}</td></tr>'
             )
     equity_table = (
-        '<div class="monitor-block"><h3>权益</h3>'
-        '<div class="table-wrap"><table class="data-table monitor-table">'
-        "<thead><tr><th>指数</th><th>点位</th><th>涨跌幅</th></tr></thead>"
-        f'<tbody>{"".join(eq_rows)}</tbody></table></div></div>'
+        '<div class="table-wrap"><table class="data-table monitor-table market-index-table">'
+        "<thead><tr><th>指数</th><th>最新交易日</th><th>点位</th><th>当日涨跌幅</th><th>本年度涨跌幅</th></tr></thead>"
+        f'<tbody>{"".join(eq_rows)}</tbody></table></div>'
     )
-    sections.append(equity_table)
-
-    # ---------- 市场宽度 ----------
-    if breadth is not None and not breadth.empty:
-        breadth = breadth.sort_values("date")
-        latest_dates.append(str(breadth["date"].max()))
-        cur = breadth.iloc[-1]
-        prev = breadth.iloc[-2] if len(breadth) >= 2 else None
-
-        def diff_text(col: str, fmt: str, scale: float = 1.0) -> str:
-            if prev is None or pd.isna(prev.get(col)) or pd.isna(cur.get(col)):
-                return "—"
-            diff = (float(cur[col]) - float(prev[col])) * scale
-            cls = "pos" if diff > 0 else "neg" if diff < 0 else ""
-            return f'<span class="{cls}">{fmt.format(diff)}</span>'
-
-        breadth_rows = [
-            ("上涨股票数量(家)", f"{int(cur['up_count'])}", diff_text("up_count", "{:+.0f}")),
-            ("下跌股票数量(家)", f"{int(cur['down_count'])}", diff_text("down_count", "{:+.0f}")),
-            ("中位数涨跌幅(%)", f"{float(cur['median_pct']):.2f}", diff_text("median_pct", "{:+.2f}")),
-            ("平均涨跌幅(%)", f"{float(cur['mean_pct']):.2f}", diff_text("mean_pct", "{:+.2f}")),
-            ("全A成交额(亿元)", f"{float(cur['amount_100mn']):,.0f}", diff_text("amount_100mn", "{:+,.0f}")),
-        ]
-        body = "".join(f"<tr><td>{n}</td><td>{v}</td><td>{d}</td></tr>" for n, v, d in breadth_rows)
-        width_table = (
-            '<div class="monitor-block"><h3>市场宽度</h3>'
-            '<div class="table-wrap"><table class="data-table monitor-table">'
-            f"<thead><tr><th>指标</th><th>当日({cur['date']})</th><th>较前一日变化</th></tr></thead>"
-            f"<tbody>{body}</tbody></table></div></div>"
-        )
-    else:
-        width_table = '<div class="monitor-block"><h3>市场宽度</h3><p class="empty-note">待更新:公开快照接口暂不可用,将于下次定时任务自动补齐。</p></div>'
-    sections.append(width_table)
-
-    # ---------- 固收 ----------
-    rate_rows = []
-    if rates is not None and not rates.empty:
-        rates = rates.copy()
-        latest_dates.append(str(rates["date"].max()))
-        for name in RATE_ORDER:
-            sub = rates[rates["rate"].eq(name)].sort_values("date")
-            if sub.empty:
-                rate_rows.append(f"<tr><td>{name}</td><td>—</td><td>—</td><td>—</td></tr>")
-                continue
-            cur_r = sub.iloc[-1]
-            prev_r = sub.iloc[-2] if len(sub) >= 2 else None
-            prev_text = "—" if prev_r is None else f"{float(prev_r['value']):.3f}"
-            if prev_r is None:
-                diff_text = "—"
-            else:
-                diff_bp = (float(cur_r["value"]) - float(prev_r["value"])) * 100
-                cls = "neg" if diff_bp > 0 else "pos" if diff_bp < 0 else ""
-                diff_text = f'<span class="{cls}">{diff_bp:+.1f}</span>'
-            rate_rows.append(
-                f"<tr><td>{name}</td><td>{float(cur_r['value']):.3f}</td>"
-                f"<td>{prev_text}</td><td>{diff_text}</td></tr>"
-            )
-    rates_table = (
-        '<div class="monitor-block"><h3>固收</h3>'
-        '<div class="table-wrap"><table class="data-table monitor-table">'
-        "<thead><tr><th>品种</th><th>当日(%)</th><th>上一交易日(%)</th><th>变化(bp)</th></tr></thead>"
-        f'<tbody>{"".join(rate_rows)}</tbody></table></div></div>'
-    )
-    sections.append(rates_table)
-
     latest = max(latest_dates) if latest_dates else "待更新"
     return f'''      <section class="chart-section">
-        <h2><span class="chart-num">A-001</span>行情监控面板（截至{latest}）{freq_badge("日频")}</h2>
-        <div class="monitor-grid">{sections[0]}{sections[2]}</div>
-        {sections[1]}
+        <h2><span class="chart-num">A-001</span>主要指数行情（截至{latest}）{freq_badge("日频")}</h2>
+        {equity_table}
         {note_html}
       </section>'''
+
+
+FIXED_INCOME_RATE_ORDER = [
+    ("M1001654", "10年国债"),
+    ("M1001657", "30年国债"),
+    ("M1002843", "5年AAA信用债"),
+    ("M1015589", "5年AA银行二级资本债"),
+]
+
+
+def fixed_income_latest_date(rates: pd.DataFrame | None) -> str:
+    if rates is None or rates.empty:
+        return ""
+    data = rates.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data = data[
+        data["code"].isin([source for source, _label in FIXED_INCOME_RATE_ORDER])
+        & data["date"].le(pd.Timestamp(expected_daily_audit_date()))
+    ]
+    latest = data.groupby("code")["date"].max().dropna()
+    if not all(source in latest.index for source, _label in FIXED_INCOME_RATE_ORDER):
+        return ""
+    return latest.min().strftime("%Y-%m-%d")
+
+
+def render_fixed_income_rates(rates: pd.DataFrame | None) -> str:
+    note_html = chart_note_block(
+        "四项均为日频到期收益率，通过 Wind MCP 获取。最新值取最近有效交易日；月末值取每月最后一个有效交易日。",
+        "银行二级资本债采用5年AA口径；5年AAA-指标 M1010708 当前 Wind 账号无权限，未混用其他数据源。收益率为标准估值口径，不等同于单券成交收益率。",
+        "fixed_income_rates",
+    )
+    if rates is None or rates.empty:
+        return f'''      <section class="chart-section">
+        <h2><span class="chart-num">A-005</span>固收收益率月末观察{freq_badge("日频")}</h2>
+        <p class="empty-note">暂无固收收益率数据。</p>
+        {note_html}
+      </section>'''
+
+    data = rates.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["value"] = pd.to_numeric(data["value"], errors="coerce")
+    cutoff = pd.Timestamp(expected_daily_audit_date())
+    data = data.dropna(subset=["date", "code", "value"])
+    data = data[data["date"].le(cutoff)]
+    series: list[dict] = []
+    latest_dates: list[str] = []
+    colors = ["#315f8c", "#c36b3d", "#8a7a2f", "#8e5b84"]
+    for source_name, display_name in FIXED_INCOME_RATE_ORDER:
+        part = data[data["code"].eq(source_name)].sort_values("date")
+        if part.empty:
+            continue
+        latest = part.iloc[-1]
+        latest_dates.append(latest["date"].strftime("%Y-%m-%d"))
+        current_year = part[part["date"].dt.year.eq(latest["date"].year)].copy()
+        completed = current_year[current_year["date"].dt.month.lt(latest["date"].month)]
+        points = completed.groupby(completed["date"].dt.month, sort=True).tail(1).copy()
+        points = pd.concat([points, latest.to_frame().T], ignore_index=True)
+        series.append({"name": display_name, "points": points, "latest": latest})
+
+    if not series:
+        return f'''      <section class="chart-section">
+        <h2><span class="chart-num">A-005</span>固收收益率走势{freq_badge("日频")}</h2>
+        <p class="empty-note">暂无固收收益率数据。</p>
+        {note_html}
+      </section>'''
+
+    all_values = [float(row["value"]) for item in series for _, row in item["points"].iterrows()]
+    y_min_raw, y_max_raw = min(all_values), max(all_values)
+    padding = max((y_max_raw - y_min_raw) * 0.16, 0.04)
+    y_min, y_max = y_min_raw - padding, y_max_raw + padding
+    width, height = 960, 430
+    left, right, top, bottom = 72, 28, 30, 62
+    plot_w, plot_h = width - left - right, height - top - bottom
+    max_points = max(len(item["points"]) for item in series)
+
+    def x_pos(index: int) -> float:
+        return left + (plot_w * index / max(max_points - 1, 1))
+
+    def y_pos(value: float) -> float:
+        return top + (y_max - value) / (y_max - y_min) * plot_h
+
+    grid: list[str] = []
+    for idx in range(5):
+        value = y_min + (y_max - y_min) * idx / 4
+        y = y_pos(value)
+        grid.append(f'<line x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}" class="yield-grid"/>')
+        grid.append(f'<text x="{left-12}" y="{y+4:.1f}" text-anchor="end" class="yield-axis-label">{value:.2f}%</text>')
+
+    reference_points = max(series, key=lambda item: len(item["points"]))["points"]
+    x_labels: list[str] = []
+    for index, (_, row) in enumerate(reference_points.iterrows()):
+        label = "最新" if index == len(reference_points) - 1 else f'{int(pd.Timestamp(row["date"]).month)}月末'
+        x_labels.append(f'<text x="{x_pos(index):.1f}" y="{height-bottom+28}" text-anchor="middle" class="yield-axis-label">{label}</text>')
+
+    lines: list[str] = []
+    legends: list[str] = []
+    label_offsets = [-10, 16, -10, 16]
+    for series_index, (item, color) in enumerate(zip(series, colors)):
+        coords = [(x_pos(i), y_pos(float(row["value"])), row) for i, (_, row) in enumerate(item["points"].iterrows())]
+        path = " ".join(("M" if i == 0 else "L") + f" {x:.1f} {y:.1f}" for i, (x, y, _row) in enumerate(coords))
+        circles = "".join(
+            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{color}"><title>{escape(item["name"])} {pd.Timestamp(row["date"]).strftime("%Y-%m-%d")} {float(row["value"]):.3f}%</title></circle>'
+            for x, y, row in coords
+        )
+        labels = "".join(
+            f'<text x="{x:.1f}" y="{y + label_offsets[series_index]:.1f}" text-anchor="middle" class="yield-value-label" fill="{color}">'
+            f'{float(row["value"]):.{3 if point_index == len(coords) - 1 else 2}f}%</text>'
+            for point_index, (x, y, row) in enumerate(coords)
+        )
+        lines.append(f'<path d="{path}" fill="none" stroke="{color}" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>{circles}{labels}')
+        legends.append(
+            f'<span class="yield-legend-item"><i style="background:{color}"></i>{escape(item["name"])}'
+            f'<strong>{float(item["latest"]["value"]):.3f}%</strong></span>'
+        )
+
+    svg = f'''<div class="yield-chart-wrap">
+          <div class="yield-legend">{"".join(legends)}</div>
+          <svg class="yield-chart" viewBox="0 0 {width} {height}" role="img" aria-label="2026年以来四类债券收益率折线图">
+            <text x="18" y="{top + plot_h / 2:.1f}" transform="rotate(-90 18 {top + plot_h / 2:.1f})" text-anchor="middle" class="yield-axis-title">收益率（%）</text>
+            {"".join(grid)}
+            <line x1="{left}" y1="{height-bottom}" x2="{width-right}" y2="{height-bottom}" class="yield-axis"/>
+            {"".join(x_labels)}
+            {"".join(lines)}
+          </svg>
+        </div>'''
+    latest_date = min(latest_dates) if latest_dates else "待更新"
+    return f'''      <section class="chart-section">
+        <h2><span class="chart-num">A-005</span>固收收益率走势（截至{latest_date}）{freq_badge("日频")}</h2>
+        {svg}
+        {note_html}
+      </section>'''
+
+
+US_RATE_ORDER = [
+    ("G0001699", "EFFR"), ("M0341926", "SOFR"), ("K8012859", "3M Term SOFR"),
+    ("M1001787", "2Y Treasury"), ("M1001791", "10Y Treasury"),
+    ("G0000893", "30Y Treasury"), ("G0005428", "10Y TIPS Real Yield"),
+]
+
+
+def draw_us_rates_chart(rates: pd.DataFrame, out_path: Path) -> dict | None:
+    data = rates.copy()
+    data["date"] = pd.to_datetime(data["date"], errors="coerce")
+    data["value"] = pd.to_numeric(data["value"], errors="coerce")
+    data = data.dropna(subset=["date", "code", "value"])
+    data = data[data["date"].dt.year.eq(pd.Timestamp.now().year)]
+    if data.empty:
+        return None
+    setup_fonts()
+    fig, (ax, spread_ax) = plt.subplots(2, 1, figsize=(16, 10), dpi=180, sharex=True,
+        gridspec_kw={"height_ratios": [3.2, 1.15], "hspace": 0.08})
+    fig.patch.set_facecolor("#fbfbf8")
+    colors = ["#315f8c", "#5e8f87", "#8a7a2f", "#c36b3d", "#8e5b84", "#486b4e", "#9b4d55"]
+    latest_label_offsets = [-12, 12, 10, 0, 0, 0, 0]
+    latest_dates: list[pd.Timestamp] = []
+    max_points = 0
+    for series_index, ((code, label), color) in enumerate(zip(US_RATE_ORDER, colors)):
+        part = data[data["code"].eq(code)].sort_values("date")
+        if part.empty:
+            continue
+        latest = part.iloc[-1]
+        completed = part[part["date"].dt.month.lt(latest["date"].month)]
+        sampled = completed.groupby(completed["date"].dt.month, sort=True).tail(1)
+        sampled = pd.concat([sampled, latest.to_frame().T], ignore_index=True)
+        x = list(range(len(sampled)))
+        max_points = max(max_points, len(sampled))
+        latest_dates.append(latest["date"])
+        ax.plot(x, sampled["value"].astype(float), marker="o", markersize=5, linewidth=2, color=color,
+                label=f'{label}  {float(latest["value"]):.3f}%')
+        ax.annotate(f'{float(latest["value"]):.3f}%', (x[-1], float(latest["value"])),
+                    xytext=(7, latest_label_offsets[series_index]),
+                    textcoords="offset points", va="center", fontsize=9, color=color)
+    spread = data[data["code"].eq("CALC_2Y10Y")].sort_values("date")
+    if not spread.empty:
+        latest = spread.iloc[-1]
+        completed = spread[spread["date"].dt.month.lt(latest["date"].month)]
+        spread = completed.groupby(completed["date"].dt.month, sort=True).tail(1)
+        spread = pd.concat([spread, latest.to_frame().T], ignore_index=True)
+        x = list(range(len(spread)))
+        max_points = max(max_points, len(spread))
+        latest_dates.append(latest["date"])
+        spread_ax.axhline(0, color="#9ca3af", linewidth=1)
+        spread_ax.fill_between(x, spread["value"].astype(float), 0, color="#5b718a", alpha=0.15)
+        spread_ax.plot(x, spread["value"].astype(float), marker="o", markersize=5, linewidth=2.2, color="#5b718a",
+                       label=f'2Y-10Y Spread  {float(latest["value"]):+.3f}%')
+        for point_index, (_, row) in enumerate(spread.iterrows()):
+            spread_ax.annotate(f'{float(row["value"]):+.2f}%', (point_index, float(row["value"])), xytext=(0, 8),
+                               textcoords="offset points", ha="center", fontsize=8.5, color="#43566b")
+    for axis in (ax, spread_ax):
+        axis.set_facecolor("#fbfbf8")
+        axis.grid(axis="y", color="#d8d8d8", linewidth=0.8, alpha=0.7)
+        axis.spines[["top", "right"]].set_visible(False)
+    ax.set_title("美国利率月末观察", fontsize=17, pad=16)
+    ax.set_ylabel("收益率（%）", fontsize=11)
+    spread_ax.set_ylabel("利差（%）", fontsize=11)
+    spread_ax.set_xlabel("日期", fontsize=11)
+    tick_labels = [f"{month}月末" for month in range(1, max_points)] + ["最新"]
+    spread_ax.set_xticks(range(max_points), tick_labels)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.01), ncol=4, frameon=False, fontsize=9.5)
+    spread_ax.legend(loc="upper left", frameon=False, fontsize=9.5)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+    return {"path": str(out_path), "last_date": max(latest_dates).strftime("%Y-%m-%d") if latest_dates else ""}
+
+
+def render_us_rates(chart: dict | None) -> str:
+    note_html = chart_note_block(
+        "EFFR、SOFR、3M Term SOFR、2年/10年/30年美债和10年TIPS实际收益率均通过Wind MCP获取；2Y-10Y Spread按同日10年减2年美债收益率计算。月末值取每月最后一个有效日期。",
+        "Fed Funds Target指标在Wind中2026年暂无观测值，当前图中未展示，也未用EFFR替代。3M Term SOFR反映期限融资定价，不等同于指定到期日SOFR期货合约。",
+        "us_rates",
+    )
+    if not chart:
+        return f'''      <section class="chart-section"><h2><span class="chart-num">A-006</span>美国利率月末观察{freq_badge("日频")}</h2>
+        <p class="empty-note">暂无美国利率数据。</p>{note_html}</section>'''
+    return f'''      <section class="chart-section"><h2><span class="chart-num">A-006</span>美国利率月末观察（截至{chart["last_date"]}）{freq_badge("日频")}</h2>
+        <img src="assets/charts/{Path(chart["path"]).name}" alt="美国政策利率、SOFR、美债收益率和期限利差月末折线图">{note_html}</section>'''
 
 
 def render_market_brief(
@@ -2327,7 +2501,7 @@ def build_chart_audit(
     for item in CHART_REGISTRY:
         key = item["key"]
         actual = normalize_date_text(chart_dates.get(key, ""))
-        expected = normalize_date_text(expected_dates.get(item["frequency"], ""))
+        expected = normalize_date_text(expected_dates.get(key, expected_dates.get(item["frequency"], "")))
         status = compare_date_text(actual, expected, item["frequency"])
         audit.append({
             "key": key,
@@ -2576,6 +2750,8 @@ def build_page(
     monitor_indices: pd.DataFrame | None = None,
     monitor_breadth: pd.DataFrame | None = None,
     monitor_rates: pd.DataFrame | None = None,
+    fixed_income_rates: pd.DataFrame | None = None,
+    us_rates: pd.DataFrame | None = None,
     market_turnover_data: pd.DataFrame | None = None,
     amount_share_data: pd.DataFrame | None = None,
     theme_amount_data: pd.DataFrame | None = None,
@@ -2596,6 +2772,7 @@ def build_page(
     hk_dividend_chart: dict | None = None,
 ) -> None:
     global CURRENT_CHART_STATUS
+    us_rates_chart = draw_us_rates_chart(us_rates, CHART_DIR / "fig_024_us_rates.png") if us_rates is not None and not us_rates.empty else None
     assets_dir = SITE_DIR / "assets" / "charts"
     assets_dir.mkdir(parents=True, exist_ok=True)
     for chart_file in CHART_DIR.glob("*.png"):
@@ -2620,9 +2797,23 @@ def build_page(
     style_return = compute_style_return_heatmap(style_performance_data)
     valuation_date_by_key = {chart.get("key", ""): chart.get("last_date", "") for chart in valuation_charts}
     limit_up_date = (limit_up_meta or {}).get("latest_date", "")
+    market_monitor_date = ""
+    if monitor_indices is not None and not monitor_indices.empty:
+        monitor_dates = monitor_indices.copy()
+        monitor_dates["date"] = pd.to_datetime(monitor_dates["date"], errors="coerce")
+        monitor_dates = monitor_dates[
+            monitor_dates["index"].isin(EQUITY_ORDER)
+            & monitor_dates["date"].le(pd.Timestamp(expected_daily_audit_date()))
+        ]
+        latest_by_index = monitor_dates.groupby("index")["date"].max().dropna()
+        if all(name in latest_by_index.index for name in EQUITY_ORDER):
+            market_monitor_date = latest_by_index.min().strftime("%Y-%m-%d")
+    fixed_income_date = fixed_income_latest_date(fixed_income_rates)
     chart_dates = {
         "market_heat": market_heat.get("last_date", ""),
-        "market_monitor": metadata.get("latest_common_date", ""),
+        "market_monitor": market_monitor_date,
+        "fixed_income_rates": fixed_income_date,
+        "us_rates": (us_rates_chart or {}).get("last_date", ""),
         "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
         "limit_up_longest": limit_up_date,
         "limit_up_amount_top": limit_up_date,
@@ -2984,7 +3175,7 @@ def build_page(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vibe Research · 投研数据手册</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v={asset_version}">
 </head>
 <body>
   <main>
@@ -3014,8 +3205,6 @@ def build_page(
 
     <section class="category-panel active" id="panel-market" data-category="market">
       <div class="category-head"><span class="sec-num">A</span><h2>行情</h2></div>
-{market_heat_html}
-{market_brief_html}
 {market_monitor_html}
 {limit_up_html}
     </section>
@@ -3536,6 +3725,113 @@ h2 { margin: 0; font-size: 19px; font-weight: 700; }
 .monitor-table th:nth-child(n+2) { text-align: right; }
 .monitor-table .pos { color: #c5513c; font-weight: 700; }
 .monitor-table .neg { color: #2a9d55; font-weight: 700; }
+.yield-chart-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.yield-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 2px 0 8px 72px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.yield-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.yield-legend-item i { width: 18px; height: 3px; border-radius: 2px; }
+.yield-legend-item strong {
+  margin-left: 2px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.yield-chart { display: block; width: 100%; min-width: 720px; height: auto; }
+.yield-grid { stroke: #d9dde3; stroke-width: 1; }
+.yield-axis { stroke: #8b929c; stroke-width: 1.2; }
+.yield-axis-label { fill: #6b7280; font-size: 12px; }
+.yield-axis-title { fill: #4b5563; font-size: 13px; font-weight: 600; }
+.yield-value-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fbfbf8;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.market-index-table { table-layout: fixed; width: 100%; }
+.market-index-table th,
+.market-index-table td { padding: 11px 9px; }
+.market-index-table th { white-space: normal; line-height: 1.35; }
+.market-index-table th:nth-child(1) { width: 19%; }
+.market-index-table th:nth-child(2) { width: 21%; }
+.market-index-table th:nth-child(3) { width: 18%; }
+.market-index-table th:nth-child(4),
+.market-index-table th:nth-child(5) { width: 21%; }
+@media (max-width: 720px) {
+  .yield-legend { margin-left: 0; gap: 8px 12px; font-size: 13px; }
+  .yield-legend-item { width: calc(50% - 6px); }
+  .yield-chart { min-width: 760px; }
+  .market-index-table,
+  .market-index-table tbody { display: block; width: 100%; }
+  .market-index-table thead { display: none; }
+  .market-index-table tbody {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .market-index-table tr {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px 8px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    box-shadow: 0 5px 16px rgba(26, 40, 66, .05);
+  }
+  .market-index-table td {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: left !important;
+    white-space: normal !important;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .market-index-table td::before {
+    content: attr(data-label);
+    color: var(--faint);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .market-index-table td:first-child {
+    grid-column: 1 / 3;
+    font-size: 19px;
+    line-height: 1.25;
+  }
+  .market-index-table td:first-child::before { display: none; }
+  .market-index-table td:nth-child(2) {
+    align-items: flex-end;
+    justify-self: end;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .market-index-table td:nth-child(3),
+  .market-index-table td:nth-child(4),
+  .market-index-table td:nth-child(5) { font-size: 17px; }
+  .market-index-table + .chart-notes { margin-top: 18px; }
+  .chart-section:has(.market-index-table) .table-wrap {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+}
 .style-table { min-width: 820px; }
 .style-table td:nth-child(n+2),
 .style-table th:nth-child(n+2) {
@@ -4004,12 +4300,16 @@ def main() -> None:
     monitor_indices_path = PROCESSED_DIR / "market_monitor_indices.csv"
     monitor_breadth_path = PROCESSED_DIR / "market_monitor_breadth.csv"
     monitor_rates_path = PROCESSED_DIR / "market_monitor_rates.csv"
+    fixed_income_rates_path = PROCESSED_DIR / "fixed_income_rates_wind.csv"
+    us_rates_path = PROCESSED_DIR / "us_rates_wind.csv"
     if monitor_indices_path.exists():
         monitor_indices = pd.read_csv(monitor_indices_path)
     if monitor_breadth_path.exists():
         monitor_breadth = pd.read_csv(monitor_breadth_path)
     if monitor_rates_path.exists():
         monitor_rates = pd.read_csv(monitor_rates_path)
+    fixed_income_rates = pd.read_csv(fixed_income_rates_path) if fixed_income_rates_path.exists() else None
+    us_rates = pd.read_csv(us_rates_path) if us_rates_path.exists() else None
     build_page(
         metadata,
         broad_chart,
@@ -4039,6 +4339,8 @@ def main() -> None:
         monitor_indices=monitor_indices,
         monitor_breadth=monitor_breadth,
         monitor_rates=monitor_rates,
+        fixed_income_rates=fixed_income_rates,
+        us_rates=us_rates,
         market_turnover_data=market_turnover,
         amount_share_data=amount_share,
         theme_amount_data=theme_amount,

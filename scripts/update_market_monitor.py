@@ -3,7 +3,7 @@
 
 Sections
   indices : 沪深300 / 300收益 / 上证指数 / 万得全A / 恒生指数 / 恒生科技 / 中证红利
-            —— 当日点位与涨跌幅
+            —— 最新点位、当日涨跌幅与年初至今涨跌幅所需的完整年度序列
   breadth : 沪深两市全A 上涨/下跌家数、中位数/平均涨跌幅、成交额
   rates   : 7天逆回购 / DR007(FDR007定盘) / 10Y国债 / 30Y国债 /
             5Y AAA中短票 / 5Y 银行二级资本债(AAA-)
@@ -71,6 +71,16 @@ EM_INDICES = [
     ("1.000922", "中证红利"),
 ]
 SINA_HK_INDICES = [("hkHSI", "恒生指数"), ("hkHSTECH", "恒生科技")]
+
+WIND_EQUITY_INDICES = [
+    ("000300.SH", "沪深300"),
+    ("H00300.CSI", "300收益"),
+    ("000001.SH", "上证指数"),
+    ("881001.WI", "万得全A"),
+    ("HSI.HI", "恒生指数"),
+    ("HSTECH.HI", "恒生科技指数"),
+    ("000922.CSI", "中证红利"),
+]
 
 # 中国货币网收盘收益率曲线配置: (曲线 cnLabel, 期限年, 展示名)
 CHINAMONEY_CURVES = [
@@ -234,10 +244,17 @@ def wind_cli(server: str, tool: str, params: dict) -> dict:
     return json.loads(outer["content"][0]["text"])
 
 
-def fetch_wind_all_a() -> list[dict]:
-    end = pd.Timestamp.now().strftime("%Y%m%d")
-    begin = (pd.Timestamp.now() - pd.Timedelta(days=12)).strftime("%Y%m%d")
-    inner = wind_cli("index_data", "get_index_kline", {"windcode": "8841388.WI", "begin_date": begin, "end_date": end})
+def fetch_wind_index_history(windcode: str, index_name: str) -> list[dict]:
+    now = pd.Timestamp.now()
+    # 日频面板只展示已收盘数据，避免将当日盘中 K 线当作完整日数据。
+    end = previous_bday().strftime("%Y-%m-%d")
+    # 保留上年最后一个交易日，YTD 按“最新收盘 / 上年末收盘 - 1”计算。
+    begin = f"{now.year - 1}-12-15"
+    inner = wind_cli(
+        "index_data",
+        "get_index_kline",
+        {"windcode": windcode, "begin_date": begin, "end_date": end, "period": "1d", "count": 0},
+    )
     data = inner.get("data") or {}
     cols = [c["name"].upper() for c in data.get("columns", [])]
     rows = data.get("rows") or []
@@ -250,13 +267,13 @@ def fetch_wind_all_a() -> list[dict]:
         close = float(row[i_close])
         pct = round((close / prev_close - 1) * 100, 4) if prev_close else None
         out.append({
-            "index": "万得全A",
+            "index": index_name,
             "close": close,
             "change_pct": pct,
             "date": str(row[i_time])[:10],
         })
         prev_close = close
-    return out[-3:]
+    return out
 
 
 def update_indices(expected: pd.Timestamp, force: bool) -> dict:
@@ -278,12 +295,12 @@ def update_indices(expected: pd.Timestamp, force: bool) -> dict:
             notes.append(f"{fetch.__name__}: {type(exc).__name__}")
 
     if CLI.exists():
-        try:
-            for item in fetch_wind_all_a():
-                if (item["index"], item["date"]) not in have:
-                    rows.append({"date": item["date"], "index": "万得全A", "close": item["close"], "change_pct": item.get("change_pct")})
-        except Exception as exc:  # noqa: BLE001
-            notes.append(f"wind_all_a: {type(exc).__name__}")
+        for windcode, index_name in WIND_EQUITY_INDICES:
+            try:
+                for item in fetch_wind_index_history(windcode, index_name):
+                    rows.append({"date": item["date"], "index": index_name, "close": item["close"], "change_pct": item.get("change_pct")})
+            except Exception as exc:  # noqa: BLE001
+                notes.append(f"wind_{windcode}: {type(exc).__name__}")
 
     added = append_rows(INDICES_CSV, ["date", "index", "close", "change_pct"], ["date", "index"], rows)
     return {"added": added, "notes": notes}
@@ -491,8 +508,7 @@ def update_rates(expected: pd.Timestamp, force: bool) -> dict:
     rows: list[dict] = []
     notes: list[str] = []
 
-    begin = (pd.Timestamp.now() - pd.Timedelta(days=12)).strftime("%Y%m%d")
-    end = pd.Timestamp.now().strftime("%Y%m%d")
+    end_ts = expected.normalize()
     try:
         cmap = chinamoney_curve_map()
         grouped: dict[str, list] = {}
@@ -503,15 +519,29 @@ def update_rates(expected: pd.Timestamp, force: bool) -> dict:
             if not code:
                 notes.append(f"curve missing: {label}")
                 continue
-            try:
-                recs = fetch_chinamoney_curve(code, begin, end)
-            except Exception as exc:  # noqa: BLE001 - 单条曲线失败不影响其他曲线
-                notes.append(f"curve {label}: {type(exc).__name__}")
-                continue
-            for term, name in terms:
-                for item in parse_curve_records(recs, term):
-                    if (name, item["date"]) not in have:
-                        rows.append({"date": item["date"], "rate": name, "value": item["value"]})
+            # 已结束月份只拉取月末附近的窄窗口；当月保留近 12 天日频数据。
+            for month in pd.period_range(f"{end_ts.year}-01", end_ts.to_period("M"), freq="M"):
+                month_end = min(month.end_time.normalize(), end_ts)
+                is_current_month = month == end_ts.to_period("M")
+                term_names = [name for _term, name in terms]
+                if not force and not is_current_month:
+                    month_key = month.strftime("%Y-%m")
+                    if all(any(rate == name and str(date).startswith(month_key) for rate, date in have) for name in term_names):
+                        continue
+                window_days = 12
+                begin_ts = max(month.start_time.normalize(), month_end - pd.Timedelta(days=window_days))
+                try:
+                    recs = fetch_chinamoney_curve(code, begin_ts.strftime("%Y%m%d"), month_end.strftime("%Y%m%d"))
+                except Exception as exc:  # noqa: BLE001 - 单月曲线失败不影响其他月份
+                    notes.append(f"curve {label} {month}: {type(exc).__name__}")
+                    continue
+                for term, name in terms:
+                    parsed = parse_curve_records(recs, term)
+                    if not is_current_month and parsed:
+                        parsed = [max(parsed, key=lambda item: item["date"])]
+                    for item in parsed:
+                        if (name, item["date"]) not in have:
+                            rows.append({"date": item["date"], "rate": name, "value": item["value"]})
     except Exception as exc:  # noqa: BLE001
         notes.append(f"chinamoney: {type(exc).__name__}: {str(exc)[:120]}")
 
@@ -541,6 +571,7 @@ def update_rates(expected: pd.Timestamp, force: bool) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wind-only", action="store_true", help="仅更新 Wind 依赖部分(万得全A、7天逆回购)")
+    parser.add_argument("--rates-only", action="store_true", help="仅更新固收收益率曲线")
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
@@ -548,7 +579,9 @@ def main() -> None:
     expected = previous_bday()
     result: dict = {"expected": expected.strftime("%Y-%m-%d")}
 
-    if args.wind_only:
+    if args.rates_only:
+        result["rates"] = update_rates(expected, args.force)
+    elif args.wind_only:
         result["indices"] = update_indices(expected, args.force)  # indices 内含万得全A
         result["rates"] = {}
         if CLI.exists():

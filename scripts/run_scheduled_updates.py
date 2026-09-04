@@ -55,6 +55,8 @@ DAILY_DATASETS: dict[str, list[str]] = {
     ],
     "update_limit_up_tables.py": ["limit_up_tables.metadata.json"],
     "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
+    "update_fixed_income_rates_wind.py": ["fixed_income_rates_wind.csv"],
+    "update_us_rates_wind.py": ["us_rates_wind.csv"],
 }
 
 WEEKLY_CITIC_INPUT = ROOT / "data" / "raw" / "citic_industry_crowding_weekly.csv"
@@ -81,6 +83,8 @@ LOCAL_WIND_DATASETS = {
     "update_citic_pb_dispersion.py",
     "update_style_performance.py",
     "update_wind_index_valuation.py",
+    "update_fixed_income_rates_wind.py",
+    "update_us_rates_wind.py",
     "update_macro_pmi.py",
 }
 SCRIPT_TIMEOUT_SECONDS = 45 * 60
@@ -267,6 +271,8 @@ def main() -> None:
     if ran or build_result:
         write_audit(summary)
     print(json.dumps(summary, ensure_ascii=False), flush=True)
+    if build_result and build_result.get("status") != "ok":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
