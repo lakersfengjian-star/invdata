@@ -5,23 +5,23 @@
     "macro",
     "weekly"
   ],
-  "checked_at": "2026-09-13 07:31:11 CST",
+  "checked_at": "2026-09-14 07:43:57 CST",
   "expected_latest_daily": "2026-09-11",
-  "expected_latest_weekly": "2026-09-06",
+  "expected_latest_weekly": "2026-09-13",
   "ran": [
     {
       "script": "update_etf_dashboard.py",
       "status": "failed",
       "returncode": 1,
-      "started_at": "2026-09-12T23:31:11",
-      "finished_at": "2026-09-12T23:37:01"
+      "started_at": "2026-09-13T23:43:57",
+      "finished_at": "2026-09-14T00:04:01"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-12T23:37:01",
-      "finished_at": "2026-09-12T23:37:36"
+      "started_at": "2026-09-14T00:04:01",
+      "finished_at": "2026-09-14T00:04:34"
     }
   ],
   "skipped": [
@@ -158,8 +158,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-09-12T23:37:36",
-    "finished_at": "2026-09-12T23:37:51"
+    "started_at": "2026-09-14T00:04:34",
+    "finished_at": "2026-09-14T00:04:50"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
