@@ -1,12 +1,12 @@
 {
-  "latest_date": "2026-09-15",
+  "latest_date": "2026-09-16",
   "sections": {
-    "indices": "2026-09-15",
-    "breadth": "2026-09-15",
-    "rates": "2026-09-15"
+    "indices": "2026-09-16",
+    "breadth": "2026-09-16",
+    "rates": "2026-09-16"
   },
   "run": {
-    "expected": "2026-09-15",
+    "expected": "2026-09-16",
     "indices": {
       "added": 6,
       "notes": []
