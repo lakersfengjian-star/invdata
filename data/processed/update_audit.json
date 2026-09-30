@@ -5,51 +5,51 @@
     "macro",
     "weekly"
   ],
-  "checked_at": "2026-09-29 09:20:26 CST",
-  "expected_latest_daily": "2026-09-28",
+  "checked_at": "2026-09-30 08:49:58 CST",
+  "expected_latest_daily": "2026-09-29",
   "expected_latest_weekly": "2026-09-27",
   "ran": [
     {
       "script": "update_index_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-29T01:20:26",
-      "finished_at": "2026-09-29T01:20:38"
+      "started_at": "2026-09-30T00:49:58",
+      "finished_at": "2026-09-30T00:50:03"
     },
     {
       "script": "update_theme_amount_share.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-29T01:20:38",
-      "finished_at": "2026-09-29T01:20:42"
+      "started_at": "2026-09-30T00:50:03",
+      "finished_at": "2026-09-30T00:50:07"
     },
     {
       "script": "update_market_turnover.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-29T01:20:42",
-      "finished_at": "2026-09-29T01:20:43"
+      "started_at": "2026-09-30T00:50:07",
+      "finished_at": "2026-09-30T00:50:07"
     },
     {
       "script": "update_etf_dashboard.py",
-      "status": "failed",
-      "returncode": 1,
-      "started_at": "2026-09-29T01:20:43",
-      "finished_at": "2026-09-29T01:28:34"
+      "status": "timeout",
+      "returncode": 124,
+      "started_at": "2026-09-30T00:50:07",
+      "finished_at": "2026-09-30T01:35:07"
     },
     {
       "script": "update_limit_up_tables.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-29T01:28:34",
-      "finished_at": "2026-09-29T01:29:29"
+      "started_at": "2026-09-30T01:35:07",
+      "finished_at": "2026-09-30T01:36:10"
     },
     {
       "script": "update_market_monitor.py",
       "status": "ok",
       "returncode": 0,
-      "started_at": "2026-09-29T01:29:29",
-      "finished_at": "2026-09-29T01:30:05"
+      "started_at": "2026-09-30T01:36:10",
+      "finished_at": "2026-09-30T01:36:47"
     }
   ],
   "skipped": [
@@ -154,8 +154,8 @@
     "script": "build_site_from_processed.py",
     "status": "ok",
     "returncode": 0,
-    "started_at": "2026-09-29T01:30:05",
-    "finished_at": "2026-09-29T01:30:22"
+    "started_at": "2026-09-30T01:36:47",
+    "finished_at": "2026-09-30T01:37:04"
   },
   "notes": [
     "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
