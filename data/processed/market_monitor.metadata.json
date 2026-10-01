@@ -2,13 +2,13 @@
   "latest_date": "2026-09-30",
   "sections": {
     "indices": "2026-09-30",
-    "breadth": "2026-09-29",
-    "rates": "2026-09-29"
+    "breadth": "2026-09-30",
+    "rates": "2026-09-30"
   },
   "run": {
-    "expected": "2026-09-29",
+    "expected": "2026-09-30",
     "indices": {
-      "added": 6,
+      "added": 4,
       "notes": []
     },
     "breadth": {
