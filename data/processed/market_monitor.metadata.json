@@ -1,24 +1,24 @@
 {
-  "latest_date": "2026-09-30",
+  "latest_date": "2026-10-02",
   "sections": {
-    "indices": "2026-09-30",
-    "breadth": "2026-09-30",
+    "indices": "2026-10-02",
+    "breadth": "2026-10-01",
     "rates": "2026-09-30"
   },
   "run": {
-    "expected": "2026-09-30",
+    "expected": "2026-10-01",
     "indices": {
-      "added": 4,
+      "added": 5,
       "notes": []
     },
     "breadth": {
       "added": 1,
       "notes": [
-        "em_clist failed: JSONDecodeError"
+        "em_clist failed: RuntimeError"
       ]
     },
     "rates": {
-      "added": 5,
+      "added": 0,
       "notes": []
     }
   }
