@@ -1,8 +1,8 @@
 {
-  "updated_at": "2026-10-04 00:19:23",
-  "build_time": "2026-10-04 00:19:23",
+  "updated_at": "2026-10-05 00:40:42",
+  "build_time": "2026-10-05 00:40:42",
   "latest_common_date": "2026-08-31",
-  "latest_daily_date": "2026-10-01",
+  "latest_daily_date": "2026-10-02",
   "latest_weekly_date": "2026-08-31",
   "latest_macro_date": "2026-08-31",
   "daily_lagging_charts": [
@@ -17,7 +17,6 @@
     "hk_sentiment",
     "limit_up_amount_top",
     "limit_up_longest",
-    "market_heat",
     "market_monitor",
     "market_turnover",
     "sentiment",
@@ -36,7 +35,7 @@
     "value_growth_spread"
   ],
   "charts": {
-    "market_heat": "2026-10-01",
+    "market_heat": "2026-10-02",
     "market_monitor": "2026-07-24",
     "fixed_income_rates": "2026-09-01",
     "us_rates": "2026-09-01",
