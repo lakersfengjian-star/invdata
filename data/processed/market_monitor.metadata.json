@@ -1,20 +1,22 @@
 {
-  "latest_date": "2026-10-06",
+  "latest_date": "2026-10-07",
   "sections": {
-    "indices": "2026-10-06",
+    "indices": "2026-10-07",
     "breadth": "2026-10-05",
     "rates": "2026-09-30"
   },
   "run": {
-    "expected": "2026-10-05",
+    "expected": "2026-10-06",
     "indices": {
       "added": 5,
       "notes": []
     },
     "breadth": {
-      "added": 1,
+      "added": 0,
       "notes": [
-        "em_clist failed: JSONDecodeError"
+        "em_clist failed: JSONDecodeError",
+        "akshare fallback failed: ConnectionError",
+        "all breadth sources empty"
       ]
     },
     "rates": {

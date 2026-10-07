@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-10-06 02:22:02",
-  "build_time": "2026-10-06 02:22:02",
+  "updated_at": "2026-10-07 01:13:51",
+  "build_time": "2026-10-07 01:13:51",
   "latest_common_date": "2026-08-31",
   "latest_daily_date": "2026-10-05",
   "latest_weekly_date": "2026-08-31",
@@ -17,6 +17,7 @@
     "hk_sentiment",
     "limit_up_amount_top",
     "limit_up_longest",
+    "market_heat",
     "market_monitor",
     "market_turnover",
     "sentiment",
