@@ -1,14 +1,14 @@
 {
-  "latest_date": "2026-10-09",
+  "latest_date": "2026-10-10",
   "sections": {
     "indices": "2026-10-09",
     "breadth": "2026-10-08",
-    "rates": "2026-10-09"
+    "rates": "2026-10-10"
   },
   "run": {
     "expected": "2026-10-09",
     "indices": {
-      "added": 4,
+      "added": 0,
       "notes": []
     },
     "breadth": {
@@ -20,7 +20,7 @@
       ]
     },
     "rates": {
-      "added": 5,
+      "added": 1,
       "notes": []
     }
   }
