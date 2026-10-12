@@ -9,6 +9,7 @@ site when needed, and writes a compact audit file for later handoff.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -65,15 +66,14 @@ WEEKLY_CITIC_PIPELINE = [
     ("update_citic_pb_dispersion.py", []),
 ]
 
-MACRO_DATASETS: dict[str, str] = {
-    "update_macro_overview.py": "macro_overview.metadata.json",
-    "update_macro_credit_inventory.py": "macro_credit_inventory.metadata.json",
-    "update_macro_fiscal.py": "macro_fiscal.metadata.json",
-    "update_macro_pmi.py": "macro_pmi.metadata.json",
-    "update_industrial_profits.py": "industrial_profits.metadata.json",
+MACRO_DATASETS: dict[str, dict] = {
+    "update_macro_pmi.py": {"metadata": "macro_pmi.metadata.json", "release_days": {1, 2, 3}},
+    "update_macro_credit_inventory.py": {"metadata": "macro_credit_inventory.metadata.json", "release_days": set(range(10, 16))},
+    "update_macro_overview.py": {"metadata": "macro_overview.metadata.json", "release_days": set(range(15, 21))},
+    "update_macro_fiscal.py": {"metadata": "macro_fiscal.metadata.json", "release_days": set(range(17, 26))},
+    "update_industrial_profits.py": {"metadata": "industrial_profits.metadata.json", "release_days": {27, 28, 29}},
 }
 
-MACRO_RELEASE_DAYS = set(range(9, 21)) | set(range(27, 32))
 MACRO_MIN_INTERVAL_H = 20
 LOCAL_WIND_DATASETS = {
     "update_sentiment_index.py",
@@ -89,6 +89,21 @@ LOCAL_WIND_DATASETS = {
 SCRIPT_TIMEOUT_SECONDS = 45 * 60
 T1_DAILY_SCRIPTS = {"update_hk_dashboard.py", "update_etf_dashboard.py", "update_market_monitor.py"}
 PIPELINE_INTERMEDIATE_SCRIPTS = {"update_wind_index_valuation.py"}
+API_CALL_ESTIMATES = {
+    "update_index_amount_share.py": 5,
+    "update_theme_amount_share.py": 3,
+    "update_market_turnover.py": 1,
+    "update_sentiment_index.py": 6,
+    "update_hk_dashboard.py": 20,
+    "update_value_growth_spread.py": 3,
+    "update_style_performance.py": 4,
+    "update_wind_index_valuation.py": 4,
+    "update_etf_dashboard.py": 90,
+    "update_market_monitor.py": 10,
+    "update_fixed_income_rates_wind.py": 1,
+    "update_us_rates_wind.py": 1,
+}
+DAILY_API_CALL_BUDGET = int(os.environ.get("INVDATA_DAILY_API_BUDGET", "200"))
 
 
 def now_shanghai() -> pd.Timestamp:
@@ -126,11 +141,26 @@ def prior_workday(now: pd.Timestamp | None = None) -> pd.Timestamp:
     return day
 
 
-def macro_release_window_due(now: pd.Timestamp | None = None) -> bool:
-    """Run macro updates at 06:00 on the day after likely official release days."""
+def macro_release_window_due(now: pd.Timestamp | None = None, release_days: set[int] | None = None) -> bool:
+    """Run a macro dataset only around its own publication window."""
     local_now = now or now_shanghai()
     release_day = (local_now.tz_localize(None).normalize() - pd.Timedelta(days=1)).day
-    return release_day in MACRO_RELEASE_DAYS
+    days = release_days or set().union(*(cfg["release_days"] for cfg in MACRO_DATASETS.values()))
+    return release_day in days
+
+
+def file_fingerprint(path: Path) -> str | None:
+    if not path.exists() or not path.is_file():
+        return None
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def output_fingerprints(output_names: list[str]) -> dict[str, str | None]:
+    return {name: file_fingerprint(PROCESSED_DIR / name) for name in output_names}
 
 
 def csv_max_date(path: Path) -> pd.Timestamp | None:
@@ -233,6 +263,8 @@ def main() -> None:
 
     ran: list[dict] = []
     skipped: list[dict] = []
+    estimated_api_calls = 0
+    material_changes = False
 
     if "daily" in modes:
         for script, outputs in DAILY_DATASETS.items():
@@ -244,7 +276,17 @@ def main() -> None:
             if script in LOCAL_WIND_DATASETS and not WIND_CLI.exists():
                 skipped.append({"script": script, "reason": "local_wind_unavailable", **state})
                 continue
+            estimate = API_CALL_ESTIMATES.get(script, 1)
+            if args.mode == "scheduled" and estimated_api_calls + estimate > DAILY_API_CALL_BUDGET:
+                skipped.append({"script": script, "reason": "api_budget", "estimated_calls": estimate, **state})
+                continue
+            before = output_fingerprints(outputs)
             result = run_script(script)
+            after = output_fingerprints(outputs)
+            result["estimated_api_calls"] = estimate
+            result["outputs_changed"] = before != after
+            estimated_api_calls += estimate
+            material_changes = material_changes or result["outputs_changed"]
             if script not in PIPELINE_INTERMEDIATE_SCRIPTS:
                 result = validate_outputs(result, outputs, script_expected)
             ran.append(result)
@@ -289,18 +331,28 @@ def main() -> None:
                     else:
                         result = validate_outputs(result, outputs, expected_weekly)
                 ran.append(result)
+                material_changes = True
                 if result["status"] != "ok":
                     break
 
     if "macro" in modes:
-        for script, metadata_name in MACRO_DATASETS.items():
+        for script, cfg in MACRO_DATASETS.items():
+            metadata_name = cfg["metadata"]
+            if args.mode == "scheduled" and not macro_release_window_due(local_now, cfg["release_days"]):
+                skipped.append({"script": script, "reason": "outside_release_window", "metadata": metadata_name})
+                continue
             if args.mode != "all" and macro_fresh(metadata_name):
                 skipped.append({"script": script, "reason": "recently_attempted", "metadata": metadata_name})
                 continue
-            ran.append(run_script(script))
+            before = output_fingerprints([metadata_name])
+            result = run_script(script)
+            after = output_fingerprints([metadata_name])
+            result["outputs_changed"] = before != after
+            material_changes = material_changes or result["outputs_changed"]
+            ran.append(result)
 
     build_result = None
-    if ran:
+    if material_changes:
         build_result = run_script("build_site_from_processed.py")
 
     degraded = [item for item in ran if item.get("status") not in {"ok"}]
@@ -313,6 +365,9 @@ def main() -> None:
         "ran": ran,
         "skipped": skipped,
         "rebuilt": bool(build_result),
+        "material_changes": material_changes,
+        "estimated_api_calls": estimated_api_calls,
+        "api_call_budget": DAILY_API_CALL_BUDGET,
         "build": build_result,
         "overall_status": "degraded" if degraded else "ok",
         "problems": [

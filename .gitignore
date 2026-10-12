@@ -12,3 +12,5 @@ __pycache__/
 logs/
 data/raw/wind_cli_cache/
 data/raw/sentiment_cache/
+output/charts/
+data/processed/api_usage_audit.jsonl

@@ -551,6 +551,37 @@ def fetch_sina_stock_daily_worker(row_dict: dict[str, str], start: str, end: str
         return row_dict["symbol"], None, repr(exc)[:180]
 
 
+def fetch_current_turnover_snapshot(trading_date: pd.Timestamp) -> pd.DataFrame:
+    """Fetch one cross-sectional A-share snapshot instead of 5,000+ symbol calls."""
+    if ak is None:
+        raise RuntimeError(AKSHARE_IMPORT_ERROR)
+    try:
+        raw = ak.stock_zh_a_spot_em()
+        source_name = "Eastmoney A-share bulk snapshot"
+    except Exception as eastmoney_error:  # noqa: BLE001 - use a bounded bulk fallback
+        log_source("Eastmoney A-share bulk snapshot", "failed", repr(eastmoney_error)[:180])
+        raw = ak.stock_zh_a_spot()
+        source_name = "Sina A-share paginated snapshot"
+    aliases = {
+        "代码": "code", "名称": "name", "成交额": "amount",
+        "code": "code", "name": "name", "amount": "amount",
+    }
+    raw = raw.rename(columns={col: aliases.get(str(col), str(col)) for col in raw.columns})
+    needed = {"code", "name", "amount"}
+    if not needed.issubset(raw.columns):
+        raise ValueError(f"A-share snapshot columns missing: {sorted(needed - set(raw.columns))}")
+    out = raw[["code", "name", "amount"]].copy()
+    out["code"] = out["code"].astype(str).str.zfill(6)
+    out = out[~out["name"].astype(str).str.contains("退", na=False)]
+    out["amount_100mn"] = pd.to_numeric(out["amount"], errors="coerce") / 1e8
+    out["date"] = pd.Timestamp(trading_date).normalize()
+    out = out[["date", "code", "name", "amount_100mn"]].dropna(subset=["amount_100mn"])
+    if len(out) < 3000:
+        raise ValueError(f"A-share snapshot unexpectedly small: {len(out)}")
+    log_source(source_name, "ok", f"{trading_date.date()}: {len(out)} stocks")
+    return out
+
+
 def build_turnover_concentration(indices: pd.DataFrame, force: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     start = TURNOVER_START_DATE
     idx = indices[indices["date"] >= pd.Timestamp(start)].dropna(subset=["上证指数"]).copy()
@@ -569,34 +600,44 @@ def build_turnover_concentration(indices: pd.DataFrame, force: bool = False) -> 
         detail = pd.read_csv(detail_path, parse_dates=["date"], dtype={"code": str}) if detail_path.exists() else pd.DataFrame()
         return summary, detail
 
-    stocks = fetch_a_share_stock_list()
-    if stocks.empty:
-        raise RuntimeError("No A-share stock list available.")
+    detail_path = PROCESSED_DIR / "a_share_daily_turnover_rank_detail.csv"
+    existing = (
+        pd.read_csv(detail_path, parse_dates=["date"], dtype={"code": str})
+        if detail_path.exists() else pd.DataFrame()
+    )
+    missing_dates = (
+        idx.loc[idx["date"].gt(existing["date"].max()), "date"].drop_duplicates().sort_values()
+        if not existing.empty else pd.Series(dtype="datetime64[ns]")
+    )
+    if not existing.empty and len(missing_dates) <= 1:
+        additions = [fetch_current_turnover_snapshot(day) for day in missing_dates]
+        detail = pd.concat([existing, *additions], ignore_index=True) if additions else existing
+        failures: list[tuple[str, str]] = []
+        source_summary = f"bulk snapshots appended: {len(additions)} day(s)"
+    else:
+        stocks = fetch_a_share_stock_list()
+        if stocks.empty:
+            raise RuntimeError("No A-share stock list available.")
+        rows = []
+        failures = []
+        stock_rows = stocks[["code", "name", "symbol"]].to_dict("records")
+        with ProcessPoolExecutor(max_workers=8) as pool:
+            futures = [pool.submit(fetch_sina_stock_daily_worker, row, start, end) for row in stock_rows]
+            for n, future in enumerate(as_completed(futures), 1):
+                symbol, csv_text, err = future.result()
+                if csv_text:
+                    rows.append(pd.read_csv(StringIO(csv_text), parse_dates=["date"], dtype={"code": str}))
+                else:
+                    failures.append((symbol, err or "empty"))
+                if n % 500 == 0:
+                    print(f"stock daily fetched: {n}/{len(stocks)}", flush=True)
+        if not rows:
+            raise RuntimeError("No stock daily turnover data fetched.")
+        detail = pd.concat(rows, ignore_index=True)
+        source_summary = f"historical backfill: {len(rows)} symbols ok"
 
-    rows = []
-    failures = []
-
-    stock_rows = stocks[["code", "name", "symbol"]].to_dict("records")
-    with ProcessPoolExecutor(max_workers=8) as pool:
-        futures = [pool.submit(fetch_sina_stock_daily_worker, row, start, end) for row in stock_rows]
-        for n, future in enumerate(as_completed(futures), 1):
-            symbol, csv_text, err = future.result()
-            if csv_text:
-                df = pd.read_csv(StringIO(csv_text), parse_dates=["date"], dtype={"code": str})
-                rows.append(df)
-            else:
-                failures.append((symbol, err or "empty"))
-            if n % 500 == 0:
-                print(f"stock daily fetched: {n}/{len(stocks)}", flush=True)
-
-    for symbol, err in failures[:40]:
+    for symbol, err in failures[:20]:
         log_source("Sina A-share daily", "failed", f"{symbol}: {err}")
-    if len(failures) > 40:
-        log_source("Sina A-share daily", "failed", f"{len(failures) - 40} additional failed symbols omitted")
-    if not rows:
-        raise RuntimeError("No stock daily turnover data fetched.")
-
-    detail = pd.concat(rows, ignore_index=True)
     detail = detail[detail["date"] >= pd.Timestamp(start)].copy()
     detail = detail.sort_values(["date", "amount_100mn"], ascending=[True, False])
     detail["rank"] = detail.groupby("date")["amount_100mn"].rank(method="first", ascending=False).astype(int)
@@ -619,7 +660,7 @@ def build_turnover_concentration(indices: pd.DataFrame, force: bool = False) -> 
 
     detail.to_csv(PROCESSED_DIR / "a_share_daily_turnover_rank_detail.csv", index=False)
     summary.to_csv(PROCESSED_DIR / "a_share_turnover_concentration.csv", index=False)
-    log_source("Sina A-share daily", "ok", f"{len(rows)} symbols ok, {len(failures)} symbols failed")
+    log_source("A-share turnover concentration", "ok", f"{source_summary}, {len(failures)} failed")
     return summary, detail
 
 
