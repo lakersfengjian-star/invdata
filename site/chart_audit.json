@@ -1,25 +1,12 @@
 {
-  "generated_at": "2026-10-12 01:17:00",
+  "generated_at": "2026-10-12 21:36:42",
   "expected_dates": {
-    "daily": "2026-10-09",
+    "daily": "2026-10-12",
     "weekly": "2026-10-11",
-    "monthly": "2026-08-31",
+    "monthly": "2026-09-30",
     "manual": ""
   },
   "charts": [
-    {
-      "key": "market_heat",
-      "id": "A-000",
-      "title": "A股市场热度仪表盘",
-      "category": "行情",
-      "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
-      "notes": []
-    },
     {
       "key": "market_monitor",
       "id": "A-001",
@@ -27,10 +14,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-10-09",
-      "actual_date": "2026-07-24",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-09",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -40,10 +27,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-10-09",
-      "actual_date": "2026-09-01",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -53,10 +40,10 @@
       "category": "行情",
       "frequency": "daily",
       "expected_date": "2026-10-09",
-      "actual_date": "2026-09-01",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-09",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -65,37 +52,11 @@
       "title": "全市场成交额变化",
       "category": "行情",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
-      "notes": []
-    },
-    {
-      "key": "limit_up_longest",
-      "id": "A-003",
-      "title": "涨停观察：连续涨停天数前十",
-      "category": "行情",
-      "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
-      "notes": []
-    },
-    {
-      "key": "limit_up_amount_top",
-      "id": "A-004",
-      "title": "涨停观察：当日涨停成交额前十",
-      "category": "行情",
-      "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
-      "status": "ok",
-      "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -105,10 +66,10 @@
       "category": "宏观",
       "frequency": "monthly",
       "expected_date": "2026-08-31",
-      "actual_date": "2026-07-01",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-08-01",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -118,10 +79,10 @@
       "category": "宏观",
       "frequency": "monthly",
       "expected_date": "2026-08-31",
-      "actual_date": "2026-07-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-08-31",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -131,10 +92,10 @@
       "category": "宏观",
       "frequency": "monthly",
       "expected_date": "2026-08-31",
-      "actual_date": "2026-07-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-08-31",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -144,10 +105,10 @@
       "category": "宏观",
       "frequency": "monthly",
       "expected_date": "2026-08-31",
-      "actual_date": "2026-07-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-08-31",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -156,11 +117,11 @@
       "title": "制造业、服务业与建筑业PMI",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-08-31",
-      "actual_date": "2026-08-31",
+      "expected_date": "2026-09-30",
+      "actual_date": "2026-09-30",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -169,11 +130,11 @@
       "title": "制造业PMI分项",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-08-31",
-      "actual_date": "2026-08-31",
+      "expected_date": "2026-09-30",
+      "actual_date": "2026-09-30",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -182,11 +143,11 @@
       "title": "制造业行业PMI",
       "category": "宏观",
       "frequency": "monthly",
-      "expected_date": "2026-08-31",
-      "actual_date": "2026-08-31",
+      "expected_date": "2026-09-30",
+      "actual_date": "2026-09-30",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -195,11 +156,11 @@
       "title": "沪深300指数历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -208,11 +169,11 @@
       "title": "上证指数历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -221,11 +182,11 @@
       "title": "万得全A历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -234,11 +195,11 @@
       "title": "万得全A（除金融、石油石化）历史滚动市盈率及标准差通道",
       "category": "估值",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -248,10 +209,10 @@
       "category": "估值",
       "frequency": "weekly",
       "expected_date": "2026-10-11",
-      "actual_date": "2026-08-09",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-11",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -261,10 +222,10 @@
       "category": "盈利",
       "frequency": "monthly",
       "expected_date": "2026-08-31",
-      "actual_date": "2026-05-01",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-08-01",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -277,7 +238,7 @@
       "actual_date": "2026-10-09",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -290,7 +251,7 @@
       "actual_date": "2026-10-09",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -299,11 +260,11 @@
       "title": "上证等权情绪指数（3年分位）",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-07",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -312,11 +273,11 @@
       "title": "A股成交额前10大公司交易集中度",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -325,11 +286,11 @@
       "title": "A股成交额前100大公司交易集中度",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -338,11 +299,11 @@
       "title": "主要宽基指数成交额占全A成交额比例",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -351,11 +312,11 @@
       "title": "TMT与红利低波成交额占全A成交额比例",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -364,11 +325,11 @@
       "title": "风格成交分布仪表盘",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-10-09",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
       "status": "ok",
       "status_label": "正常",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -377,11 +338,11 @@
       "title": "风格收益热力图",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -391,10 +352,10 @@
       "category": "情绪",
       "frequency": "weekly",
       "expected_date": "2026-10-11",
-      "actual_date": "2026-08-09",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-11",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -403,11 +364,11 @@
       "title": "价值成长风格价差",
       "category": "情绪",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -417,10 +378,10 @@
       "category": "情绪",
       "frequency": "weekly",
       "expected_date": "2026-10-11",
-      "actual_date": "2026-08-09",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-11",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -429,17 +390,17 @@
       "title": "港股情绪",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": [
-        "港股情绪-宽度分项：breadth_z 覆盖 592/655 个交易日，首个有效日 2024-04-05，最后有效日 2026-08-31。",
-        "港股情绪-波动率分项：vhsi_z 覆盖 596/655 个交易日，首个有效日 2024-03-27，最后有效日 2026-08-31。",
-        "港股情绪-恒科/恒指分项：relative_z 覆盖 596/655 个交易日，首个有效日 2024-03-27，最后有效日 2026-08-31。",
-        "港股情绪-南向资金分项：southbound_z 覆盖 592/655 个交易日，首个有效日 2024-04-05，最后有效日 2026-08-31。",
-        "港股情绪-卖空占比分项：short_z 覆盖 595/655 个交易日，首个有效日 2024-03-27，最后有效日 2026-08-31。"
+        "港股情绪-宽度分项：breadth_z 覆盖 621/684 个交易日，首个有效日 2024-04-05，最后有效日 2026-10-12。",
+        "港股情绪-波动率分项：vhsi_z 覆盖 625/684 个交易日，首个有效日 2024-03-27，最后有效日 2026-10-12。",
+        "港股情绪-恒科/恒指分项：relative_z 覆盖 625/684 个交易日，首个有效日 2024-03-27，最后有效日 2026-10-12。",
+        "港股情绪-南向资金分项：southbound_z 覆盖 621/684 个交易日，首个有效日 2024-04-05，最后有效日 2026-10-12。",
+        "港股情绪-卖空占比分项：short_z 覆盖 624/684 个交易日，首个有效日 2024-03-27，最后有效日 2026-10-12。"
       ]
     },
     {
@@ -448,11 +409,11 @@
       "title": "南向资金每日净流入",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -461,11 +422,11 @@
       "title": "港股分母端：HIBOR隔夜与美国10年国债收益率",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -475,10 +436,10 @@
       "category": "港股",
       "frequency": "daily",
       "expected_date": "2026-10-09",
-      "actual_date": "2026-08-28",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-09",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -487,11 +448,11 @@
       "title": "AH股溢价与港股通指数",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -500,11 +461,11 @@
       "title": "恒生指数PE_TTM及分位",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -513,11 +474,11 @@
       "title": "恒生指数ERP",
       "category": "港股",
       "frequency": "daily",
-      "expected_date": "2026-10-09",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "expected_date": "2026-10-12",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -527,10 +488,10 @@
       "category": "港股",
       "frequency": "weekly",
       "expected_date": "2026-10-11",
-      "actual_date": "2026-08-31",
-      "status": "lagging",
-      "status_label": "滞后",
-      "built_at": "2026-10-12 01:17:00",
+      "actual_date": "2026-10-12",
+      "status": "ok",
+      "status_label": "正常",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     },
     {
@@ -543,7 +504,7 @@
       "actual_date": "",
       "status": "manual",
       "status_label": "不定期",
-      "built_at": "2026-10-12 01:17:00",
+      "built_at": "2026-10-12 21:36:42",
       "notes": []
     }
   ]

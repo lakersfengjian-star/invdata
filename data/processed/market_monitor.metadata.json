@@ -3,19 +3,13 @@
   "sections": {
     "indices": "2026-10-12",
     "breadth": "2026-10-09",
-    "rates": "2026-10-10"
+    "rates": "2026-10-12"
   },
   "run": {
     "expected": "2026-10-09",
     "indices": {
-      "added": 2,
+      "added": 1382,
       "notes": []
-    },
-    "breadth": {
-      "added": 1,
-      "notes": [
-        "em_clist failed: JSONDecodeError"
-      ]
     },
     "rates": {
       "added": 0,

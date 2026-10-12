@@ -2527,11 +2527,27 @@ def expected_daily_audit_date() -> str:
     return target.strftime("%Y-%m-%d")
 
 
+def expected_t1_daily_audit_date() -> str:
+    target = pd.Timestamp.now().normalize() - pd.Timedelta(days=1)
+    while target.weekday() >= 5:
+        target -= pd.Timedelta(days=1)
+    return target.strftime("%Y-%m-%d")
+
+
 def expected_weekly_audit_date() -> str:
     """Return the Sunday ending the most recently completed calendar week."""
     today = pd.Timestamp.now().normalize()
-    target = today - pd.Timedelta(days=today.weekday() + 1)
+    days_back = 7 if today.weekday() == 6 else today.weekday() + 1
+    target = today - pd.Timedelta(days=days_back)
     return target.strftime("%Y-%m-%d")
+
+
+def expected_monthly_audit_date(release_day: int) -> str:
+    """Expected month-end after an indicator-specific publication day."""
+    today = pd.Timestamp.now().normalize()
+    months_back = 1 if today.day >= release_day else 2
+    first = today.replace(day=1) - pd.DateOffset(months=months_back)
+    return (first + pd.offsets.MonthEnd(0)).strftime("%Y-%m-%d")
 
 
 def chart_status_line(chart_key: str | None) -> str:
@@ -2782,21 +2798,9 @@ def build_page(
     asset_version = "".join(ch for ch in build_time if ch.isdigit())
     broad_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
     star_etf_risk = "净流入为 0 或长时间缺失时，可能代表 ETF 份额未更新、接口未披露或数据源暂不可用，不应机械解读为真实无申赎。"
-    market_heat = compute_market_heat(
-        market_turnover_data,
-        monitor_breadth,
-        turnover_concentration_data,
-        amount_share_data,
-        theme_amount_data,
-        broad_flow_data,
-        limit_up_longest,
-        limit_up_amount_top,
-        limit_up_meta,
-    )
     style_distribution = compute_style_turnover_distribution(amount_share_data, theme_amount_data)
     style_return = compute_style_return_heatmap(style_performance_data)
     valuation_date_by_key = {chart.get("key", ""): chart.get("last_date", "") for chart in valuation_charts}
-    limit_up_date = (limit_up_meta or {}).get("latest_date", "")
     market_monitor_date = ""
     if monitor_indices is not None and not monitor_indices.empty:
         monitor_dates = monitor_indices.copy()
@@ -2810,13 +2814,10 @@ def build_page(
             market_monitor_date = latest_by_index.min().strftime("%Y-%m-%d")
     fixed_income_date = fixed_income_latest_date(fixed_income_rates)
     chart_dates = {
-        "market_heat": market_heat.get("last_date", ""),
         "market_monitor": market_monitor_date,
         "fixed_income_rates": fixed_income_date,
         "us_rates": (us_rates_chart or {}).get("last_date", ""),
         "market_turnover": (market_turnover_chart or {}).get("last_date", ""),
-        "limit_up_longest": limit_up_date,
-        "limit_up_amount_top": limit_up_date,
         "macro": (macro_chart or {}).get("last_date", ""),
         "macro_inventory": (macro_inventory_chart or {}).get("last_date", ""),
         "macro_m1_m2": (macro_m1_m2_chart or {}).get("last_date", ""),
@@ -2864,6 +2865,22 @@ def build_page(
         "monthly": latest_macro,
         "manual": "",
     }
+    chart_expected_dates = {
+        "market_monitor": expected_t1_daily_audit_date(),
+        "fixed_income_rates": expected_t1_daily_audit_date(),
+        "us_rates": expected_t1_daily_audit_date(),
+        "broad_etf_flow": expected_t1_daily_audit_date(),
+        "star50_etf_flow": expected_t1_daily_audit_date(),
+        "hk_fx": expected_t1_daily_audit_date(),
+        "macro": expected_monthly_audit_date(20),
+        "macro_inventory": expected_monthly_audit_date(28),
+        "macro_m1_m2": expected_monthly_audit_date(15),
+        "macro_fiscal": expected_monthly_audit_date(25),
+        "macro_pmi_headline": expected_monthly_audit_date(1),
+        "macro_pmi_components": expected_monthly_audit_date(1),
+        "macro_pmi_industries": expected_monthly_audit_date(1),
+        "industrial_profits": expected_monthly_audit_date(28),
+    }
     audit_notes: dict[str, list[str]] = {}
     hk_meta_path = PROCESSED_DIR / "hk_dashboard.metadata.json"
     if hk_meta_path.exists():
@@ -2878,14 +2895,17 @@ def build_page(
                 audit_notes["southbound"] = southbound_notes
         except Exception:
             audit_notes["hk_sentiment"] = ["港股板块元数据读取失败，需检查 hk_dashboard.metadata.json。"]
-    chart_audit = build_chart_audit(chart_dates, expected_dates, build_time, audit_notes=audit_notes)
+    chart_audit = build_chart_audit(chart_dates, {**expected_dates, **chart_expected_dates}, build_time, audit_notes=audit_notes)
     CURRENT_CHART_STATUS = {item["key"]: item for item in chart_audit}
-    daily_lagging = sorted(k for k in daily_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") == "lagging")
-    market_heat_html = render_market_heat(market_heat)
+    stale_statuses = {"lagging", "missing"}
+    daily_lagging = sorted(k for k in daily_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") in stale_statuses)
+    weekly_lagging = sorted(k for k in weekly_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") in stale_statuses)
+    monthly_lagging = sorted(k for k in monthly_keys if CURRENT_CHART_STATUS.get(k, {}).get("status") in stale_statuses)
     style_distribution_html = render_style_turnover_distribution(style_distribution)
     style_return_html = render_style_return_heatmap(style_return)
-    market_brief_html = render_market_brief(monitor_indices, monitor_breadth, market_turnover_data, amount_share_data, theme_amount_data)
     market_monitor_html = render_market_monitor(monitor_indices, monitor_breadth, monitor_rates)
+    fixed_income_html = render_fixed_income_rates(fixed_income_rates)
+    us_rates_html = render_us_rates(us_rates_chart)
     liquidity_html = build_liquidity_view(
         market_turnover_data,
         etf_flow_detail_data,
@@ -3054,9 +3074,6 @@ def build_page(
         )}
       </section>''')
     macro_html = "\n".join(macro_sections) if macro_sections else '<p class="empty-note">暂无图表。</p>'
-    limit_up_date = (limit_up_meta or {}).get("latest_date", "")
-    limit_up_html = render_limit_up_table("<span class=\"chart-num\">A-003</span>涨停观察：连续涨停天数前十", limit_up_longest, limit_up_date, "limit_up_longest")
-    limit_up_html += "\n" + render_limit_up_table("<span class=\"chart-num\">A-004</span>涨停观察：当日涨停成交额前十", limit_up_amount_top, limit_up_date, "limit_up_amount_top")
     sentiment_html = '<p class="empty-note">暂无图表。</p>'
     if sentiment_chart:
         components = (sentiment_meta or {}).get("components", {})
@@ -3165,10 +3182,13 @@ def build_page(
         {chart_note_block("展示港股通高股息CNY、中证红利、央企大盘、港股通央企红利、恒生指数、上证指数的最新股息率TTM，数据来自 Wind 金融能力。", "股息率受成分调整、股利预案确认和指数口径影响；周频图按最新可用交易日展示。", "hk_dividend_yield")}
       </section>''')
     hk_html = "\n".join(hk_sections) if hk_sections else '<p class="empty-note">暂无港股图表。</p>'
-    daily_note = ""
-    if daily_lagging:
-        lagging_names = [REGISTRY_BY_KEY.get(key, {}).get("title", key) for key in daily_lagging[:4]]
-        daily_note = f"<div class=\"meta-warning\">部分日频指标滞后：{', '.join(lagging_names)}</div>"
+    warning_lines = []
+    for label, keys in (("日频", daily_lagging), ("周频", weekly_lagging), ("月频", monthly_lagging)):
+        if keys:
+            names = [REGISTRY_BY_KEY.get(key, {}).get("title", key) for key in keys[:4]]
+            suffix = f" 等{len(keys)}项" if len(keys) > 4 else ""
+            warning_lines.append(f"<div class=\"meta-warning\">部分{label}指标滞后或缺失：{', '.join(names)}{suffix}</div>")
+    freshness_warnings = "\n".join(warning_lines)
     html = f'''<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -3186,7 +3206,7 @@ def build_page(
         <div class="meta-line">日频截至：{latest_daily}</div>
         <div class="meta-line">周频截至：{latest_weekly or "暂无"}</div>
         <div class="meta-line">月/季频截至：{latest_macro or "暂无"}</div>
-{daily_note}
+{freshness_warnings}
         <button class="refresh-button" type="button" id="refresh-data">刷新数据</button>
         <div class="refresh-status" id="refresh-status" role="status" aria-live="polite"></div>
       </div>
@@ -3206,7 +3226,9 @@ def build_page(
     <section class="category-panel active" id="panel-market" data-category="market">
       <div class="category-head"><span class="sec-num">A</span><h2>行情</h2></div>
 {market_monitor_html}
-{limit_up_html}
+{market_turnover_html}
+{fixed_income_html}
+{us_rates_html}
     </section>
 
     <section class="category-panel" id="panel-macro" data-category="macro" hidden>
@@ -4105,6 +4127,8 @@ if (refreshButton && refreshStatus) {
         "latest_weekly_date": latest_weekly,
         "latest_macro_date": latest_macro,
         "daily_lagging_charts": daily_lagging,
+        "weekly_lagging_charts": weekly_lagging,
+        "monthly_lagging_charts": monthly_lagging,
         "charts": chart_dates,
     }
     (SITE_DIR / "meta.json").write_text(json.dumps(site_meta, ensure_ascii=False, indent=2), encoding="utf-8")

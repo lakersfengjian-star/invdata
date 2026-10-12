@@ -1,44 +1,68 @@
 {
-  "updated_at": "2026-09-02 12:23:40 CST",
-  "latest_date": "2026-09-01",
+  "updated_at": "2026-10-12 21:35:21 CST",
+  "latest_date": "2026-10-12",
   "latest_by_code": {
-    "M1001654": "2026-09-01",
-    "M1001657": "2026-09-01",
-    "M1002843": "2026-09-01",
-    "M1015589": "2026-09-01"
+    "M1001654": "2026-10-12",
+    "M1001657": "2026-10-12",
+    "M1002843": "2026-10-12",
+    "M1015589": "2026-10-12"
   },
   "indicators": {
     "M1001654": {
+      "beginDate": "20071214",
       "code": "M1001654",
+      "enFreq": "daily",
+      "enName": "China:Treasury Bond Yield to Maturity Curve: 10Y",
+      "enSource": "China Securities Index",
+      "enUnit": "%",
+      "endDate": "20261012",
+      "freq": "日",
       "name": "中国:国债到期收益率:10年",
-      "unit": "%",
       "source": "中证指数公司",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261012"
     },
     "M1001657": {
+      "beginDate": "20100114",
       "code": "M1001657",
+      "enFreq": "daily",
+      "enName": "China:Treasury Bond Yield to Maturity Curve: 30Y",
+      "enSource": "China Securities Index",
+      "enUnit": "%",
+      "endDate": "20261012",
+      "freq": "日",
       "name": "中国:国债到期收益率:30年",
-      "unit": "%",
       "source": "中证指数公司",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261012"
     },
     "M1002843": {
+      "beginDate": "20110513",
       "code": "M1002843",
+      "enFreq": "daily",
+      "enName": "China:MTN & CP Yield to Maturity Curve (AAA): 5Y",
+      "enSource": "China Securities Index",
+      "enUnit": "%",
+      "endDate": "20261012",
+      "freq": "日",
       "name": "中国:中短票据到期收益率(AAA):5年",
-      "unit": "%",
       "source": "中证指数公司",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261012"
     },
     "M1015589": {
+      "beginDate": "20200817",
       "code": "M1015589",
+      "enFreq": "daily",
+      "enName": "China:Tier 2 Capital Bond of Commercial Bank Yield Curve (Yield to Maturity) (AA): 5Y",
+      "enSource": "Chinamoney",
+      "enUnit": "%",
+      "endDate": "20261012",
+      "freq": "日",
       "name": "中国:商业银行二级资本债到期收益率(AA):5年",
-      "unit": "%",
       "source": "中国货币网",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261012"
     }
   },
   "errors": [],

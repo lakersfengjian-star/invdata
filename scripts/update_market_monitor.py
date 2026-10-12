@@ -33,6 +33,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from common.wind_cli import node_bin
+
 ROOT = Path(__file__).resolve().parents[1]
 VENDOR = ROOT / ".work" / "vendor"
 if VENDOR.exists():
@@ -234,7 +236,7 @@ def fetch_sina_hk() -> list[dict]:
 
 
 def wind_cli(server: str, tool: str, params: dict) -> dict:
-    cmd = ["node", str(CLI), "call", server, tool, json.dumps(params, ensure_ascii=False)]
+    cmd = [node_bin(), str(CLI), "call", server, tool, json.dumps(params, ensure_ascii=False)]
     proc = subprocess.run(cmd, cwd=SKILL_DIR, capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
         raise RuntimeError(f"wind cli exit {proc.returncode}: {proc.stdout[:200]}")
@@ -247,13 +249,13 @@ def wind_cli(server: str, tool: str, params: dict) -> dict:
 def fetch_wind_index_history(windcode: str, index_name: str) -> list[dict]:
     now = pd.Timestamp.now()
     # 日频面板只展示已收盘数据，避免将当日盘中 K 线当作完整日数据。
-    end = previous_bday().strftime("%Y-%m-%d")
+    end = previous_bday().strftime("%Y%m%d")
     # 保留上年最后一个交易日，YTD 按“最新收盘 / 上年末收盘 - 1”计算。
-    begin = f"{now.year - 1}-12-15"
+    begin = f"{now.year - 1}1215"
     inner = wind_cli(
         "index_data",
         "get_index_kline",
-        {"windcode": windcode, "begin_date": begin, "end_date": end, "period": "1d", "count": 0},
+        {"windcode": windcode, "begin_date": begin, "end_date": end},
     )
     data = inner.get("data") or {}
     cols = [c["name"].upper() for c in data.get("columns", [])]

@@ -1,77 +1,132 @@
 {
-  "updated_at": "2026-09-02 19:47:48 CST",
-  "latest_date": "2026-09-01",
+  "updated_at": "2026-10-12 21:35:22 CST",
+  "latest_date": "2026-10-09",
   "latest_by_code": {
-    "CALC_2Y10Y": "2026-09-01",
-    "G0000893": "2026-09-01",
-    "G0001699": "2026-08-31",
-    "G0005428": "2026-09-01",
-    "K8012859": "2026-09-01",
-    "M0341926": "2026-08-31",
-    "M1001787": "2026-09-01",
-    "M1001791": "2026-09-01"
+    "CALC_2Y10Y": "2026-10-09",
+    "G0000893": "2026-10-09",
+    "G0001699": "2026-10-08",
+    "G0005428": "2026-10-09",
+    "K8012859": "2026-10-09",
+    "M0000162": "2026-09-17",
+    "M0341926": "2026-10-08",
+    "M1001787": "2026-10-09",
+    "M1001791": "2026-10-09"
   },
   "indicators": {
     "G0001699": {
+      "beginDate": "19540701",
       "code": "G0001699",
+      "enFreq": "daily",
+      "enName": "US: Effective Federal Funds Rate (EFFR)",
+      "enSource": "Federal Reserve",
+      "enUnit": "%",
+      "endDate": "20261008",
+      "freq": "日",
       "name": "美国:有效联邦基金利率(EFFR)",
-      "unit": "%",
       "source": "美联储",
-      "updateDate": "20260902",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261010"
+    },
+    "M0000162": {
+      "beginDate": "19820927",
+      "code": "M0000162",
+      "enFreq": "daily",
+      "enName": "US: Federal Funds Target Rate: Upper Bound",
+      "enSource": "Federal Reserve Board, United States",
+      "enUnit": "%",
+      "endDate": "20260917",
+      "freq": "日",
+      "name": "美国:联邦基金目标利率:上限",
+      "source": "美联储",
+      "unit": "%",
+      "updateDate": "20260917"
     },
     "M0341926": {
+      "beginDate": "20180402",
       "code": "M0341926",
+      "enFreq": "daily",
+      "enName": "SOFR",
+      "enSource": "Federal Reserve Bank of New York",
+      "enUnit": "%",
+      "endDate": "20261008",
+      "freq": "日",
       "name": "美国担保隔夜融资利率(SOFR)",
-      "unit": "%",
       "source": "纽约联储",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261009"
     },
     "K8012859": {
+      "beginDate": "20211001",
       "code": "K8012859",
+      "enFreq": "daily",
+      "enName": "US: Term SOFR Rates: 3 Month",
+      "enSource": "According to the Press Finishing",
+      "enUnit": "%",
+      "endDate": "20261009",
+      "freq": "日",
       "name": "美国:SOFR期限利率:3个月",
-      "unit": "%",
       "source": "根据新闻整理",
-      "updateDate": "20260901",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261009"
     },
     "M1001787": {
+      "beginDate": "19760601",
       "code": "M1001787",
+      "enFreq": "daily",
+      "enName": "US: Treasury Par Yield Curve Rates: 2Y",
+      "enSource": "U.S. Department of the Treasury",
+      "enUnit": "%",
+      "endDate": "20261009",
+      "freq": "日",
       "name": "美国:国债收益率:2年",
-      "unit": "%",
       "source": "美国财政部",
-      "updateDate": "20260902",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261010"
     },
     "M1001791": {
+      "beginDate": "19530430",
       "code": "M1001791",
+      "enFreq": "daily",
+      "enName": "US: Treasury Par Yield Curve Rates: 10Y",
+      "enSource": "U.S. Department of the Treasury",
+      "enUnit": "%",
+      "endDate": "20261009",
+      "freq": "日",
       "name": "美国:国债收益率:10年",
-      "unit": "%",
       "source": "美国财政部",
-      "updateDate": "20260902",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261010"
     },
     "G0000893": {
+      "beginDate": "19770215",
       "code": "G0000893",
+      "enFreq": "daily",
+      "enName": "US: Treasury Par Yield Curve Rates: 30Y",
+      "enSource": "U.S. Department of the Treasury",
+      "enUnit": "%",
+      "endDate": "20261009",
+      "freq": "日",
       "name": "美国:国债收益率:30年",
-      "unit": "%",
       "source": "美国财政部",
-      "updateDate": "20260902",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261010"
     },
     "G0005428": {
+      "beginDate": "20030102",
       "code": "G0005428",
+      "enFreq": "daily",
+      "enName": "US: Treasury Par Real Yield Curve Rates: 10Y",
+      "enSource": "U.S. Department of the Treasury",
+      "enUnit": "%",
+      "endDate": "20261009",
+      "freq": "日",
       "name": "美国:国债实际收益率:10年",
-      "unit": "%",
       "source": "美国财政部",
-      "updateDate": "20260902",
-      "freq": "日"
+      "unit": "%",
+      "updateDate": "20261010"
     }
   },
-  "errors": [
-    "M0000162 Fed Funds Target: RuntimeError: 【美国:联邦基金目标利率(M0000162)】指标在这个时间范围没有数据"
-  ],
+  "errors": [],
   "notes": [
     "2Y-10Y Spread按同日10Y Treasury减2Y Treasury计算。",
     "3M Term SOFR用于观察SOFR远期政策定价；不等同于某一指定到期日的SOFR期货合约。",

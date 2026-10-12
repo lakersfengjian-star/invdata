@@ -53,7 +53,6 @@ DAILY_DATASETS: dict[str, list[str]] = {
         "index_close.csv",
         "index_pe_ttm_valuation.csv",
     ],
-    "update_limit_up_tables.py": ["limit_up_tables.metadata.json"],
     "update_market_monitor.py": ["market_monitor_breadth.csv", "market_monitor_indices.csv"],
     "update_fixed_income_rates_wind.py": ["fixed_income_rates_wind.csv"],
     "update_us_rates_wind.py": ["us_rates_wind.csv"],
@@ -88,6 +87,8 @@ LOCAL_WIND_DATASETS = {
     "update_macro_pmi.py",
 }
 SCRIPT_TIMEOUT_SECONDS = 45 * 60
+T1_DAILY_SCRIPTS = {"update_hk_dashboard.py", "update_etf_dashboard.py", "update_market_monitor.py"}
+PIPELINE_INTERMEDIATE_SCRIPTS = {"update_wind_index_valuation.py"}
 
 
 def now_shanghai() -> pd.Timestamp:
@@ -95,8 +96,15 @@ def now_shanghai() -> pd.Timestamp:
 
 
 def previous_bday(now: pd.Timestamp | None = None) -> pd.Timestamp:
-    """Previous trading day approximation based on Asia/Shanghai workdays."""
-    base = (now or now_shanghai()).tz_localize(None).normalize() - pd.Timedelta(days=1)
+    """Latest completed trading day approximation in Asia/Shanghai."""
+    local_now = now or now_shanghai()
+    naive = local_now.tz_localize(None)
+    today = naive.normalize()
+    cutoff = today + pd.Timedelta(hours=18, minutes=30)
+    if naive >= cutoff and today.weekday() < 5:
+        base = today
+    else:
+        base = today - pd.Timedelta(days=1)
     while base.weekday() >= 5:
         base -= pd.Timedelta(days=1)
     return base
@@ -105,7 +113,17 @@ def previous_bday(now: pd.Timestamp | None = None) -> pd.Timestamp:
 def previous_completed_week(now: pd.Timestamp | None = None) -> pd.Timestamp:
     """Previous Sunday, used as the label for the latest completed trading week."""
     today = (now or now_shanghai()).tz_localize(None).normalize()
-    return today - pd.Timedelta(days=today.weekday() + 1)
+    # Sunday 06:00 is still too early for several weekly vendors.  Treat the
+    # week that ended that same day as available from Monday onward.
+    days_back = 7 if today.weekday() == 6 else today.weekday() + 1
+    return today - pd.Timedelta(days=days_back)
+
+
+def prior_workday(now: pd.Timestamp | None = None) -> pd.Timestamp:
+    day = (now or now_shanghai()).tz_localize(None).normalize() - pd.Timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= pd.Timedelta(days=1)
+    return day
 
 
 def macro_release_window_due(now: pd.Timestamp | None = None) -> bool:
@@ -176,6 +194,20 @@ def run_script(name: str, extra_args: list[str] | None = None) -> dict:
     }
 
 
+def validate_outputs(result: dict, output_names: list[str], expected: pd.Timestamp) -> dict:
+    """Attach post-run freshness and reject zero-exit runs that leave stale data."""
+    state = dataset_state(output_names, expected)
+    result["freshness"] = state
+    if result["status"] == "ok" and not state["fresh"]:
+        result["status"] = "stale"
+        print(
+            f"[warn] {result['script']} exited 0 but outputs did not reach "
+            f"{expected:%Y-%m-%d}: {state['outputs']}",
+            flush=True,
+        )
+    return result
+
+
 def write_audit(summary: dict) -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     AUDIT_PATH.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -204,14 +236,18 @@ def main() -> None:
 
     if "daily" in modes:
         for script, outputs in DAILY_DATASETS.items():
-            state = dataset_state(outputs, expected)
+            script_expected = prior_workday(local_now) if script in T1_DAILY_SCRIPTS else expected
+            state = dataset_state(outputs, script_expected)
             if args.mode not in {"all"} and state["fresh"]:
                 skipped.append({"script": script, "reason": "fresh", **state})
                 continue
             if script in LOCAL_WIND_DATASETS and not WIND_CLI.exists():
                 skipped.append({"script": script, "reason": "local_wind_unavailable", **state})
                 continue
-            ran.append(run_script(script))
+            result = run_script(script)
+            if script not in PIPELINE_INTERMEDIATE_SCRIPTS:
+                result = validate_outputs(result, outputs, script_expected)
+            ran.append(result)
 
     if "weekly" in modes:
         weekly_latest = csv_max_date(WEEKLY_CITIC_INPUT)
@@ -233,8 +269,25 @@ def main() -> None:
         elif not WIND_CLI.exists():
             skipped.append({"script": "weekly_citic_pipeline", "reason": "local_wind_unavailable", **weekly_state})
         else:
+            weekly_outputs = {
+                "fetch_citic_crowding_wind_cli.py": [str(WEEKLY_CITIC_INPUT.relative_to(PROCESSED_DIR.parent))],
+                "update_citic_industry_crowding.py": ["citic_industry_crowding.csv"],
+                "update_citic_pb_dispersion.py": ["citic_pb_dispersion.csv"],
+            }
             for script, extra_args in WEEKLY_CITIC_PIPELINE:
                 result = run_script(script, extra_args)
+                outputs = weekly_outputs.get(script, [])
+                if outputs:
+                    if script == "fetch_citic_crowding_wind_cli.py":
+                        latest = csv_max_date(WEEKLY_CITIC_INPUT)
+                        result["freshness"] = {
+                            "fresh": bool(latest is not None and not pd.isna(latest) and latest >= expected_weekly),
+                            "outputs": {str(WEEKLY_CITIC_INPUT.relative_to(ROOT)): None if latest is None or pd.isna(latest) else latest.strftime("%Y-%m-%d")},
+                        }
+                        if result["status"] == "ok" and not result["freshness"]["fresh"]:
+                            result["status"] = "stale"
+                    else:
+                        result = validate_outputs(result, outputs, expected_weekly)
                 ran.append(result)
                 if result["status"] != "ok":
                     break
@@ -250,6 +303,7 @@ def main() -> None:
     if ran:
         build_result = run_script("build_site_from_processed.py")
 
+    degraded = [item for item in ran if item.get("status") not in {"ok"}]
     summary = {
         "mode": args.mode,
         "effective_modes": sorted(modes),
@@ -260,6 +314,11 @@ def main() -> None:
         "skipped": skipped,
         "rebuilt": bool(build_result),
         "build": build_result,
+        "overall_status": "degraded" if degraded else "ok",
+        "problems": [
+            {"script": item.get("script"), "status": item.get("status"), "freshness": item.get("freshness")}
+            for item in degraded
+        ],
         "notes": [
             "GitHub Actions 环境无本地 Wind 授权；依赖 Wind 的周频指标应由本地任务或手动刷新补充后提交。",
             "GitHub Actions 环境通常无本地 Wind 金融能力；依赖 Wind 的港股与情绪指标在缺少脚本时跳过，避免无效失败。",
@@ -271,8 +330,8 @@ def main() -> None:
     if ran or build_result:
         write_audit(summary)
     print(json.dumps(summary, ensure_ascii=False), flush=True)
-    if build_result and build_result.get("status") != "ok":
-        raise SystemExit(1)
+    if degraded or (build_result and build_result.get("status") != "ok"):
+        raise SystemExit(2)
 
 
 if __name__ == "__main__":

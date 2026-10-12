@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -24,53 +24,59 @@ INDICATORS = {
 }
 
 
-def fetch_indicator(code: str, begin: str, end: str) -> tuple[list[dict], dict]:
+def fetch_indicators(begin: str, end: str) -> tuple[list[dict], dict[str, dict]]:
     payload = call(
         "economic_data",
-        "query_economic_indicator_data",
-        {"question": code, "beginDate": begin, "endDate": end},
+        "natural_language_get_edb_data",
+        {
+            "executionMode": "fetch",
+            "question": ",".join(INDICATORS),
+            "beginDate": begin.replace("-", ""),
+            "endDate": end.replace("-", ""),
+        },
         timeout=240,
     )
-    metrics = payload.get("metrics", [])
+    metrics = payload.get("data", {}).get("data", [])
     if not metrics:
-        raise RuntimeError(f"Wind returned no metric for {code}")
-    metric = next((item for item in metrics if item.get("meta", {}).get("code") == code), metrics[0])
-    meta = metric.get("meta", {})
-    dates = metric.get("date", [])
-    values = metric.get("value", [])
-    if len(dates) != len(values):
-        raise RuntimeError(f"Wind date/value length mismatch for {code}")
-    rows = [
-        {
+        raise RuntimeError("Wind returned no fixed-income metrics")
+    rows: list[dict] = []
+    source_meta: dict[str, dict] = {}
+    for metric in metrics:
+        meta = metric.get("meta", {})
+        code = meta.get("code")
+        if code not in INDICATORS:
+            continue
+        source_meta[code] = meta
+        dates, values = metric.get("date", []), metric.get("value", [])
+        if len(dates) != len(values):
+            continue
+        rows.extend({
             "date": pd.to_datetime(raw_date, format="%Y%m%d").strftime("%Y-%m-%d"),
-            "code": code,
-            "name": INDICATORS[code],
-            "value": value,
-            "unit": meta.get("unit", "%"),
-            "source": "Wind MCP",
-        }
-        for raw_date, value in zip(dates, values)
-        if value is not None
-    ]
-    return rows, meta
+            "code": code, "name": INDICATORS[code], "value": value,
+            "unit": meta.get("unit", "%"), "source": "Wind MCP",
+        } for raw_date, value in zip(dates, values) if value is not None)
+    return rows, source_meta
 
 
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     current_year = date.today().year
-    begin = f"{current_year}-01-01"
+    begin_date = date(current_year, 1, 1)
+    if OUTPUT_PATH.exists():
+        cached = pd.read_csv(OUTPUT_PATH)
+        cached_dates = pd.to_datetime(cached.get("date"), errors="coerce").dropna()
+        if not cached_dates.empty:
+            begin_date = max(begin_date, cached_dates.max().date() - timedelta(days=10))
+    begin = begin_date.strftime("%Y-%m-%d")
     end = date.today().strftime("%Y-%m-%d")
     rows: list[dict] = []
     source_meta: dict[str, dict] = {}
     errors: list[str] = []
 
-    for code in INDICATORS:
-        try:
-            part, meta = fetch_indicator(code, begin, end)
-            rows.extend(part)
-            source_meta[code] = meta
-        except Exception as exc:  # noqa: BLE001 - preserve other successful indicators
-            errors.append(f"{code}: {type(exc).__name__}: {str(exc)[:180]}")
+    try:
+        rows, source_meta = fetch_indicators(begin, end)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"{type(exc).__name__}: {str(exc)[:180]}")
 
     if not rows:
         raise RuntimeError("Wind returned no fixed-income yield data: " + "; ".join(errors))
