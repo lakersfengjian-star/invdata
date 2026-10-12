@@ -789,8 +789,12 @@ def main() -> None:
     # 4. Build turnover concentration (with freshness guard).
     build_turnover_concentration(indices_full)
 
-    # 5. Build valuation data.
-    valuation_notes = build_valuation_data()
+    # 5. Valuation has an independent owner. Reuse its fresh output and only
+    # backfill here when the dedicated task has not produced a usable file.
+    if dataset_fresh(["index_pe_ttm_valuation.csv"], previous_bday()):
+        valuation_notes = ["估值序列由独立更新任务维护；ETF任务复用现有结果，未重复请求。"]
+    else:
+        valuation_notes = build_valuation_data()
 
     # 6. Metadata.
     szse_missing_mask = (
